@@ -1,0 +1,3 @@
+---
+title: Spotlight for Omarchy
+---

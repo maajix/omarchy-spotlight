@@ -1,0 +1,52 @@
+{{ define "main" }}
+{{- $section := site.GetPage "docs" -}}
+{{- $pages := $section.RegularPages.ByWeight -}}
+<div class="wrap docs">
+  <aside class="docs-side">
+    <nav aria-label="Documentation">
+      <ul>
+        <li><a href="{{ $section.RelPermalink }}"{{ if .IsSection }} aria-current="page"{{ end }}>Overview</a></li>
+        {{ range $pages }}
+        <li><a href="{{ .RelPermalink }}"{{ if eq . $ }} aria-current="page"{{ end }}>{{ .Title }}</a></li>
+        {{ end }}
+      </ul>
+    </nav>
+  </aside>
+
+  <article class="docs-main">
+    <header>
+      <h1>{{ .Title }}</h1>
+      {{ with .Description }}<p class="lead">{{ . }}</p>{{ end }}
+    </header>
+    <div class="prose">
+      {{ .Content }}
+      {{ if .IsSection }}
+      <ul class="doc-index">
+        {{ range $pages }}
+        <li><a href="{{ .RelPermalink }}">{{ .Title }}</a><span>{{ .Description }}</span></li>
+        {{ end }}
+      </ul>
+      {{ end }}
+    </div>
+    {{ if not .IsSection }}
+    {{- $idx := -1 -}}
+    {{- range $i, $p := $pages }}{{ if eq $p $ }}{{ $idx = $i }}{{ end }}{{ end -}}
+    <nav class="pager" aria-label="Previous and next">
+      {{- if gt $idx 0 }}{{ with index $pages (sub $idx 1) }}
+      <a class="prev" href="{{ .RelPermalink }}"><small>Previous</small>{{ .Title }}</a>
+      {{ end }}{{ end -}}
+      {{- if lt (add $idx 1) (len $pages) }}{{ with index $pages (add $idx 1) }}
+      <a class="next" href="{{ .RelPermalink }}"><small>Next</small>{{ .Title }}</a>
+      {{ end }}{{ end -}}
+    </nav>
+    {{ end }}
+  </article>
+
+  <aside class="docs-toc">
+    {{ if and (not .IsSection) (strings.Contains .TableOfContents "<li") }}
+    <h4>On this page</h4>
+    {{ .TableOfContents }}
+    {{ end }}
+  </aside>
+</div>
+{{ end }}
