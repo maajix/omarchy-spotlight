@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+  xmlns:xhtml="http://www.w3.org/1999/xhtml">
+  <url>
+    <loc>https://maajix.github.io/hugo-spotlight/docs/installation/</loc>
+  </url><url>
+    <loc>https://maajix.github.io/hugo-spotlight/docs/using-spotlight/</loc>
+  </url><url>
+    <loc>https://maajix.github.io/hugo-spotlight/docs/search-syntax/</loc>
+  </url><url>
+    <loc>https://maajix.github.io/hugo-spotlight/docs/calculator-units-and-time/</loc>
+  </url><url>
+    <loc>https://maajix.github.io/hugo-spotlight/docs/live-toggles/</loc>
+  </url><url>
+    <loc>https://maajix.github.io/hugo-spotlight/docs/settings/</loc>
+  </url><url>
+    <loc>https://maajix.github.io/hugo-spotlight/docs/privacy-and-security/</loc>
+  </url><url>
+    <loc>https://maajix.github.io/hugo-spotlight/docs/update-and-remove/</loc>
+  </url><url>
+    <loc>https://maajix.github.io/hugo-spotlight/docs/development/</loc>
+  </url><url>
+    <loc>https://maajix.github.io/hugo-spotlight/docs/</loc>
+  </url><url>
+    <loc>https://maajix.github.io/hugo-spotlight/</loc>
+  </url>
+</urlset>

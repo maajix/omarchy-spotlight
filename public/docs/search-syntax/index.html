@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en-us">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Search syntax | Spotlight for Omarchy</title>
+<meta name="description" content="Provider filters, bang prefixes, and how Spotlight reads an ambiguous query.">
+<meta name="theme-color" content="#05060f">
+<link rel="canonical" href="https://maajix.github.io/hugo-spotlight/docs/search-syntax/">
+<link rel="icon" href="/hugo-spotlight/favicon.svg" type="image/svg+xml">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Spotlight for Omarchy">
+<meta property="og:title" content="Search syntax | Spotlight for Omarchy">
+<meta property="og:description" content="Provider filters, bang prefixes, and how Spotlight reads an ambiguous query.">
+<meta property="og:url" content="https://maajix.github.io/hugo-spotlight/docs/search-syntax/">
+<meta property="og:image" content="https://maajix.github.io/hugo-spotlight/og.jpg">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="preload" href="/hugo-spotlight/fonts/inter-latin.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="/hugo-spotlight/fonts/space-grotesk-latin.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="/hugo-spotlight/fonts/jetbrains-mono-latin.woff2" as="font" type="font/woff2" crossorigin>
+
+<link rel="stylesheet" href="/hugo-spotlight/css/main.min.6fbeb13fe3cf19d0bfba69226f9773cb338de1ba8985efe9fab485364897860e.css" integrity="sha256-b76xP&#43;PPGdC/umkib5dzyzON4bqJhe/p&#43;rSFNkiXhg4=">
+
+
+</head>
+<body>
+<header class="nav">
+  <div class="wrap">
+    <a class="brand" href="/">
+      <svg viewBox="0 0 32 32" aria-hidden="true"><defs><linearGradient id="mk" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#3a4150"/><stop offset="1" stop-color="#1a1e2a"/></linearGradient></defs><rect width="32" height="32" rx="8" fill="url(#mk)"/><rect x=".5" y=".5" width="31" height="31" rx="7.5" fill="none" stroke="rgba(194,168,119,.3)"/><circle cx="14.5" cy="14.5" r="6" fill="none" stroke="#c2a877" stroke-width="2.2"/><path d="m19 19 5 5" stroke="#c2a877" stroke-width="2.2" stroke-linecap="round"/></svg>
+
+      Spotlight <small>for Omarchy</small>
+    </a>
+    <nav aria-label="Main">
+      <ul class="nav-links">
+        
+        <li><a href="https://github.com/maajix/omarchy-spotlight" rel="noopener"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path fill="currentColor" stroke="none" d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12"/>
+</svg>
+GitHub</a></li>
+      </ul>
+    </nav>
+  </div>
+</header>
+
+<main id="main">
+<div class="wrap docs">
+  <aside class="docs-side">
+    <nav aria-label="Documentation">
+      <ul>
+        <li><a href="/hugo-spotlight/docs/">Overview</a></li>
+        
+        <li><a href="/hugo-spotlight/docs/installation/">Installation</a></li>
+        
+        <li><a href="/hugo-spotlight/docs/using-spotlight/">Using Spotlight</a></li>
+        
+        <li><a href="/hugo-spotlight/docs/search-syntax/" aria-current="page">Search syntax</a></li>
+        
+        <li><a href="/hugo-spotlight/docs/calculator-units-and-time/">Calculator, units and time</a></li>
+        
+        <li><a href="/hugo-spotlight/docs/live-toggles/">Live toggles</a></li>
+        
+        <li><a href="/hugo-spotlight/docs/settings/">Settings</a></li>
+        
+        <li><a href="/hugo-spotlight/docs/privacy-and-security/">Privacy and security</a></li>
+        
+        <li><a href="/hugo-spotlight/docs/update-and-remove/">Update and remove</a></li>
+        
+        <li><a href="/hugo-spotlight/docs/development/">Development</a></li>
+        
+      </ul>
+    </nav>
+  </aside>
+
+  <article class="docs-main">
+    <header>
+      <h1>Search syntax</h1>
+      <p class="lead">Provider filters, bang prefixes, and how Spotlight reads an ambiguous query.</p>
+    </header>
+    <div class="prose">
+      <p>Most of the time, just type. Spotlight decides whether a query looks like an app name, a calculation, a path, a URL or a sentence, and shows the matching providers together.</p>
+<h2 id="filters">Filters <a class="anchor" href="#filters" aria-label="Link to this section">#</a></h2>
+<p>Use a filter when you want results from one provider only:</p>
+<div class="table">
+<table>
+  <thead>
+    <tr>
+      <th>Filter</th>
+      <th>Provider</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code>a:</code> or <code>app:</code></td>
+      <td>Applications</td>
+    </tr>
+    <tr>
+      <td><code>w:</code> or <code>window:</code></td>
+      <td>Open windows</td>
+    </tr>
+    <tr>
+      <td><code>f:</code> or <code>file:</code></td>
+      <td>Files and folders</td>
+    </tr>
+    <tr>
+      <td><code>action:</code> or <code>cmd:</code></td>
+      <td>Omarchy and system actions</td>
+    </tr>
+    <tr>
+      <td><code>cb:</code> or <code>clipboard:</code></td>
+      <td>Clipboard history</td>
+    </tr>
+    <tr>
+      <td><code>web:</code>, <code>search:</code>, or <code>url:</code></td>
+      <td>Web</td>
+    </tr>
+    <tr>
+      <td><code>calc:</code></td>
+      <td>Calculator</td>
+    </tr>
+    <tr>
+      <td><code>unit:</code> or <code>convert:</code></td>
+      <td>Unit converter</td>
+    </tr>
+    <tr>
+      <td><code>reminder:</code></td>
+      <td>Reminders</td>
+    </tr>
+    <tr>
+      <td><code>calendar:</code> or <code>event:</code></td>
+      <td>Calendar events</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+<p>A filter without a query shows a hint instead of launching a broad search.</p>
+<p>Short forms without the colon work for the common providers: <code>f invoice</code> searches files and <code>cb ssh</code> searches the clipboard. A path such as <code>~/Downloads/</code> searches within that folder.</p>
+<h2 id="bangs">Bangs <a class="anchor" href="#bangs" aria-label="Link to this section">#</a></h2>
+<p>Bang prefixes send the query directly to a destination. Type the bang, a space, then the query:</p>
+<div class="table">
+<table>
+  <thead>
+    <tr>
+      <th>Bang</th>
+      <th>Destination</th>
+      <th>Bang</th>
+      <th>Destination</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code>g</code>, <code>gg</code>, <code>google</code></td>
+      <td>Google</td>
+      <td><code>ddg</code></td>
+      <td>DuckDuckGo</td>
+    </tr>
+    <tr>
+      <td><code>yt</code></td>
+      <td>YouTube</td>
+      <td><code>gh</code></td>
+      <td>GitHub</td>
+    </tr>
+    <tr>
+      <td><code>w</code></td>
+      <td>Wikipedia</td>
+      <td><code>wde</code></td>
+      <td>German Wikipedia</td>
+    </tr>
+    <tr>
+      <td><code>aw</code></td>
+      <td>Arch Wiki</td>
+      <td><code>aur</code></td>
+      <td>AUR</td>
+    </tr>
+    <tr>
+      <td><code>pkg</code></td>
+      <td>Arch packages</td>
+      <td><code>so</code></td>
+      <td>Stack Overflow</td>
+    </tr>
+    <tr>
+      <td><code>mdn</code></td>
+      <td>MDN</td>
+      <td><code>npm</code></td>
+      <td>npm</td>
+    </tr>
+    <tr>
+      <td><code>crates</code></td>
+      <td>crates.io</td>
+      <td><code>docker</code></td>
+      <td>Docker Hub</td>
+    </tr>
+    <tr>
+      <td><code>maps</code></td>
+      <td>Google Maps</td>
+      <td><code>tr</code></td>
+      <td>DeepL</td>
+    </tr>
+    <tr>
+      <td><code>img</code></td>
+      <td>Google Images</td>
+      <td><code>hn</code></td>
+      <td>Hacker News</td>
+    </tr>
+    <tr>
+      <td><code>omarchy</code></td>
+      <td>Omarchy manual</td>
+      <td></td>
+      <td></td>
+    </tr>
+  </tbody>
+</table>
+</div>
+<p>The space-separated <code>w query</code> is the Wikipedia bang; <code>w:</code> is the window filter.</p>
+<p>Translation accepts a language name or code at the end, such as <code>to german</code>, <code>in de</code>, or <code>into pt-br</code>:</p>
+<div class="code">
+  <button class="copy" type="button" aria-label="Copy to clipboard"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V6a2 2 0 0 1 2-2h9"/>
+</svg>
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12.5 4.5 4.5L19 7.5"/>
+</svg>
+</button>
+  <div class="highlight"><pre tabindex="0" class="chroma"><code class="language-text" data-lang="text"><span class="line"><span class="cl">tr what is this to german</span></span></code></pre></div>
+</div>
+
+<h2 id="urls-and-web-search">URLs and web search <a class="anchor" href="#urls-and-web-search" aria-label="Link to this section">#</a></h2>
+<p>A query that looks like a domain, such as <code>example.com</code>, opens directly. Anything that matches no local provider offers a web search with your configured engine. Set <code>searchEngine</code> in the <a href="../settings/">settings</a> to any bang key to change the default.</p>
+<p>Live web suggestions while typing are off by default. Turn them on with <code>webSuggestions</code> if you want them, and read <a href="../privacy-and-security/">what that sends</a> first.</p>
+
+      
+    </div>
+    <nav class="pager" aria-label="Previous and next">
+      <a class="prev" href="/hugo-spotlight/docs/using-spotlight/"><small>Previous</small>Using Spotlight</a>
+      
+      <a class="next" href="/hugo-spotlight/docs/calculator-units-and-time/"><small>Next</small>Calculator, units and time</a>
+      </nav>
+    
+  </article>
+
+  <aside class="docs-toc">
+    
+    <h4>On this page</h4>
+    <nav id="TableOfContents">
+  <ul>
+    <li><a href="#filters">Filters</a></li>
+    <li><a href="#bangs">Bangs</a></li>
+    <li><a href="#urls-and-web-search">URLs and web search</a></li>
+  </ul>
+</nav>
+    
+  </aside>
+</div>
+
+</main>
+<footer class="footer">
+  <div class="wrap">
+    <div>
+      <a class="brand" href="/"><svg viewBox="0 0 32 32" aria-hidden="true"><defs><linearGradient id="mk" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#3a4150"/><stop offset="1" stop-color="#1a1e2a"/></linearGradient></defs><rect width="32" height="32" rx="8" fill="url(#mk)"/><rect x=".5" y=".5" width="31" height="31" rx="7.5" fill="none" stroke="rgba(194,168,119,.3)"/><circle cx="14.5" cy="14.5" r="6" fill="none" stroke="#c2a877" stroke-width="2.2"/><path d="m19 19 5 5" stroke="#c2a877" stroke-width="2.2" stroke-linecap="round"/></svg>
+ Spotlight</a>
+    </div>
+    <ul>
+      <li><a href="https://plugins.omarchy.org/plugin.html?id=io.github.maajix.spotlight" rel="noopener">Plugin marketplace</a></li>
+      <li><a href="https://github.com/maajix/omarchy-spotlight/blob/main/SECURITY.md" rel="noopener">Security policy</a></li>
+      <li><a href="https://github.com/maajix/omarchy-spotlight/issues" rel="noopener">Report an issue</a></li>
+    </ul>
+  </div>
+</footer>
+
+
+<script src="/hugo-spotlight/js/main.min.3d340c783b57796027d90371681f67dba8c58ebed852e62cca490b88ee12890d.js" integrity="sha256-PTQMeDtXeWAn2QNxaB9n26jFjr7YUuYsykkLiO4SiQ0=" defer></script>
+
+</body>
+</html>

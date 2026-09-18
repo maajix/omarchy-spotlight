@@ -1,0 +1,69 @@
+# Scenes for the hero demo. The first scene is the empty-query view; it is also the no-JS fallback.
+- query: ""
+  enter: Open
+  sections:
+    - title: Applications
+      rows:
+        - { icon: app, title: Chromium, kind: App, selected: true }
+        - { icon: terminal, title: Ghostty, kind: App }
+        - { icon: layers, title: Obsidian, kind: App }
+    - title: Commands
+      rows:
+        - { icon: keyboard, title: Run Setup Tour, meta: "Shortcut, search sources and a quick try-out", kind: Action }
+    - title: Files
+      rows:
+        - { icon: folder, title: Downloads, meta: "~", kind: Folder }
+- query: chrom
+  enter: Open
+  sections:
+    - title: Applications
+      rows:
+        - { icon: app, title: Chromium, kind: Application, selected: true }
+    - title: Windows
+      rows:
+        - { icon: window, title: Chromium, meta: "maajix/omarchy-spotlight", kind: Workspace 2 }
+    - title: Files
+      rows:
+        - { icon: file, title: chromium-flags.conf, meta: "~/.config", kind: File }
+- query: 12*7+3
+  enter: Copy result
+  sections:
+    - title: Calculator
+      rows:
+        - { icon: calc, title: "87", big: true, meta: "12*7+3", kind: Result, selected: true }
+- query: f report
+  enter: Open
+  shift: Open folder
+  sections:
+    - title: Files
+      rows:
+        - { icon: file, title: quarterly-report.pdf, meta: "~/Documents", kind: File, selected: true }
+        - { icon: folder, title: reports, meta: "~/Documents", kind: Folder }
+        - { icon: file, title: report-template.odt, meta: "~/Templates", kind: File }
+- query: bluetooth
+  enter: Flip the switch
+  sections:
+    - title: Commands
+      rows:
+        - { icon: bluetooth, title: Toggle Bluetooth, meta: Radio on or off, pill: "off", selected: true }
+        - { icon: bluetooth, title: Restart Bluetooth, meta: "Update › Hardware", kind: Action }
+- query: remind me in 20m to check the oven
+  enter: Create reminder
+  sections:
+    - title: Reminder
+      rows:
+        - { icon: bell, title: Check the oven, meta: in 20 minutes, kind: omarchy reminder, selected: true }
+- query: yt cute cats
+  enter: Search YouTube
+  sections:
+    - title: Web
+      rows:
+        - { icon: globe, title: cute cats, meta: Search YouTube, kind: Web, selected: true }
+        - { icon: globe, title: "Search Google for “yt cute cats”", kind: Web }
+- query: aw hyprland
+  enter: Search Arch Wiki
+  sections:
+    - title: Web
+      rows:
+        - { icon: globe, title: hyprland, meta: Search Arch Wiki, kind: Web, selected: true }
+        - { icon: globe, title: "Search Google for “aw hyprland”", kind: Web }
