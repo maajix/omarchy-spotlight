@@ -1,0 +1,185 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="AutoImportSettings">
+    <option name="autoReloadType" value="SELECTIVE" />
+  </component>
+  <component name="ChangeListManager">
+    <list default="true" id="cc13daaf-aba7-42ee-ad41-8423d832d823" name="Changes" comment="updated ignore entries" />
+    <option name="SHOW_DIALOG" value="false" />
+    <option name="HIGHLIGHT_CONFLICTS" value="true" />
+    <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
+    <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="EmbeddingIndexingInfo">
+    <option name="fileBasedEmbeddingIndicesEnabled" value="true" />
+  </component>
+  <component name="Git.Settings">
+    <option name="RECENT_BRANCH_BY_REPOSITORY">
+      <map>
+        <entry key="$PROJECT_DIR$" value="main" />
+      </map>
+    </option>
+    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
+    <option name="UPDATE_TYPE" value="REBASE" />
+  </component>
+  <component name="GitHubPullRequestSearchHistory">{
+  &quot;lastFilter&quot;: {
+    &quot;state&quot;: &quot;OPEN&quot;,
+    &quot;assignee&quot;: &quot;maajix&quot;
+  }
+}</component>
+  <component name="GithubPullRequestsUISettings">{
+  &quot;selectedUrlAndAccountId&quot;: {
+    &quot;url&quot;: &quot;https://github.com/maajix/omarchy-spotlight.git&quot;,
+    &quot;accountId&quot;: &quot;1e81b139-d226-467a-8f98-716070b7d6b0&quot;
+  }
+}</component>
+  <component name="McpProjectServerCommands">
+    <commands />
+    <urls />
+  </component>
+  <component name="NextEditCompletionFeaturesState">
+    <decayedCancelled>
+      <entry key="MS100" value="2.358742038490453" />
+      <entry key="MS500" value="4.675563694806547" />
+      <entry key="S2" value="8.26741066130379" />
+      <entry key="S5" value="12.691323217668081" />
+      <entry key="S10" value="16.403695677905603" />
+      <entry key="S30" value="21.146042741899258" />
+      <entry key="S60" value="22.89986232584538" />
+      <entry key="M2" value="23.901568054692316" />
+      <entry key="M5" value="24.54829621409478" />
+      <entry key="M10" value="24.772029207600745" />
+      <entry key="M15" value="24.847543756908948" />
+      <entry key="M30" value="24.923532796427143" />
+      <entry key="H1" value="24.961706396904436" />
+      <entry key="H2" value="24.980838169170312" />
+      <entry key="H4" value="24.990415323638803" />
+      <entry key="D1" value="24.998402031278097" />
+      <entry key="W1" value="24.999771705950117" />
+    </decayedCancelled>
+    <decayedSelected>
+      <entry key="MS100" value="1.087941094180052E-89" />
+      <entry key="MS500" value="1.6118368345774933E-18" />
+      <entry key="S2" value="3.56311852446263E-5" />
+      <entry key="S5" value="0.01662386899022424" />
+      <entry key="S10" value="0.128933583639889" />
+      <entry key="S30" value="0.5051907048784786" />
+      <entry key="S60" value="0.7107676869965872" />
+      <entry key="M2" value="0.8430703926699037" />
+      <entry key="M5" value="0.9339971158090299" />
+      <entry key="M10" value="0.9664352620889987" />
+      <entry key="M15" value="0.9774964264655801" />
+      <entry key="M30" value="0.9886841894485713" />
+      <entry key="H1" value="0.9943259975725124" />
+      <entry key="H2" value="0.9971589630407554" />
+      <entry key="H4" value="0.99857847114824" />
+      <entry key="D1" value="0.9997629380732144" />
+      <entry key="W1" value="0.9999661305692389" />
+    </decayedSelected>
+    <decayedShown>
+      <entry key="MS100" value="2.337387169433709" />
+      <entry key="MS500" value="4.666222638155484" />
+      <entry key="S2" value="8.262932220182638" />
+      <entry key="S5" value="12.703923510863772" />
+      <entry key="S10" value="16.526394272125067" />
+      <entry key="S30" value="21.644725049782682" />
+      <entry key="S60" value="23.60617763421184" />
+      <entry key="M2" value="24.742027383721613" />
+      <entry key="M5" value="25.481143176913974" />
+      <entry key="M10" value="25.737870539828027" />
+      <entry key="M15" value="25.824639944637028" />
+      <entry key="M30" value="25.91201469933454" />
+      <entry key="H1" value="25.955930704789953" />
+      <entry key="H2" value="25.977946150181673" />
+      <entry key="H4" value="25.98896826940293" />
+      <entry key="D1" value="25.998160710340883" />
+      <entry key="W1" value="25.99973722797216" />
+    </decayedShown>
+  </component>
+  <component name="ProjectColorInfo">{
+  &quot;associatedIndex&quot;: 8,
+  &quot;fromUser&quot;: false
+}</component>
+  <component name="ProjectId" id="3JWQxpkkEV26zeSgiKgkvm9XGAn" />
+  <component name="ProjectLevelVcsManager">
+    <OptionsSetting value="false" id="Update" />
+  </component>
+  <component name="ProjectViewState">
+    <option name="hideEmptyMiddlePackages" value="true" />
+    <option name="showLibraryContents" value="true" />
+  </component>
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "ModuleVcsDetector.initialDetectionPerformed": "true",
+    "RunOnceActivity.MCP Project settings loaded": "true",
+    "RunOnceActivity.ShowReadmeOnStart": "true",
+    "RunOnceActivity.git.unshallow": "true",
+    "RunOnceActivity.typescript.service.memoryLimit.init": "true",
+    "codeWithMe.voiceChat.enabledByDefault": "false",
+    "com.intellij.ml.llm.matterhorn.ej.ui.settings.DefaultModelSelectionForGA.v1": "true",
+    "git-widget-placeholder": "gh-pages",
+    "javascript.preferred.runtime.type.id": "node",
+    "junie.onboarding.icon.badge.shown": "true",
+    "last_opened_file_path": "/home/majix/.config/omarchy/plugins/io.github.maajix.spotlight",
+    "node.js.detected.package.eslint": "true",
+    "node.js.detected.package.tslint": "true",
+    "node.js.selected.package.eslint": "(autodetect)",
+    "node.js.selected.package.tslint": "(autodetect)",
+    "nodejs_package_manager_path": "npm",
+    "settings.editor.selected.configurable": "preferences.lookFeel",
+    "to.speed.mode.migration.done": "true"
+  }
+}]]></component>
+  <component name="RecentsManager">
+    <key name="CopyFile.RECENT_KEYS">
+      <recent name="$PROJECT_DIR$" />
+    </key>
+  </component>
+  <component name="SharedIndexes">
+    <attachedChunks>
+      <set>
+        <option value="bundled-js-predefined-d6986cc7102b-4abd2a77f808-JavaScript-WS-262.10968.77" />
+      </set>
+    </attachedChunks>
+  </component>
+  <component name="TaskManager">
+    <task active="true" id="Default" summary="Default task">
+      <changelist id="cc13daaf-aba7-42ee-ad41-8423d832d823" name="Changes" comment="" />
+      <created>1788559382869</created>
+      <option name="number" value="Default" />
+      <option name="presentableId" value="Default" />
+      <updated>1788559382869</updated>
+      <workItem from="1788559384812" duration="58000" />
+      <workItem from="1789774594567" duration="850000" />
+      <workItem from="1789775450769" duration="224000" />
+      <workItem from="1789775768729" duration="630000" />
+    </task>
+    <task id="LOCAL-00001" summary="added gh pages content">
+      <option name="closed" value="true" />
+      <created>1789774849507</created>
+      <option name="number" value="00001" />
+      <option name="presentableId" value="LOCAL-00001" />
+      <option name="project" value="LOCAL" />
+      <updated>1789774849507</updated>
+    </task>
+    <task id="LOCAL-00002" summary="updated ignore entries">
+      <option name="closed" value="true" />
+      <created>1789774907650</created>
+      <option name="number" value="00002" />
+      <option name="presentableId" value="LOCAL-00002" />
+      <option name="project" value="LOCAL" />
+      <updated>1789774907650</updated>
+    </task>
+    <option name="localTasksCounter" value="3" />
+    <servers />
+  </component>
+  <component name="TypeScriptGeneratedFilesManager">
+    <option name="version" value="3" />
+  </component>
+  <component name="VcsManagerConfiguration">
+    <MESSAGE value="added gh pages content" />
+    <MESSAGE value="updated ignore entries" />
+    <option name="LAST_COMMIT_MESSAGE" value="updated ignore entries" />
+  </component>
+</project>
