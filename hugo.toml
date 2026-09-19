@@ -1,4 +1,4 @@
-baseURL = 'https://maajix.github.io/hugo-spotlight/'
+baseURL = 'https://maajix.github.io/omarchy-spotlight/'
 locale = 'en-us'
 title = 'Spotlight for Omarchy'
 enableRobotsTXT = true
