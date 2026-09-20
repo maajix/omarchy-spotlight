@@ -2,9 +2,9 @@
 <section class="hero">
   <div class="wrap">
     <h1 class="grad">One field for your whole desktop.</h1>
-    <p class="lead">Apps, windows, files, clipboard, calculations, reminders and the web in one ranked list. Opens instantly, runs local by default.</p>
+    <p class="lead">Apps, windows, files, clipboard, calculations, reminders and the web in one ranked list. Opens instantly, runs <em>local by default</em>.</p>
     {{ partial "demo.html" (dict "scenes" hugo.Data.demo "label" "Spotlight demo") }}
-    <p class="trust">Open source under the MIT license.</p>
+    <p class="trust">Spotlight is an open-source command palette plugin for Omarchy, released under the MIT license.</p>
   </div>
 </section>
 
@@ -12,7 +12,7 @@
   <div class="wrap">
     <div class="section-head" data-reveal>
       <h2>Installed in one command.</h2>
-      <p>Spotlight runs on Omarchy 4 and relies only on tools stock Omarchy already ships. It is listed on the <a href="{{ site.Params.marketplace }}" rel="noopener">official Omarchy plugin page</a>.</p>
+      <p>Spotlight runs on Omarchy 4 and relies only on tools <em>stock Omarchy</em> already ships. It is listed on the <a href="{{ site.Params.marketplace }}" rel="noopener">official Omarchy plugin page</a>.</p>
     </div>
     <ol class="steps">
       <li class="step glass" data-reveal>
@@ -25,7 +25,7 @@
       <li class="step glass" data-reveal>
         <div>
           <h3>Press <kbd>Alt</kbd><kbd>Space</kbd></h3>
-          <p>The shortcut works right after install. It is unbound on stock Omarchy, so Spotlight claims it on first run by writing one marked block to your Hyprland bindings. Prefer a different shortcut? Run the setup tour from Spotlight itself. It changes or undoes the binding at any time.</p>
+          <p>The shortcut works <em>right after install</em>. It is unbound on stock Omarchy, so Spotlight claims it on first run by writing one marked block to your Hyprland bindings. Prefer a different shortcut? Run the setup tour from Spotlight itself. It changes or undoes the binding at any time.</p>
           <p>If the shortcut does not respond, open Spotlight from a terminal:</p>
           {{ partial "code.html" (dict "html" (highlight (printf "omarchy-shell shell toggle %s '{}'" site.Params.pluginId) "bash" "")) }}
         </div>
@@ -44,13 +44,13 @@
   <div class="wrap">
     <div class="section-head" data-reveal>
       <h2>Type it. Spotlight handles the rest.</h2>
-      <p>Every enabled source searches as you type and the results land in one ranked list. Late file and web results never move the selection you already have. Everything shown here ships today, and more sources and actions are planned.</p>
+      <p>Every enabled source searches as you type and the results land in <em>one ranked list</em>. Late file and web results never move the selection you already have. Everything shown here ships today.</p>
     </div>
     <div class="shows">
       <div class="show" data-reveal>
         <div class="show-text">
           <h3>Name the source when you want to.</h3>
-          <p>Every provider answers by default. A short prefix narrows the list to one of them, and a path searches inside that folder. The <a href="{{ "/docs/search-syntax/" | relURL }}">search syntax</a> page lists them all.</p>
+          <p>Every provider answers by default. A <em>short prefix</em> narrows the list to one of them, and a path searches inside that folder.</p>
         </div>
         <div class="panel syntax">
           {{ range $i, $r := slice
@@ -69,7 +69,7 @@
       <div class="show" data-reveal>
         <div class="show-text">
           <h3>Switches that show the real state.</h3>
-          <p>System settings appear as switches with their current state read live. Type the name, press Enter, and the switch flips while Spotlight stays open. When a state cannot be read, Spotlight shows no switch rather than guessing.</p>
+          <p>System settings appear as switches with their current state <em>read live</em>. Type the name, press Enter, and the switch flips while Spotlight stays open.</p>
         </div>
         <div class="panel board">
           {{ range $i, $r := slice
@@ -85,24 +85,28 @@
       <div class="show" data-reveal>
         <div class="show-text">
           <h3>Time, in your own words.</h3>
-          <p>Describe an event the way you would say it. Spotlight reads the title, the start and the duration, then opens the event in Google Calendar or writes an .ics file for any other calendar. Reminders work the same way: <code>remind me tomorrow at 9 to call the bank</code>.</p>
+          <p>Describe an event <em>the way you would say it</em>. Spotlight understands weekdays, dates, clocks and phrases like <code>in 3 days</code> or <code>for 90min</code>. The rest of the text becomes the title. Enter adds the event to Google Calendar, Shift+Enter writes an .ics file for any other calendar. Reminders work the same way: <code>remind me tomorrow at 9 to call the bank</code>.</p>
         </div>
         <div class="panel parse">
-          <p class="line">
-            <span class="tok st" style="--i:0"><span>meeting with sarah</span><small>Title</small></span>
-            <span class="tok st" style="--i:1"><span>tomorrow at 14:00</span><small>Start</small></span>
-            <span class="tok st" style="--i:2"><span>for 90min</span><small>Duration</small></span>
-          </p>
-          <div class="out st" style="--i:3">
-            <div class="spot-row is-selected"><span class="ic">{{ partial "icon.html" "calendar" }}</span><span class="t">Meeting with sarah</span><span class="m">Tomorrow, 14:00 to 15:30</span><span class="k">Google Calendar</span></div>
+          <div class="out">
+            {{/* Titles and labels are what lib/NaturalTime.js produces for these queries. */}}
+            {{ range $i, $r := slice
+              (dict "q" "meeting with sarah tomorrow at 14:00 for 90min" "t" "Meeting with sarah" "m" "tomorrow at 14:00 · 1h 30m")
+              (dict "q" "lunch with tom on friday at 13:00" "t" "Lunch with tom" "m" "Fri at 13:00 · 1h")
+              (dict "q" "standup in 3 days at 9:30" "t" "Standup" "m" "Tue at 09:30 · 1h")
+              (dict "q" "team offsite 2027-01-15" "t" "Team offsite" "m" "15 Jan 2027 · All day")
+            }}
+            <div class="spot-section st" style="--i:{{ mul $i 2 }}"><code>{{ $r.q }}</code></div>
+            <div class="spot-row st{{ if eq $i 0 }} is-selected{{ end }}" style="--i:{{ add (mul $i 2) 1 }}"><span class="ic">{{ partial "icon.html" "calendar" }}</span><span class="t">{{ $r.t }}</span><span class="m">{{ $r.m }}</span><span class="k">Calendar</span></div>
+            {{ end }}
           </div>
-          <div class="spot-foot st" style="--i:4"><span>Spotlight</span><span class="sp"></span><span><kbd>⇧↵</kbd>Create .ics</span><span><kbd>↵</kbd>Open in Google Calendar</span></div>
+          <div class="spot-foot st" style="--i:8"><span>Spotlight</span><span class="sp"></span><span><kbd>⇧↵</kbd>Save .ics file</span><span><kbd>↵</kbd>Add to Google Calendar</span></div>
         </div>
       </div>
       <div class="show" data-reveal>
         <div class="show-text">
           <h3>The web, one keyword away.</h3>
-          <p>Start a query with a bang and Spotlight sends it straight to the site: <code>gh</code> for GitHub, <code>aw</code> for the Arch Wiki, <code>tr</code> to translate. Bare URLs open directly, and web suggestions stay off until you turn them on.</p>
+          <p>Start a query with a <em>bang</em> and Spotlight sends it straight to the site: <code>gh</code> for GitHub, <code>aw</code> for the Arch Wiki, <code>tr</code> to translate. Bare URLs open directly, and web suggestions <em>stay off</em> until you turn them on.</p>
         </div>
         <div class="panel wall">
           {{ range $i, $r := slice
@@ -119,7 +123,7 @@
       <div class="show" data-reveal>
         <div class="show-text">
           <h3>Command help, without a terminal.</h3>
-          <p>Type <code>man ssh</code> or <code>tldr ssh</code> and every example from the tldr page becomes a row under its description. Enter copies the one you picked; Shift+Enter opens a terminal with it on the prompt, unexecuted, so you can edit it first.</p>
+          <p>Type <code>man ssh</code> or <code>tldr ssh</code> and every example from the tldr page becomes a row under its description. Enter copies the one you picked; Shift+Enter opens a terminal with it on the prompt, <em>unexecuted</em>, so you can edit it first.</p>
         </div>
         {{ $scene := index (where hugo.Data.demo "query" "man ssh") 0 }}
         <div class="panel parse">
