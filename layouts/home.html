@@ -123,8 +123,9 @@
         </div>
         {{ $scene := index (where hugo.Data.demo "query" "man ssh") 0 }}
         <div class="panel parse">
+          <div class="spot-input st" style="--i:0">{{ partial "icon.html" "search" }}<span class="sep"></span><span class="spot-query">{{ $scene.query }}</span><span class="spot-caret"></span></div>
           <div class="out">
-            {{ $n := 0 }}
+            {{ $n := 1 }}
             {{ range $scene.sections }}
             <div class="spot-section st" style="--i:{{ $n }}">{{ .title }}</div>
             {{ $n = add $n 1 }}
