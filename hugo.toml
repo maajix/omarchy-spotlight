@@ -4,14 +4,26 @@ title = 'Spotlight for Omarchy'
 enableRobotsTXT = true
 disableKinds = ['taxonomy', 'term', 'rss']
 
+# The docs are hidden until they are ready (see the nav partial): keep them out
+# of the sitemap and out of search indexes. Drop this block when they go live.
+[[cascade]]
+  [cascade.params]
+    robots = 'noindex'
+  [cascade.sitemap]
+    disable = true
+  [cascade.target]
+    path = '{/docs,/docs/**}'
+
 [params]
-  description = 'A fast, local-first command palette for Omarchy. Launch apps, jump to windows, find files and clipboard history, run commands, calculate, convert, set reminders and search the web from one input.'
+  description = 'Fast, local-first command palette plugin for Omarchy Linux: apps, windows, files, clipboard, calculator, reminders, command help and web search from one input.'
   repo = 'https://github.com/maajix/omarchy-spotlight'
   marketplace = 'https://plugins.omarchy.org/plugin.html?id=io.github.maajix.spotlight'
   security = 'https://github.com/maajix/omarchy-spotlight/blob/main/SECURITY.md'
   pluginId = 'io.github.maajix.spotlight'
-  version = '1.4.0'
+  version = '1.5.0'
   author = 'Max Randhahn'
+  authorUrl = 'https://maajix.github.io/'
+  authorProfiles = ['https://github.com/maajix']
   installCommand = 'omarchy plugin add https://github.com/maajix/omarchy-spotlight.git --enable'
 
 [markup]

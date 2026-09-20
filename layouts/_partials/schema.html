@@ -1,0 +1,56 @@
+{{- /* JSON-LD for the home page: the plugin as a SoftwareApplication, the site,
+       and the author as the same Person node the main site publishes, so search
+       and answer engines can tie the plugin to its maintainer. featureList
+       names only what the page itself shows. */ -}}
+{{- $home := site.Home.Permalink -}}
+{{- $appID := printf "%s#app" $home -}}
+{{- $personID := printf "%s#person" site.Params.authorUrl -}}
+{{- $app := dict
+  "@type" "SoftwareApplication"
+  "@id" $appID
+  "name" "Spotlight"
+  "alternateName" "omarchy-spotlight"
+  "url" $home
+  "description" site.Params.description
+  "image" ("og.jpg" | absURL)
+  "applicationCategory" "UtilitiesApplication"
+  "operatingSystem" "Linux (Omarchy 4)"
+  "softwareRequirements" "Omarchy 4 with omarchy-shell"
+  "softwareVersion" site.Params.version
+  "license" (printf "%s/blob/main/LICENSE" site.Params.repo)
+  "isAccessibleForFree" true
+  "offers" (dict "@type" "Offer" "price" "0" "priceCurrency" "EUR")
+  "downloadUrl" site.Params.repo
+  "installUrl" site.Params.marketplace
+  "featureList" (slice
+    "Application launcher"
+    "Window switcher"
+    "File and folder search"
+    "Clipboard history"
+    "Calculator"
+    "Natural-language calendar events and reminders"
+    "Live system toggles"
+    "Web search bangs"
+    "Command help from tldr pages")
+  "author" (dict "@id" $personID)
+  "inLanguage" "en"
+-}}
+{{- $website := dict
+  "@type" "WebSite"
+  "@id" (printf "%s#website" $home)
+  "name" site.Title
+  "url" $home
+  "description" site.Params.description
+  "about" (dict "@id" $appID)
+  "author" (dict "@id" $personID)
+  "publisher" (dict "@id" $personID)
+  "inLanguage" "en"
+-}}
+{{- $person := dict
+  "@type" "Person"
+  "@id" $personID
+  "name" site.Params.author
+  "url" site.Params.authorUrl
+  "sameAs" site.Params.authorProfiles
+-}}
+<script type="application/ld+json">{{ dict "@context" "https://schema.org" "@graph" (slice $app $website $person) | jsonify | safeJS }}</script>
