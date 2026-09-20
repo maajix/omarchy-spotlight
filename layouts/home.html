@@ -60,6 +60,7 @@
             (dict "i" "folder" "p" "~/Downloads/" "q" "" "d" "Inside that folder")
             (dict "i" "calc" "p" "calc:" "q" "2^10" "d" "Calculator only")
             (dict "i" "globe" "p" "web:" "q" "hugo shortcodes" "d" "Web search")
+            (dict "i" "terminal" "p" "man" "q" "ssh" "d" "Command help")
           }}
           <div class="st" style="--i:{{ $i }}"><span class="ic">{{ partial "icon.html" $r.i }}</span><code class="pre">{{ $r.p }}</code>{{ with $r.q }}<code>{{ . }}</code>{{ end }}<span class="dest">{{ $r.d }}</span></div>
           {{ end }}
@@ -113,6 +114,23 @@
           }}
           <span class="st" style="--i:{{ $i }}"><code>{{ $r.b }}</code>{{ $r.d }}</span>
           {{ end }}
+        </div>
+      </div>
+      <div class="show" data-reveal>
+        <div class="show-text">
+          <h3>Command help, without a terminal.</h3>
+          <p>Type <code>man ssh</code> or <code>tldr ssh</code> and the examples from the tldr page become rows. Enter copies the one you picked; Shift+Enter opens a terminal with it on the prompt, unexecuted, so you can edit it first.</p>
+        </div>
+        {{ $scene := index (where hugo.Data.demo "query" "man ssh") 0 }}
+        <div class="panel parse">
+          <div class="out">
+            {{ $n := 0 }}
+            {{ range $scene.sections }}{{ range .rows }}
+            <div class="spot-row st{{ if .selected }} is-selected{{ end }}" style="--i:{{ $n }}"><span class="ic">{{ partial "icon.html" .icon }}</span><span class="t">{{ .title }}</span><span class="m">{{ .meta }}</span><span class="k">{{ .kind }}</span></div>
+            {{ $n = add $n 1 }}
+            {{ end }}{{ end }}
+          </div>
+          <div class="spot-foot st" style="--i:{{ $n }}"><span>Spotlight</span><span class="sp"></span><span><kbd>⇧↵</kbd>{{ $scene.shift }}</span><span><kbd>↵</kbd>{{ $scene.enter }}</span></div>
         </div>
       </div>
     </div>

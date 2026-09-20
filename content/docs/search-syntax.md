@@ -22,10 +22,15 @@ Use a filter when you want results from one provider only:
 | `unit:` or `convert:` | Unit converter |
 | `reminder:` | Reminders |
 | `calendar:` or `event:` | Calendar events |
+| `man:` or `tldr:` | Command help from tldr pages |
 
 A filter without a query shows a hint instead of launching a broad search.
 
-Short forms without the colon work for the common providers: `f invoice` searches files and `cb ssh` searches the clipboard. A path such as `~/Downloads/` searches within that folder.
+Short forms without the colon work for the common providers: `f invoice` searches files, `cb ssh` searches the clipboard, and `man ssh` or `tldr ssh` shows the tldr examples for a command. A path such as `~/Downloads/` searches within that folder.
+
+## Command help
+
+`man <command>` and `tldr <command>` show the examples from the command's tldr page as rows, in page order. Enter copies the selected example; Shift+Enter opens a terminal with it on the prompt, unexecuted, so you can edit it before running. Multi-word pages work too: `tldr git commit`.
 
 ## Bangs
 

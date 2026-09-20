@@ -67,3 +67,12 @@
       rows:
         - { icon: globe, title: hyprland, meta: Search Arch Wiki, kind: Web, selected: true }
         - { icon: globe, title: "Search Google for “aw hyprland”", kind: Web }
+- query: man ssh
+  enter: Copy command
+  shift: Open in terminal
+  sections:
+    - title: Command help
+      rows:
+        - { icon: terminal, title: "ssh username@remote_host", meta: Connect to a remote server, kind: tldr, selected: true }
+        - { icon: terminal, title: "ssh username@remote_host -i path/to/key_file", meta: Use a private key, kind: tldr }
+        - { icon: terminal, title: "ssh username@10.0.0.1 -p 2222", meta: Use a specific port, kind: tldr }

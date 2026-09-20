@@ -12,6 +12,7 @@ Spotlight has no telemetry, analytics, or background network service. Almost eve
 | --- | --- |
 | `suggestqueries.google.com` | While typing, only when `webSuggestions` is enabled |
 | Your browser | After you activate a web search, URL, or calendar result |
+| tldr-pages (GitHub) | First lookup of a command not yet in `~/.cache/tldr`, via the `tldr` client |
 
 Live web suggestions are disabled by default. Normal web searches do not send the query anywhere until you activate the result.
 

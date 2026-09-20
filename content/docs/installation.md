@@ -13,6 +13,7 @@ Spotlight targets **Omarchy 4 (Quattro)** and only uses components included with
 | `python3` | File and subprocess helper |
 | `fd` | File search |
 | `wl-clipboard` | Clipboard actions |
+| `tldr` | Command help pages |
 
 ## Add the plugin
 
