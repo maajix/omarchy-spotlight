@@ -87,21 +87,7 @@
           <h3>Time, in your own words.</h3>
           <p>Describe an event <em>the way you would say it</em>. Spotlight understands weekdays, dates, clocks and phrases like <code>in 3 days</code> or <code>for 90min</code>. The rest of the text becomes the title. Enter adds the event to Google Calendar, Shift+Enter writes an .ics file for any other calendar. Reminders work the same way: <code>remind me tomorrow at 9 to call the bank</code>.</p>
         </div>
-        <div class="panel parse">
-          <div class="out">
-            {{/* Titles and labels are what lib/NaturalTime.js produces for these queries. */}}
-            {{ range $i, $r := slice
-              (dict "q" "meeting with sarah tomorrow at 14:00 for 90min" "t" "Meeting with sarah" "m" "tomorrow at 14:00 · 1h 30m")
-              (dict "q" "lunch with tom on friday at 13:00" "t" "Lunch with tom" "m" "Fri at 13:00 · 1h")
-              (dict "q" "standup in 3 days at 9:30" "t" "Standup" "m" "Tue at 09:30 · 1h")
-              (dict "q" "team offsite 2027-01-15" "t" "Team offsite" "m" "15 Jan 2027 · All day")
-            }}
-            <div class="spot-section st" style="--i:{{ mul $i 2 }}"><code>{{ $r.q }}</code></div>
-            <div class="spot-row st{{ if eq $i 0 }} is-selected{{ end }}" style="--i:{{ add (mul $i 2) 1 }}"><span class="ic">{{ partial "icon.html" "calendar" }}</span><span class="t">{{ $r.t }}</span><span class="m">{{ $r.m }}</span><span class="k">Calendar</span></div>
-            {{ end }}
-          </div>
-          <div class="spot-foot st" style="--i:8"><span>Spotlight</span><span class="sp"></span><span><kbd>⇧↵</kbd>Save .ics file</span><span><kbd>↵</kbd>Add to Google Calendar</span></div>
-        </div>
+        {{ partial "demo.html" (dict "scenes" hugo.Data.calendar "label" "Calendar demo") }}
       </div>
       <div class="show" data-reveal>
         <div class="show-text">
@@ -138,7 +124,7 @@
             {{ $n = add $n 1 }}
             {{ end }}{{ end }}
           </div>
-          <div class="spot-foot st" style="--i:{{ $n }}"><span>Spotlight</span><span class="sp"></span><span><kbd>⇧↵</kbd>{{ $scene.shift }}</span><span><kbd>↵</kbd>{{ $scene.enter }}</span></div>
+          <div class="spot-foot st" style="--i:{{ $n }}"><span>Spotlight</span><span class="sp"></span><span class="shift"><kbd>⇧↵</kbd>{{ $scene.shift }}</span><span><kbd>↵</kbd>{{ $scene.enter }}</span></div>
         </div>
       </div>
     </div>
