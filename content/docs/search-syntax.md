@@ -30,7 +30,7 @@ Short forms without the colon work for the common providers: `f invoice` searche
 
 ## Command help
 
-`man <command>` and `tldr <command>` show the examples from the command's tldr page as rows, in page order. Enter copies the selected example; Shift+Enter opens a terminal with it on the prompt, unexecuted, so you can edit it before running. Multi-word pages work too: `tldr git commit`.
+`man <command>` and `tldr <command>` show every example from the command's tldr page as a row under its description, in page order. Enter copies the selected example; Shift+Enter opens a terminal with it on the prompt, unexecuted, so you can edit it before running. Multi-word pages work too: `tldr git commit`.
 
 ## Bangs
 

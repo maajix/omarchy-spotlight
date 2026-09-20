@@ -119,14 +119,17 @@
       <div class="show" data-reveal>
         <div class="show-text">
           <h3>Command help, without a terminal.</h3>
-          <p>Type <code>man ssh</code> or <code>tldr ssh</code> and the examples from the tldr page become rows. Enter copies the one you picked; Shift+Enter opens a terminal with it on the prompt, unexecuted, so you can edit it first.</p>
+          <p>Type <code>man ssh</code> or <code>tldr ssh</code> and every example from the tldr page becomes a row under its description. Enter copies the one you picked; Shift+Enter opens a terminal with it on the prompt, unexecuted, so you can edit it first.</p>
         </div>
         {{ $scene := index (where hugo.Data.demo "query" "man ssh") 0 }}
         <div class="panel parse">
           <div class="out">
             {{ $n := 0 }}
-            {{ range $scene.sections }}{{ range .rows }}
-            <div class="spot-row st{{ if .selected }} is-selected{{ end }}" style="--i:{{ $n }}"><span class="ic">{{ partial "icon.html" .icon }}</span><span class="t">{{ .title }}</span><span class="m">{{ .meta }}</span><span class="k">{{ .kind }}</span></div>
+            {{ range $scene.sections }}
+            <div class="spot-section st" style="--i:{{ $n }}">{{ .title }}</div>
+            {{ $n = add $n 1 }}
+            {{ range .rows }}
+            <div class="spot-row st{{ if .selected }} is-selected{{ end }}" style="--i:{{ $n }}"><span class="ic">{{ partial "icon.html" .icon }}</span><span class="t">{{ .title }}</span><span class="k">{{ .kind }}</span></div>
             {{ $n = add $n 1 }}
             {{ end }}{{ end }}
           </div>
