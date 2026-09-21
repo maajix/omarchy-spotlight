@@ -389,6 +389,15 @@ PRINT_FIXTURE = (
     "CTRL + SPACE                        \u2192 Spotlight\n"
     "PRINT                               \u2192 Screenshot\n"
 ).encode("utf-8")
+# What the compositor answers. It names three of PRINT_FIXTURE's four chords;
+# PRINT is left to --print alone, standing in for the keycode-named binds
+# Hyprland reports with an empty `key`.
+BINDS_FIXTURE = json.dumps([
+    {"modmask": 64, "key": "SPACE", "submap": "", "description": "Omarchy menu"},
+    {"modmask": 69, "key": "SPACE", "submap": "", "description": "Theme menu"},
+    {"modmask": 4, "key": "SPACE", "submap": "", "description": "Spotlight"},
+    {"modmask": 64, "key": "", "submap": "", "description": "Switch to workspace 1"},
+]).encode("utf-8")
 TOGGLE = "omarchy-shell shell toggle io.github.maajix.spotlight '{}'"
 LUA_FIXTURE = "\n".join([
     "-- my bindings",
@@ -485,16 +494,30 @@ class SettingsWriteTests(unittest.TestCase):
 class BindingTests(unittest.TestCase):
     def setUp(self):
         self.print_output = PRINT_FIXTURE
+        self.print_truncated = False
+        self.print_status = 0
+        self.binds_output = BINDS_FIXTURE
         self.print_calls = []
+        self.socket_calls = []
         real = HELPER.run_bounded
+        real_request = HELPER._hypr_request
 
-        def fake_run(argv, cap, deadline, *rest):
+        def fake_request(payload):
+            self.socket_calls.append(payload)
+            return self.binds_output
+
+        HELPER._hypr_request = fake_request
+        self.addCleanup(setattr, HELPER, "_hypr_request", real_request)
+
+        def fake_run(argv, cap, deadline, *rest, **kw):
             self.print_calls.append(argv)
             if argv[0] == "omarchy-menu-keybindings":
                 if self.print_output is None:
                     raise HELPER.Denied("cannot run")
-                return self.print_output, False
-            return real(argv, cap, deadline, *rest)
+                if kw.get("want_status"):
+                    return self.print_output, self.print_truncated, self.print_status
+                return self.print_output, self.print_truncated
+            return real(argv, cap, deadline, *rest, **kw)
 
         HELPER.run_bounded = fake_run
         self.addCleanup(setattr, HELPER, "run_bounded", real)
@@ -538,12 +561,172 @@ class BindingTests(unittest.TestCase):
                 "PRINT": "Screenshot",
             })
 
+    def test_bound_chords_is_unknown_when_the_compositor_does_not_answer(self):
+        # The regression this guards: omarchy-menu-keybindings --print exits 0
+        # and prints its static entries when the dynamic query fails, so the
+        # chord the tour wants reads as free and gets taken from whatever
+        # already holds it. Asking the compositor makes that state unknown.
+        self.binds_output = None
+        self.print_output = PRINT_FIXTURE
+        self.assertEqual(HELPER._bound_chords(), (None, []))
+
+    def test_bound_chords_marks_the_modifiers_it_cannot_speak_for(self):
+        # BINDS_FIXTURE holds one key-less record under SUPER, standing in
+        # for the `SUPER + code:10` binds Hyprland 0.56 will not name. Its
+        # chord is missing from the table and occupied all the same, so
+        # SUPER stops being evidence of anything.
+        bound, unknown = HELPER._bound_chords()
+        self.assertEqual(unknown, ["SUPER"])
+        self.assertEqual(bound, {
+            "SUPER + SPACE": "Omarchy menu",
+            "SUPER + CTRL + SHIFT + SPACE": "Theme menu",
+            "CTRL + SPACE": "Spotlight",
+            "PRINT": "Screenshot",
+        })
+        self.assertEqual(self.socket_calls, [b"j/binds"])
+        self.assertFalse(HELPER._chord_is_known("SUPER + K", bound, unknown))
+        self.assertFalse(HELPER._chord_is_known("SUPER + SPACE", bound, unknown))
+        self.assertTrue(HELPER._chord_is_known("ALT + SPACE", bound, unknown))
+        self.assertTrue(HELPER._chord_is_known("SUPER + ALT + K", bound, unknown))
+        self.assertFalse(HELPER._chord_is_known("ALT + SPACE", None, []))
+
+    def test_print_never_clears_a_modifier_the_socket_could_not_name(self):
+        # --print naming one chord under SUPER is no evidence it named every
+        # SUPER bind the socket could not, so the modifier stays unreliable
+        # however rich --print looks. This is where counting entries would
+        # turn into a guess.
+        self.print_output = (
+            "SUPER + 1 \u2192 Switch to workspace 1\n"
+            "SUPER + 2 \u2192 Switch to workspace 2\n").encode("utf-8")
+        bound, unknown = HELPER._bound_chords()
+        self.assertIn("SUPER + 1", bound)
+        self.assertEqual(unknown, ["SUPER"])
+        # The one case that matters downstream: --print running and failing
+        # cannot make a modifier look reliable either.
+        for self.print_output in (None, b""):
+            self.assertEqual(HELPER._bound_chords()[1], ["SUPER"])
+
+    def test_bound_chords_keeps_modifiers_the_socket_named_in_full(self):
+        self.binds_output = json.dumps([
+            {"modmask": 64, "key": "B", "submap": "", "description": "Browser"},
+        ]).encode("utf-8")
+        self.print_output = None
+        self.assertEqual(HELPER._bound_chords(), ({"SUPER + B": "Browser"}, []))
+
+    def test_print_that_ran_and_failed_is_not_an_empty_table(self):
+        # run_bounded reports stdout, not exit status, so a --print that
+        # runs and dies writes nothing - the same bytes as one that ran and
+        # found nothing. want_status is what tells them apart.
+        self.print_status = 1
+        self.print_output = b""
+        self.assertIsNone(HELPER._print_chords())
+        self.print_status = 0
+        self.assertEqual(HELPER._print_chords(), {})
+
+    def test_print_fills_empty_descriptions_without_replacing_compositor_labels(self):
+        self.print_output = "ALT + SPACE \u2192 Menu label\n".encode("utf-8")
+        for description, expected in (("", "Menu label"), (None, "Menu label"),
+                                      ("Compositor label", "Compositor label")):
+            self.binds_output = json.dumps([
+                {"modmask": 8, "key": "SPACE", "submap": "", "description": description},
+            ]).encode("utf-8")
+            self.assertEqual(HELPER._bound_chords(), ({"ALT + SPACE": expected}, []))
+        self.print_output = None
+        self.binds_output = b'[{"modmask": 8, "key": "SPACE", "description": ""}]'
+        self.assertEqual(HELPER._bound_chords(), ({"ALT + SPACE": ""}, []))
+
+    def test_bound_chords_rejects_a_bind_table_it_cannot_trust(self):
+        for raw in (b"", b"not json", b"[]", b"{}", b'["bind"]', b"[[]]",
+                    b'[{"modmask": 4, "key": "SPACE"}, 7]', b"\xff\xfe"):
+            self.binds_output = raw
+            self.print_output = PRINT_FIXTURE
+            self.assertEqual(HELPER._bound_chords(), (None, []), raw)
+
+    def test_bound_chords_reads_modmask_and_skips_submaps(self):
+        self.print_output = b""
+        self.binds_output = json.dumps([
+            {"modmask": 1 | 4 | 8 | 64, "key": "K", "submap": "", "description": "All mods"},
+            {"modmask": 8, "key": "SPACE", "submap": "resize", "description": "In a submap",
+             "submap_universal": "false"},
+            {"modmask": 0, "key": "mouse:272", "submap": "", "description": "Mouse"},
+            {"modmask": 4, "key": "SPACE", "submap": "", "description": None},
+            # An unmapped bit (CapsLock) still names the chord: reporting a
+            # free chord as taken costs a manual choice, dropping the record
+            # would let an automatic write land on a live binding.
+            {"modmask": 2 | 8, "key": "TAB", "submap": "", "description": "Caps"},
+            {"modmask": 8, "key": "", "submap": "", "description": "no key"},
+        ]).encode("utf-8")
+        self.assertEqual(HELPER._bound_chords(), ({
+            "SUPER + CTRL + ALT + SHIFT + K": "All mods",
+            "MOUSE:272": "Mouse",
+            "CTRL + SPACE": "",
+            "ALT + TAB": "Caps",
+        }, ["ALT"]))
+        # A record whose modifiers are unreadable scopes to nothing, so it
+        # takes the whole table down rather than one modifier set.
+        for bad in ({"modmask": True}, {"modmask": "8"}, {"modmask": 8.0}, {}):
+            self.binds_output = json.dumps([
+                {"modmask": 4, "key": "SPACE", "submap": "", "description": "ok"},
+                dict({"key": "", "submap": "", "description": "bad"}, **bad),
+            ]).encode("utf-8")
+            self.assertEqual(HELPER._bound_chords(), (None, []), bad)
+
+    def test_a_universal_submap_bind_still_holds_the_chord(self):
+        # A bind under a submap normally waits for that submap to be
+        # entered, but the universal flag is what makes it fire everywhere,
+        # so it occupies the chord in the default map like any other.
+        # Hyprland writes the flag as the string "true", which means Python
+        # truthiness would read "false" as yes.
+        self.print_output = b""
+        for flag, occupied in (("true", True), (True, True), ("TRUE", True),
+                               ("false", False), (False, False), ("", False),
+                               (None, False), ("yes", False)):
+            record = {"modmask": 8, "key": "SPACE", "submap": "resize",
+                      "description": "Universal"}
+            if flag is not None:
+                record["submap_universal"] = flag
+            self.binds_output = json.dumps([
+                {"modmask": 64, "key": "B", "submap": "", "description": "Browser"},
+                record,
+            ]).encode("utf-8")
+            bound, unknown = HELPER._bound_chords()
+            self.assertEqual("ALT + SPACE" in bound, occupied, flag)
+            self.assertEqual(unknown, [], flag)
+
+    def test_a_universal_submap_bind_it_cannot_name_marks_its_modifiers(self):
+        self.print_output = b""
+        self.binds_output = json.dumps([
+            {"modmask": 64, "key": "B", "submap": "", "description": "Browser"},
+            {"modmask": 8, "key": "", "submap": "resize", "submap_universal": "true",
+             "description": "Universal, unnameable"},
+        ]).encode("utf-8")
+        bound, unknown = HELPER._bound_chords()
+        self.assertEqual(unknown, ["ALT"])
+        self.assertFalse(HELPER._chord_is_known("ALT + SPACE", bound, unknown))
+
+    def test_hypr_socket_path_refuses_a_signature_it_cannot_trust(self):
+        env = {"XDG_RUNTIME_DIR": "/run/user/1000",
+               "HYPRLAND_INSTANCE_SIGNATURE": "sig"}
+        with mock.patch.dict(os.environ, env):
+            self.assertEqual(HELPER._hypr_socket_path(),
+                             "/run/user/1000/hypr/sig/.socket.sock")
+        for bad in ({"HYPRLAND_INSTANCE_SIGNATURE": ""},
+                    {"HYPRLAND_INSTANCE_SIGNATURE": ".."},
+                    {"HYPRLAND_INSTANCE_SIGNATURE": "../../etc"},
+                    {"HYPRLAND_INSTANCE_SIGNATURE": "a/b"},
+                    {"XDG_RUNTIME_DIR": ""},
+                    {"XDG_RUNTIME_DIR": "run/user/1000"}):
+            with mock.patch.dict(os.environ, dict(env, **bad)):
+                self.assertIsNone(HELPER._hypr_socket_path(), bad)
+
     def test_read_binding_tolerates_missing_dir_and_tool(self):
         self.print_output = None
+        self.binds_output = None
         with fake_home():
             reply = run(HELPER.cmd_read_binding)
             self.assertEqual(reply, {"current": None, "previous": None,
-                                     "managed": False, "bound": None, "ok": True})
+                                     "managed": False, "bound": None,
+                                     "unknownMods": [], "ok": True})
 
     def test_write_binding_validates_chord(self):
         with fake_home() as home:
@@ -640,6 +823,9 @@ class BindingTests(unittest.TestCase):
             self.assertFalse(run(HELPER.cmd_write_binding, ["ALT + SPACE"])["unbound"])
 
     def test_write_binding_unbinds_when_the_keybinding_list_is_unavailable(self):
+        # Unavailable now means the compositor did not answer; --print going
+        # missing only narrows a table the socket already returned.
+        self.binds_output = None
         self.print_output = None
         with fake_home() as home:
             path = self._hypr(home)

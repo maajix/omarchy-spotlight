@@ -189,7 +189,8 @@ Item {
   // Spotlight.qml does all of the tour's I/O; SetupTour.qml only paints.
   property bool tourActive: false
   property string bindingState: ""
-  property var tourBinding: ({ current: "", previous: "", managed: false, bound: {} })
+  property var tourBinding: ({ current: "", previous: "", managed: false,
+                              bound: {}, unknownMods: [] })
   // Written on first run so a fresh install has a working shortcut before the
   // tour is ever opened. The tour can still change it.
   readonly property string defaultChord: "ALT + SPACE"
@@ -507,18 +508,24 @@ Item {
       if (chord && !Object.prototype.hasOwnProperty.call(bound, chord))
         bound[chord] = String(raw[key]).slice(0, 80)
     }
+    var unknownMods = (reply && Array.isArray(reply.unknownMods)) ? reply.unknownMods : null
     root.tourBinding = {
       current: Chord.normalize(reply && reply.current ? reply.current : ""),
       previous: Chord.normalize(reply && reply.previous ? reply.previous : ""),
       managed: !!(reply && reply.managed === true),
-      bound: bound
+      bound: bound,
+      unknownMods: unknownMods
     }
     // First run only: claim the recommended chord when Spotlight has no
-    // shortcut and nothing else holds it. A helper that could not read the
-    // live keybindings answers bound: null, and then nothing is taken.
+    // shortcut and nothing else holds it. Absence from `bound` only means
+    // free where the table can speak: a helper that could not read the live
+    // keybindings answers bound: null, and one that read them but could not
+    // name every bind under a modifier set lists it in unknownMods. Either
+    // way nothing is taken.
     if (!root.autoBindDone && root.settings.setupCompleted === false) {
       root.autoBindDone = true
-      if (root.tourBinding.current === "" && reply && reply.bound
+      if (root.tourBinding.current === ""
+          && Chord.isKnown(root.defaultChord, reply && reply.bound, unknownMods)
           && !Object.prototype.hasOwnProperty.call(bound, root.defaultChord))
         root.writeBinding(root.defaultChord)
     }

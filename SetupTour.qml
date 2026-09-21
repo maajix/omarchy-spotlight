@@ -56,16 +56,17 @@ FocusScope {
     "Open Spotlight and start typing. A few things to try:"
   ]
   readonly property bool sameAsCurrent: selected !== "" && selected === currentBinding
-  readonly property string owner: (selected !== "" && selected !== currentBinding
-      && Object.prototype.hasOwnProperty.call(boundChords, selected)) ? String(boundChords[selected]) : ""
+  readonly property bool occupied: selected !== "" && selected !== currentBinding
+      && Object.prototype.hasOwnProperty.call(boundChords, selected)
+  readonly property string owner: occupied ? String(boundChords[selected]) : ""
   readonly property string shownChord: selected !== "" ? selected : currentBinding
   readonly property string chordCaption: selected === ""
       ? (currentBinding ? "Your current shortcut" : "Spotlight has no shortcut yet. Pick one below.")
       : sameAsCurrent ? "This is already your shortcut."
-      : owner ? "Currently opens " + owner + ". Spotlight will take it over."
+      : occupied ? (owner ? "Currently opens " + owner : "Already assigned") + ". Spotlight will take it over."
       : "Free to use."
   readonly property string primaryText: step === 0 ? "Get started"
-      : step === 1 ? (selected === "" ? (singleStep ? "Done" : "Continue") : owner ? "Replace and set" : "Set shortcut")
+      : step === 1 ? (selected === "" ? (singleStep ? "Done" : "Continue") : occupied ? "Replace and set" : "Set shortcut")
       : step === 2 ? "Continue" : "Finish"
   readonly property bool primaryEnabled: step !== 1 || (!sameAsCurrent && bindingState !== "busy")
   readonly property string statusText: bindingState === "busy" ? "Saving..."

@@ -33,6 +33,7 @@ import re
 import select
 import shutil
 import signal
+import socket
 import stat
 import subprocess
 import sys
@@ -126,6 +127,25 @@ ICS_STAMP_RE = re.compile(r"^[0-9TZ]{1,32}$")
 # plus a distinctive comment prefix on the line it replaces, so the whole
 # edit reverts byte for byte (cmd_revert_binding).
 BINDINGS_BYTES = 256 * 1024
+# Whether a chord is free is a question about the compositor, so it is asked
+# of the compositor: Hyprland's IPC socket answers `j/binds` with its live
+# bind table. The socket is what fails when Hyprland is unreachable, and
+# failing is the point - `omarchy-menu-keybindings --print` formats a menu
+# and still exits 0 printing only its static entries when the dynamic query
+# dies, which reads downstream as "every other chord is free".
+#
+# The socket alone is not complete: Hyprland 0.56 reports `key: ""` for the
+# 59 binds its text mode spells `SUPER + code:10`, so chords named by
+# keycode are invisible in JSON and their keycodes are not exposed either.
+# --print resolves those against the active keymap, so it is merged in - but
+# only to *add* chords, and only once the socket has already answered. A
+# short --print can then subtract from the table; it can never turn an
+# occupied chord into a free one.
+HYPR_SOCKET_NAME = ".socket.sock"
+HYPR_BINDS_BYTES = 4 * 1024 * 1024
+HYPR_BINDS_DEADLINE = 2.0
+# Hyprland's modmask bits for the modifiers a chord here can name.
+HYPR_MODMASK = ((1, "SHIFT"), (4, "CTRL"), (8, "ALT"), (64, "SUPER"))
 BINDINGS_PRINT_BYTES = 64 * 1024
 BINDINGS_PRINT_DEADLINE = 3.0
 BINDINGS_DESC_CHARS = 120
@@ -474,13 +494,19 @@ def write_new(dirfd, name, payload):
 
 
 # ------------------------------------------------------------ subprocesses
-def run_bounded(argv, cap, deadline, stdin_bytes=None):
+def run_bounded(argv, cap, deadline, stdin_bytes=None, want_status=False):
     """Run `argv`, returning at most `cap` bytes of stdout within `deadline`.
 
     The child gets its own session, so the deadline tears down the whole
     process group rather than just the leader — an `fd` descendant cannot
     outlive the call. Reaching either bound is not
     an error: the caller works with the bounded prefix.
+
+    `want_status` adds the child's exit status to the tuple. A caller that
+    reads absence in the output as a fact about the world needs it: a
+    command that runs and fails writes nothing, which is indistinguishable
+    from a command that ran and found nothing. None means it never exited
+    on its own and the teardown took it.
     """
     global ACTIVE_PROC
     blocked = {signal.SIGINT, signal.SIGTERM}
@@ -541,7 +567,7 @@ def run_bounded(argv, cap, deadline, stdin_bytes=None):
                 break
             chunks.append(chunk)
             total += len(chunk)
-        return b"".join(chunks), truncated
+        result = (b"".join(chunks), truncated)
     finally:
         _reap(proc)
         if ACTIVE_PROC is proc:
@@ -550,6 +576,9 @@ def run_bounded(argv, cap, deadline, stdin_bytes=None):
             out.close()
         except OSError:
             pass
+    if want_status:
+        return result[0], result[1], proc.returncode
+    return result
 
 
 def _reap(proc):
@@ -1870,23 +1899,192 @@ def _canon_chord(text):
     return " + ".join([m for m in CHORD_MODS if m in parts] + keys)
 
 
-def _bound_chords():
-    """Every chord Hyprland binds right now, canonical chord -> description."""
+def _hypr_socket_path():
+    """Path to this Hyprland instance's IPC socket, or None."""
+    runtime = os.environ.get("XDG_RUNTIME_DIR") or ""
+    sig = os.environ.get("HYPRLAND_INSTANCE_SIGNATURE") or ""
+    if not runtime.startswith("/") or not sig or "/" in sig or sig in (".", ".."):
+        return None
+    return os.path.join(runtime, "hypr", sig, HYPR_SOCKET_NAME)
+
+
+def _hypr_request(payload):
+    """One bounded round trip to Hyprland's IPC socket. -> bytes, or None."""
+    path = _hypr_socket_path()
+    if path is None:
+        return None
     try:
-        raw, truncated = run_bounded(["omarchy-menu-keybindings", "--print"],
-                                     BINDINGS_PRINT_BYTES, BINDINGS_PRINT_DEADLINE)
+        st = os.stat(path)
+    except OSError:
+        return None
+    if not stat.S_ISSOCK(st.st_mode) or st.st_uid != EUID:
+        return None
+    end = time.monotonic() + HYPR_BINDS_DEADLINE
+    sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+    try:
+        try:
+            sock.settimeout(HYPR_BINDS_DEADLINE)
+            sock.connect(path)
+            sock.sendall(payload)
+        except OSError:
+            return None
+        chunks = []
+        total = 0
+        while True:
+            remaining = end - time.monotonic()
+            if remaining <= 0:
+                return None
+            try:
+                sock.settimeout(remaining)
+                chunk = sock.recv(65536)
+            except OSError:
+                return None
+            if not chunk:
+                return b"".join(chunks)
+            total += len(chunk)
+            if total > HYPR_BINDS_BYTES:
+                return None
+            chunks.append(chunk)
+    finally:
+        sock.close()
+
+
+def _hypr_flag(record, name):
+    """A `j/binds` boolean, which Hyprland writes as the string "true"."""
+    value = record.get(name)
+    if isinstance(value, bool):
+        return value
+    return isinstance(value, str) and value.strip().lower() == "true"
+
+
+def _hypr_mods(record):
+    """The modifier set of a `j/binds` record, in _chord_mods form."""
+    modmask = record.get("modmask")
+    if not isinstance(modmask, int) or isinstance(modmask, bool):
+        return None
+    named = [name for bit, name in HYPR_MODMASK if modmask & bit]
+    return " + ".join([m for m in CHORD_MODS if m in named])
+
+
+def _canon_hypr_bind(record):
+    """One `j/binds` record -> canonical chord, or None if it names none."""
+    key = record.get("key")
+    modmask = record.get("modmask")
+    if not isinstance(key, str) or not key or not isinstance(modmask, int):
+        return None
+    if isinstance(modmask, bool):
+        # Not a mask Hyprland would send. Reading it as one would name a
+        # chord this record does not hold, so it counts as a hole instead.
+        return None
+    mods = [name for bit, name in HYPR_MODMASK if modmask & bit]
+    # A modmask bit outside HYPR_MODMASK (CapsLock, NumLock) makes the real
+    # bind narrower than the chord named here. Naming it anyway can only
+    # report a free chord as taken, which costs the user one manual choice.
+    # Returning None instead is not a quiet drop: _bound_chords treats an
+    # unnameable record as a hole in the table.
+    return _canon_chord(" + ".join(mods + [key]))
+
+
+def _print_chords():
+    """Chords `omarchy-menu-keybindings --print` names, chord -> description.
+
+    None means the run itself failed, which is not the same answer as an
+    empty table: a table missing a bind Hyprland actually holds reads as a
+    free chord, so the caller has to tell the two apart.
+    """
+    try:
+        raw, truncated, status = run_bounded(
+            ["omarchy-menu-keybindings", "--print"],
+            BINDINGS_PRINT_BYTES, BINDINGS_PRINT_DEADLINE, want_status=True)
     except Denied:
         return None
-    if truncated:
+    if truncated or status != 0:
         return None
-    lines = raw.decode("utf-8", "replace").split("\n")
-    bound = {}
-    for line in lines:
+    named = {}
+    for line in raw.decode("utf-8", "replace").split("\n"):
         left, arrow, desc = line.partition("\u2192")
         chord = _canon_chord(left) if arrow else None
-        if chord and chord not in bound:
-            bound[chord] = clamp_text(desc, BINDINGS_DESC_CHARS).strip()
-    return bound
+        if chord and chord not in named:
+            named[chord] = clamp_text(desc, BINDINGS_DESC_CHARS).strip()
+    return named
+
+
+def _chord_mods(chord):
+    """'SUPER + ALT + 9' -> 'SUPER + ALT'; a chord with no modifier -> ''."""
+    parts = str(chord).split(" + ")
+    return " + ".join([m for m in CHORD_MODS if m in parts])
+
+
+def _bound_chords():
+    """The live bind table. -> (chord -> description, unreliable mod sets).
+
+    A bound table of None means the compositor did not answer, and callers
+    must then leave every chord alone: an unanswered bind table is
+    indistinguishable from an empty one, and an empty one reads as "every
+    chord is free".
+
+    The second value names the modifier sets the table cannot speak for,
+    because Hyprland reported a bind under them that this reply does not let
+    us name. Absence of a chord under one of those is not evidence the chord
+    is free; absence under any other modifier set is.
+
+    Two limits worth stating, since callers read absence as a fact. This
+    answers for binds the compositor holds, not for shortcuts some other
+    program grabs - the browser-extension chords in --print's static list
+    reach the table only through the merge below, and vanish with it. And a
+    bind carrying Hyprland's ignore_mods flag fires under modifier sets
+    other than its own, which `j/binds` does not report in either format on
+    0.56, so a modmask is taken at face value as the reach of its bind.
+    """
+    raw = _hypr_request(b"j/binds")
+    if raw is None:
+        return None, []
+    try:
+        records = json.loads(raw.decode("utf-8"))
+    except (ValueError, UnicodeDecodeError):
+        return None, []
+    if not isinstance(records, list) or not records:
+        return None, []
+    bound = {}
+    unknown = set()
+    for record in records:
+        if not isinstance(record, dict):
+            return None, []
+        # A bind under a submap only fires after that submap is entered, so
+        # it does not occupy the chord in the default map - unless it is
+        # marked universal, which is exactly the flag that makes it fire
+        # everywhere. Hyprland serializes that one as the string "true",
+        # so Python truthiness would read "false" as yes.
+        if record.get("submap") and not _hypr_flag(record, "submap_universal"):
+            continue
+        chord = _canon_hypr_bind(record)
+        if chord is None:
+            # A live bind this reply does not let us name - on Hyprland 0.56
+            # every `SUPER + code:10` lands here. Its modifiers are still
+            # known, so the damage is contained to them.
+            mods = _hypr_mods(record)
+            if mods is None:
+                # Not even the modifiers. Nothing scopes the damage, so the
+                # whole table stops being evidence.
+                return None, []
+            unknown.add(mods)
+            continue
+        if chord in bound:
+            continue
+        desc = record.get("description")
+        bound[chord] = clamp_text(desc if isinstance(desc, str) else "",
+                                  BINDINGS_DESC_CHARS).strip()
+    if not bound:
+        return None, []
+    # --print is merged for what it can name, never to clear `unknown`: it
+    # naming one chord under SUPER is no evidence it named every SUPER bind
+    # the socket could not, and this is exactly where counting entries would
+    # turn into a guess. An unreliable modifier set stays unreliable until
+    # the compositor itself names those binds.
+    for chord, desc in (_print_chords() or {}).items():
+        if not bound.get(chord):
+            bound[chord] = desc
+    return bound, sorted(unknown)
 
 
 def _strip_managed(lines):
@@ -1957,7 +2155,9 @@ def _disable_toggle_calls(lines):
 
 
 def cmd_read_binding():
-    reply = {"current": None, "previous": None, "managed": False, "bound": _bound_chords()}
+    bound, unknown_mods = _bound_chords()
+    reply = {"current": None, "previous": None, "managed": False,
+             "bound": bound, "unknownMods": unknown_mods}
     try:
         fd = walk([".config", "hypr"])
     except FileNotFoundError:
@@ -1981,6 +2181,11 @@ def cmd_read_binding():
     emit(reply)
 
 
+def _chord_is_known(chord, bound, unknown_mods):
+    """Whether `bound` can be trusted to say this chord is free."""
+    return bound is not None and _chord_mods(chord) not in unknown_mods
+
+
 def cmd_write_binding(argv):
     if len(argv) != 1 or "+" not in argv[0] or not CHORD_RE.match(argv[0]):
         raise Denied("bad chord")
@@ -1997,8 +2202,9 @@ def cmd_write_binding(argv):
         # Unbind a chord someone else holds, and keep an unbind the previous
         # block already carried: hyprctl reload rebuilds every default, so
         # "not bound right now" may only mean our own block removed it.
-        bound = _bound_chords()
-        unbound = (any(line.strip() == unbind for line in block) or bound is None
+        bound, unknown_mods = _bound_chords()
+        unbound = (any(line.strip() == unbind for line in block)
+                   or not _chord_is_known(chord, bound, unknown_mods)
                    or (chord in bound and chord not in own))
         block = [MARK_START] + ([unbind] if unbound else []) + [
             'o.bind("%s", "Spotlight", "%s")' % (chord, TOGGLE_CMD), MARK_END]
