@@ -183,14 +183,21 @@ kbd + kbd{margin-left:4px}
 .syntax .pre{padding:3px 8px;border-radius:6px;color:var(--gold-hi);background:var(--gold-tint);box-shadow:inset 0 0 0 1px var(--gold-line)}
 .syntax .dest{margin-left:auto;flex:none;font-family:var(--sans);font-size:.85rem;color:var(--ink-3)}
 .board{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px;padding:14px}
-.board>div{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:52px;padding:0 14px;border-radius:10px;font-size:.9rem;font-weight:500;white-space:nowrap;color:var(--ink);background:var(--glass);box-shadow:inset 0 0 0 1px var(--hair-soft)}
+.board>div{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:52px;padding:0 14px;border-radius:10px;font-size:.9rem;font-weight:500;white-space:nowrap;color:var(--ink);background:var(--glass);box-shadow:inset 0 0 0 1px var(--hair-soft);transition:background .2s,box-shadow .2s}
+.board>div.is-pressed{background:rgba(194,168,119,.16);box-shadow:inset 0 0 0 1px var(--hair)}
 .parse .out{padding:10px 12px 12px}
 .parse .spot-input+.out{padding-top:6px;box-shadow:inset 0 1px 0 var(--hair-soft)}
-.show .spot{margin:0}
-.wall{display:flex;flex-wrap:wrap;gap:8px;padding:20px}
-.wall>span{display:inline-flex;align-items:center;gap:8px;height:34px;padding:0 12px 0 5px;border-radius:999px;font-size:.85rem;color:var(--ink-2);background:var(--glass);box-shadow:inset 0 0 0 1px var(--hair-soft)}
+.show .spot{width:100%;margin:0}
+/* Bang marquee: each row holds two copies of its chips, so a shift of half the row width loops seamlessly. */
+.wall{padding:20px 0}
+.wall .track{display:grid;gap:10px;-webkit-mask-image:linear-gradient(90deg,transparent,#000 7%,#000 93%,transparent);mask-image:linear-gradient(90deg,transparent,#000 7%,#000 93%,transparent)}
+.wall .row{display:flex;width:max-content;animation:marquee var(--t,34s) linear infinite}
+.wall .row:nth-child(2){--t:42s;animation-delay:-11s}
+.wall .row:nth-child(3){--t:38s;animation-delay:-23s}
+@keyframes marquee{to{transform:translateX(-50%)}}
+.wall .row>span{display:inline-flex;flex:none;align-items:center;gap:8px;height:34px;margin-right:8px;padding:0 12px 0 5px;border-radius:999px;font-size:.85rem;color:var(--ink-2);background:var(--glass);box-shadow:inset 0 0 0 1px var(--hair-soft)}
 .wall code{display:inline-flex;align-items:center;height:24px;padding:0 8px;border-radius:999px;font-size:.78rem;color:var(--gold-hi);background:var(--gold-tint)}
-@media (max-width:900px){.shows{gap:72px;margin-top:64px}.show{grid-template-columns:minmax(0,1fr);gap:28px}.show:nth-child(even) .show-text{order:0}}
+@media (max-width:900px){.shows{gap:72px;margin-top:64px}.show{grid-template-columns:minmax(0,1fr);gap:28px}.show:nth-child(even) .show-text{order:0}.show-text p{max-width:60ch}}
 @media (max-width:600px){.syntax>div{padding:0 14px;font-size:.875rem}.syntax .dest{display:none}.spot-foot .shift{display:none}}
 
 .reveal{opacity:0;transform:translateY(28px);transition:opacity .7s ease,transform .7s cubic-bezier(.2,.7,.2,1)}
@@ -296,5 +303,10 @@ h2:hover .anchor,h3:hover .anchor,.anchor:focus-visible{opacity:1}
   .spot::before{background:linear-gradient(180deg,rgba(255,255,255,.12),rgba(255,255,255,.04) 30%,rgba(255,255,255,.02) 70%,rgba(255,255,255,.06))}
   .scene,.rows>*{animation:none}
   .reveal,.reveal .st{opacity:1;transform:none}
+  .wall{padding:20px}
+  .wall .track{-webkit-mask-image:none;mask-image:none}
+  .wall .row{flex-wrap:wrap;width:auto;animation:none}
+  .wall .row>span{margin:0 8px 8px 0}
+  .wall .row>[aria-hidden]{display:none}
   .btn{transition:none}
 }

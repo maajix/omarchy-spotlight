@@ -95,15 +95,22 @@
           <p>Start a query with a <em>bang</em> and Spotlight sends it straight to the site: <code>gh</code> for GitHub, <code>aw</code> for the Arch Wiki, <code>tr</code> to translate. Bare URLs open directly, and web suggestions <em>stay off</em> until you turn them on.</p>
         </div>
         <div class="panel wall">
-          {{ range $i, $r := slice
-            (dict "b" "g" "d" "Google") (dict "b" "ddg" "d" "DuckDuckGo") (dict "b" "yt" "d" "YouTube") (dict "b" "gh" "d" "GitHub")
-            (dict "b" "w" "d" "Wikipedia") (dict "b" "wde" "d" "German Wikipedia") (dict "b" "aw" "d" "Arch Wiki") (dict "b" "aur" "d" "AUR")
-            (dict "b" "pkg" "d" "Arch packages") (dict "b" "so" "d" "Stack Overflow") (dict "b" "mdn" "d" "MDN") (dict "b" "npm" "d" "npm")
-            (dict "b" "crates" "d" "crates.io") (dict "b" "docker" "d" "Docker Hub") (dict "b" "maps" "d" "Google Maps") (dict "b" "tr" "d" "DeepL")
-            (dict "b" "img" "d" "Google Images") (dict "b" "hn" "d" "Hacker News") (dict "b" "omarchy" "d" "Omarchy manual")
+          <div class="track">
+          {{ range $row := slice
+            (slice (dict "b" "g" "d" "Google") (dict "b" "ddg" "d" "DuckDuckGo") (dict "b" "yt" "d" "YouTube") (dict "b" "gh" "d" "GitHub")
+                   (dict "b" "w" "d" "Wikipedia") (dict "b" "wde" "d" "German Wikipedia") (dict "b" "aw" "d" "Arch Wiki"))
+            (slice (dict "b" "aur" "d" "AUR") (dict "b" "pkg" "d" "Arch packages") (dict "b" "so" "d" "Stack Overflow") (dict "b" "mdn" "d" "MDN")
+                   (dict "b" "npm" "d" "npm") (dict "b" "crates" "d" "crates.io") (dict "b" "kagi" "d" "Kagi"))
+            (slice (dict "b" "docker" "d" "Docker Hub") (dict "b" "maps" "d" "Google Maps") (dict "b" "tr" "d" "DeepL") (dict "b" "img" "d" "Google Images")
+                   (dict "b" "hn" "d" "Hacker News") (dict "b" "omarchy" "d" "Omarchy manual"))
           }}
-          <span class="st" style="--i:{{ $i }}"><code>{{ $r.b }}</code>{{ $r.d }}</span>
+          <div class="row">
+            {{ range $copy := slice 0 1 }}
+            {{ range $r := $row }}<span{{ if $copy }} aria-hidden="true"{{ end }}><code>{{ $r.b }}</code>{{ $r.d }}</span>{{ end }}
+            {{ end }}
+          </div>
           {{ end }}
+          </div>
         </div>
       </div>
       <div class="show" data-reveal>

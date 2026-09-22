@@ -87,3 +87,24 @@ const run = async (demo) => {
   }
 };
 if (!reduced) document.querySelectorAll('[data-demo]').forEach(run);
+
+// Switch board: while on screen, one row is pressed and its switch flips every few seconds.
+const flip = async (board) => {
+  const rows = [...board.children].filter((r) => r.querySelector('.pill'));
+  if (rows.length < 2) return;
+  watch.observe(board);
+  let last;
+  for (;;) {
+    await wait(3200);
+    while (document.hidden || !onScreen.has(board)) await wait(300);
+    let row;
+    do row = rows[Math.floor(Math.random() * rows.length)]; while (row === last);
+    last = row;
+    row.classList.add('is-pressed');
+    await wait(170);
+    row.querySelector('.pill').classList.toggle('on');
+    await wait(500);
+    row.classList.remove('is-pressed');
+  }
+};
+if (!reduced) document.querySelectorAll('.board').forEach(flip);

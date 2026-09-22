@@ -47,7 +47,7 @@ Bang prefixes send the query directly to a destination. Type the bang, a space, 
 | `crates` | crates.io | `docker` | Docker Hub |
 | `maps` | Google Maps | `tr` | DeepL |
 | `img` | Google Images | `hn` | Hacker News |
-| `omarchy` | Omarchy manual | | |
+| `omarchy` | Omarchy manual | `kagi` | Kagi |
 
 The space-separated `w query` is the Wikipedia bang; `w:` is the window filter.
 
