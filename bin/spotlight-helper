@@ -358,11 +358,15 @@ def dir_at(parent, name, create=False):
 def walk(parts, create=False):
     """Resolve a chain of directory names below $HOME, one descriptor at a time."""
     fd = home_fd()
-    for part in parts:
-        nxt = dir_at(fd, part, create=create)
+    try:
+        for part in parts:
+            nxt = dir_at(fd, part, create=create)
+            os.close(fd)
+            fd = nxt
+        return fd
+    except Exception:
         os.close(fd)
-        fd = nxt
-    return fd
+        raise
 
 
 def system_dir(path):
@@ -669,6 +673,7 @@ def emit(payload):
 def normalize_settings(parsed):
     out = {
         "webSuggestions": False,
+        "currencyRates": True,
         "searchEngine": "g",
         "defaultCurrency": "",
         "fileSearch": True,
@@ -684,6 +689,7 @@ def normalize_settings(parsed):
     if not isinstance(parsed, dict):
         return out
     out["webSuggestions"] = clamp_bool(parsed.get("webSuggestions"), False)
+    out["currencyRates"] = clamp_bool(parsed.get("currencyRates"), True)
     out["setupCompleted"] = clamp_bool(parsed.get("setupCompleted"), False)
     out["fileSearch"] = clamp_bool(parsed.get("fileSearch"), True)
     out["fileSearchAlways"] = clamp_bool(parsed.get("fileSearchAlways"), True)
@@ -1642,6 +1648,22 @@ def cmd_toggle_states():
     emit({"states": states})
 
 
+def fetch_json(url, cap, deadline):
+    """Fetch bounded JSON without following redirects."""
+    from urllib.request import HTTPRedirectHandler, Request, build_opener
+
+    class NoRedirect(HTTPRedirectHandler):
+        def redirect_request(self, req, fp, code, msg, headers, newurl):
+            return None
+
+    request = Request(url, headers={"Accept": "application/json", "User-Agent": "Spotlight"})
+    with build_opener(NoRedirect).open(request, timeout=deadline) as response:
+        raw = response.read(cap + 1)
+    if len(raw) > cap:
+        raise Denied("network response too large")
+    return json.loads(raw.decode("utf-8"))
+
+
 def cmd_suggest(argv):
     if len(argv) not in (1, 2):
         raise Denied("suggest takes a query and an optional engine")
@@ -1655,29 +1677,14 @@ def cmd_suggest(argv):
     # The endpoint is built here rather than passed in, so nothing upstream can
     # steer the request at a different host. urllib keeps this feature inside
     # Python's standard library; a stock install does not need curl.
-    from urllib.error import URLError
     from urllib.parse import quote
-    from urllib.request import HTTPRedirectHandler, Request, build_opener
-
-    class NoRedirect(HTTPRedirectHandler):
-        def redirect_request(self, req, fp, code, msg, headers, newurl):
-            return None
 
     endpoint = ("https://kagi.com/api/autosuggest?q=" if engine == "kagi" else
                 "https://suggestqueries.google.com/complete/search?client=firefox&hl=en&q=")
     url = endpoint + quote(query, safe="")
     try:
-        request = Request(url, headers={"Accept": "application/json", "User-Agent": "Spotlight"})
-        with build_opener(NoRedirect).open(request, timeout=SUGGEST_DEADLINE) as response:
-            raw = response.read(SUGGEST_BYTES + 1)
-    except (OSError, URLError, ValueError):
-        raw = b""
-    if len(raw) > SUGGEST_BYTES:
-        emit({"suggestions": []})
-        return
-    try:
-        parsed = json.loads(raw.decode("utf-8", "replace")) if raw else []
-    except ValueError:
+        parsed = fetch_json(url, SUGGEST_BYTES, SUGGEST_DEADLINE)
+    except (OSError, ValueError, Denied, RecursionError):
         parsed = []
     items = parsed[1] if isinstance(parsed, list) and len(parsed) > 1 else []
     out = []
@@ -1721,16 +1728,7 @@ def currency_record(value, now, base=None, quote=None):
 
 
 def _currency_cache_dir(create=False):
-    fd = home_fd()
-    try:
-        for part in (".cache", "omarchy"):
-            nxt = dir_at(fd, part, create=create)
-            os.close(fd)
-            fd = nxt
-        return fd
-    except Exception:
-        os.close(fd)
-        raise
+    return walk([".cache", "omarchy"], create=create)
 
 
 def _currency_cache_read(fd, now):
@@ -1787,27 +1785,17 @@ def currency_store(record):
 
 
 def currency_fetch(base, quote):
-    from urllib.request import HTTPRedirectHandler, Request, build_opener
-
-    class NoRedirect(HTTPRedirectHandler):
-        def redirect_request(self, req, fp, code, msg, headers, newurl):
-            return None
-
     def expired(_signum, _frame):
         raise TimeoutError("currency lookup deadline exceeded")
 
     # Socket timeouts alone restart between reads. This deadline also bounds
-    # DNS, TLS and a server that continuously trickles bytes into the response.
+    # connect, TLS and a server that trickles bytes. libc DNS resolution may
+    # still run until the resolver's own timeout before Python handles SIGALRM.
     previous = signal.signal(signal.SIGALRM, expired)
     signal.setitimer(signal.ITIMER_REAL, CURRENCY_DEADLINE)
     try:
         url = "https://api.frankfurter.dev/v2/rate/" + base.lower() + "/" + quote.lower()
-        request = Request(url, headers={"Accept": "application/json", "User-Agent": "Spotlight"})
-        with build_opener(NoRedirect).open(request, timeout=CURRENCY_DEADLINE) as response:
-            raw = response.read(CURRENCY_BYTES + 1)
-        if len(raw) > CURRENCY_BYTES:
-            raise Denied("currency response too large")
-        value = json.loads(raw.decode("utf-8"))
+        value = fetch_json(url, CURRENCY_BYTES, CURRENCY_DEADLINE)
         now = time.time()
         if isinstance(value, dict):
             value["fetchedAt"] = now

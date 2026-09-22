@@ -173,6 +173,7 @@ Item {
 
   property var settings: ({
     webSuggestions: false,
+    currencyRates: true,
     searchEngine: "g",
     defaultCurrency: "",
     fileSearch: true,
@@ -587,8 +588,11 @@ Item {
   function loadSettings(raw) {
     var reply = root.helperReply(raw)
     var parsed = (reply && reply.settings) ? reply.settings : {}
+    var oldCurrency = root.settings.defaultCurrency
+    var oldRates = root.settings.currencyRates
     root.settings = {
       webSuggestions: parsed.webSuggestions === true,
+      currencyRates: parsed.currencyRates !== false,
       searchEngine: Web.hasEngine(parsed.searchEngine) ? parsed.searchEngine : "g",
       defaultCurrency: Currency.defaultCode(parsed.defaultCurrency),
       fileSearch: parsed.fileSearch !== false,
@@ -612,9 +616,10 @@ Item {
     // a closed launcher needs a read of its own.
     if (root.settings.setupCompleted === false && !root.autoBindDone && !root.tourActive)
       root.readBinding()
-    if (root.opened) {
+    if (root.opened && (oldCurrency !== root.settings.defaultCurrency
+        || oldRates !== root.settings.currencyRates)) {
       root.updateCurrency()
-      if (Currency.parse(Query.parse(root.query).text, root.settings.defaultCurrency)) {
+      if (root.currencyQuery(root.query)) {
         suggestDebounce.stop()
         suggestProc.running = false
         root.suggestionRows = []
@@ -622,6 +627,11 @@ Item {
       }
       root.rebuild()
     }
+  }
+
+  function currencyQuery(q) {
+    return root.settings.currencyRates
+      ? Currency.parse(Query.parse(q).text, root.settings.defaultCurrency) : null
   }
 
   // ------------------------------------------------------------- providers
@@ -680,14 +690,13 @@ Item {
       }))
     }
 
-    var currency = (!unit && (!filter || filter === "unit"))
-      ? Currency.parse(q, root.settings.defaultCurrency) : null
+    var currency = (!unit && (!filter || filter === "unit")) ? root.currencyQuery(q) : null
     if (currency) {
       var cached = Currency.entry(root.currencySession, currency.key)
       var converted = Currency.result(currency, cached, Date.now(), Units.formatNumber)
       var waiting = currencyDebounce.running || root.currencySession.request !== null
       out.push(root.row({
-        key: "currency", kind: converted ? "copy" : "noop",
+        key: "currency", kind: converted ? "copy" : waiting ? "currency-wait" : "noop",
         title: converted ? converted.text : (waiting ? "Loading exchange rate…" : "Exchange rate unavailable"),
         subtitle: converted ? converted.detail : currency.base + " → " + currency.quote + " · Frankfurter",
         accessory: "Currency", section: "Conversions", icon: "󰑤", mono: true,
@@ -1406,7 +1415,7 @@ Item {
 
   function activate(index, secondary) {
     var r = root.rows[index]
-    if (!r || r.kind === "noop") return
+    if (!r || r.kind === "noop" || r.kind === "currency-wait") return
 
     // One confirmation for the rows that end the session.
     if (r.confirm && !secondary && root.armedKey !== r.key) {
@@ -1584,7 +1593,7 @@ Item {
   // ------------------------------------------------------------- async data
   function loadSuggestions(raw, forQuery) {
     if (forQuery !== String(root.query || "").trim()) return
-    if (Currency.parse(Query.parse(forQuery).text, root.settings.defaultCurrency)) return
+    if (root.currencyQuery(forQuery)) return
     var reply = root.helperReply(raw)
     var list = (reply && Array.isArray(reply.suggestions)) ? reply.suggestions : []
     var limit = Util.clamp(root.settings.maxSuggestions, 0, 8)
@@ -1702,7 +1711,7 @@ Item {
   function updateCurrency() {
     var parsed = Query.parse(root.query)
     var target = root.opened && (!parsed.filter || parsed.filter === "unit")
-      && !Units.convert(parsed.text) ? Currency.parse(parsed.text, root.settings.defaultCurrency) : null
+      && !Units.convert(parsed.text) ? root.currencyQuery(root.query) : null
     var generation = root.currencySession.generation
     var lookup = Currency.select(root.currencySession, target, Date.now())
     if (generation !== root.currencySession.generation) root.stopCurrencyProcess()
@@ -1768,7 +1777,7 @@ Item {
     var wantSuggestions = root.settings.webSuggestions && suggestionText.length >= 2
       && (!parsed.filter || parsed.filter === "web")
       && !Web.detectUrl(suggestionText) && !Web.bang(suggestionText) && !Calc.evaluate(suggestionText)
-      && !Currency.parse(suggestionText, root.settings.defaultCurrency)
+      && !root.currencyQuery(suggestionText)
       && !NaturalTime.isReminderQuery(suggestionText) && !NaturalTime.isEventQuery(suggestionText)
       && !(fileSuggestGuard && !fileSuggestGuard.implicit)
     if (wantSuggestions) {

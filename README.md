@@ -136,7 +136,9 @@ Choose **Default currency** on the setup tour’s **What should Spotlight search
 `"defaultCurrency": "EUR"` in your settings. Then `23 USD`, `$23`, and
 `convert: 23 USD` resolve to `23 USD to EUR`. An explicit target such as
 `23 USD to JPY` always wins. The default is **None** (`""`), which requires an
-explicit target. Bare numbers and non-currency units do not trigger currency lookup.
+explicit target. Shorthand currency codes must be uppercase (`23 USD`); aliases
+such as `23 dollars` and symbols such as `$23` also work. Bare numbers and
+non-currency units do not trigger currency lookup.
 
 Each pair is cached for 24 hours in `~/.cache/omarchy/spotlight-currency.json` (up to
 128 pairs). Expired rates are refreshed on the next conversion. If that fails, the
@@ -181,6 +183,7 @@ Spotlight works without a configuration file. Optional settings live at `~/.conf
 ```json
 {
   "webSuggestions": false,
+  "currencyRates": true,
   "searchEngine": "g",
   "defaultCurrency": "",
   "fileSearch": true,
@@ -240,8 +243,7 @@ Spotlight has no telemetry, analytics, or background network service. Almost eve
 
 | Network access | When it happens |
 | --- | --- |
-| `suggestqueries.google.com` | While typing, only when `webSuggestions` is enabled |
-| `api.frankfurter.dev` | After a complete currency conversion is typed, when its pair has no fresh cached rate; only currency codes are sent, never the amount |
+| `api.frankfurter.dev` | After a complete currency conversion is typed, when `currencyRates` is enabled and its pair has no fresh cached rate; only currency codes are sent, never the amount |
 | `kagi.com/api/autosuggest` | While typing, only when `webSuggestions` is enabled and `searchEngine` is `kagi` |
 | `suggestqueries.google.com` | While typing, only when `webSuggestions` is enabled with any other search engine |
 | Your browser | After you activate a web search, URL, or calendar result |
@@ -249,9 +251,10 @@ Spotlight has no telemetry, analytics, or background network service. Almost eve
 
 Live web suggestions are disabled by default. Normal web searches do not send the query anywhere until you activate the result.
 
-Currency lookup is automatic after a 250 ms typing pause, requires no API key, and
-does not fetch at startup or refresh in the background. Recognized currency
-conversions suppress web suggestions.
+Currency lookup is automatic after a 250 ms typing pause when `currencyRates` is
+enabled (the default). Set `"currencyRates": false` to disable currency lookups.
+It requires no API key and does not fetch at startup or refresh in the background.
+Recognized currency conversions suppress web suggestions.
 
 Learning is optional and stays in `~/.local/state/omarchy/spotlight-usage.json`. It stores bounded selection counts, timestamps, stable IDs, file paths, and normalized query prefixes. Disable it with `"learningEnabled": false`, or remove it with **Reset Spotlight Learning**.
 

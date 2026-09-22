@@ -14,7 +14,7 @@ const reply = (extra = {}) => ({ ok: true, base: "USD", quote: "EUR", rate: 0.92
 const target = text => Currency.parse(text || "100 USD to EUR")
 
 test("a chosen default expands shorthand while explicit targets take priority", () => {
-  for (const text of ["23 USD", "23usd", "$23", "US$23", "23 dollars"]) {
+  for (const text of ["23 USD", "23USD", "$23", "US$23", "23 dollars"]) {
     assert.deepEqual(Currency.parse(text, "eur"), target("23 USD to EUR"), text)
     assert.equal(Currency.parse(text), null)
   }
@@ -29,9 +29,9 @@ test("a chosen default expands shorthand while explicit targets take priority", 
     assert.equal(Currency.parse("23 USD", value), null)
   }
   assert.equal(Currency.defaultCode(" eur "), "EUR")
-  const options = Currency.currencyOptions()
-  assert.equal(options[0].value, "")
-  assert.deepEqual(options.slice(1).map(o => o.value), Currency.CODES)
+  for (const text of ["2 cup", "5 all", "3 try", "23 usd", "23usd", "10 pen"]) {
+    assert.equal(Currency.parse(text, "EUR"), null, text)
+  }
 })
 
 test("currency codes and common aliases normalize to explicit pairs", () => {
@@ -154,9 +154,10 @@ test("session cache stays bounded, including failed requests", () => {
 // tests routing and row payloads, rather than merely matching implementation text.
 function overlay() {
   const qml = fs.readFileSync(path.join(__dirname, "../Spotlight.qml"), "utf8")
-  const root = { opened: true, query: "", settings: { defaultCurrency: "" },
+  const root = { opened: true, query: "", settings: { defaultCurrency: "", currencyRates: true },
     currencySession: Currency.createSession(), helperReply: JSON.parse,
-    row: spec => spec, rebuild() {}, stopCurrencyProcess() { this.stops++ }, stops: 0 }
+    row: spec => spec, rebuild() { this.rebuilds++ }, rebuilds: 0,
+    stopCurrencyProcess() { this.stops++ }, stops: 0 }
   const timer = { running: false, stop() { this.running = false }, restart() { this.running = true } }
   const context = vm.createContext({ root, currencyDebounce: timer,
     suggestDebounce: { stop() {} }, suggestProc: { running: false }, Currency, Query, Units,
@@ -164,7 +165,7 @@ function overlay() {
     Date: { now: () => NOW }, Calc: { evaluate: () => null },
     NaturalTime: { parseReminder: () => null, parseEvent: () => null },
     Web: { detectUrl: () => "", hasEngine: () => true }, Fuzzy: { MATCH_EXACT: 100 } })
-  for (const name of ["intentRows", "updateCurrency", "loadCurrency", "loadSettings", "loadSuggestions"]) {
+  for (const name of ["currencyQuery", "intentRows", "updateCurrency", "loadCurrency", "loadSettings", "loadSuggestions"]) {
     const source = qml.match(new RegExp("  function " + name + "\\([^]*?\\n  }"))[0]
     vm.runInContext(source, context)
     root[name] = context[name]
@@ -194,6 +195,22 @@ test("settings arriving after query starts shorthand and suppress late suggestio
   assert.equal(root.intentRows(root.query, "unit").length, 0)
 })
 
+test("unchanged settings avoid a second rebuild; disabling rates stops lookups", () => {
+  const { root, timer } = overlay()
+  root.query = "23 USD"
+  root.loadSettings(JSON.stringify({ ok: true, settings: { defaultCurrency: "EUR", currencyRates: true } }))
+  assert.equal(root.rebuilds, 1)
+  assert.equal(timer.running, true)
+  assert.equal(root.currencyQuery("2 cup"), null)
+  root.loadSettings(JSON.stringify({ ok: true, settings: { defaultCurrency: "EUR", currencyRates: true } }))
+  assert.equal(root.rebuilds, 1)
+  root.loadSettings(JSON.stringify({ ok: true, settings: { defaultCurrency: "EUR", currencyRates: false } }))
+  assert.equal(root.rebuilds, 2)
+  assert.equal(timer.running, false)
+  assert.equal(root.currencySession.target, null)
+  assert.equal(root.intentRows("23 USD", "unit").length, 0)
+})
+
 test("shorthand works in conversion filters and retains numeric-only copy behavior", () => {
   const { root } = overlay()
   root.settings.defaultCurrency = "EUR"
@@ -218,7 +235,7 @@ test("QML filters, unit precedence, loading rows and copy payloads", () => {
     root.updateCurrency()
     const parsed = Query.parse(query)
     const rows = root.intentRows(parsed.text, parsed.filter)
-    assert.equal(rows[0].kind, "noop")
+    assert.equal(rows[0].kind, "currency-wait")
     assert.equal(rows[0].title, "Loading exchange rate…")
     assert.equal(timer.running, true)
   }

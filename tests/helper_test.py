@@ -32,6 +32,7 @@ class HelperTests(unittest.TestCase):
     def test_settings_are_private_by_default_and_bounded(self):
         defaults = HELPER.normalize_settings({})
         self.assertFalse(defaults["webSuggestions"])
+        self.assertTrue(defaults["currencyRates"])
         self.assertTrue(defaults["fileSearchAlways"])
         self.assertTrue(defaults["clipboardSearch"])
         self.assertTrue(defaults["clipboardSearchAlways"])
@@ -40,6 +41,7 @@ class HelperTests(unittest.TestCase):
 
         settings = HELPER.normalize_settings({
             "webSuggestions": "yes",
+            "currencyRates": False,
             "maxApps": 999,
             "maxSuggestions": -5,
             "maxResults": 999,
@@ -47,6 +49,7 @@ class HelperTests(unittest.TestCase):
             "searchEngine": "invalid-value",
         })
         self.assertFalse(settings["webSuggestions"])
+        self.assertFalse(settings["currencyRates"])
         self.assertEqual(settings["maxApps"], 24)
         self.assertEqual(settings["maxSuggestions"], 0)
         self.assertEqual(settings["maxResults"], 50)
@@ -463,11 +466,13 @@ class SettingsWriteTests(unittest.TestCase):
 
     def test_default_currency_survives_other_settings_updates_and_can_be_cleared(self):
         with fake_home():
-            reply = run(HELPER.cmd_write_settings, stdin=b'{"defaultCurrency":"eur"}')
+            reply = run(HELPER.cmd_write_settings, stdin=b'{"defaultCurrency":"eur","currencyRates":false}')
             self.assertEqual(reply["settings"]["defaultCurrency"], "EUR")
+            self.assertFalse(reply["settings"]["currencyRates"])
             run(HELPER.cmd_write_settings, stdin=b'{"webSuggestions":true}')
             reply = run(HELPER.cmd_read_settings)
             self.assertEqual(reply["settings"]["defaultCurrency"], "EUR")
+            self.assertFalse(reply["settings"]["currencyRates"])
             reply = run(HELPER.cmd_write_settings, stdin=b'{"defaultCurrency":""}')
             self.assertEqual(reply["settings"]["defaultCurrency"], "")
 
