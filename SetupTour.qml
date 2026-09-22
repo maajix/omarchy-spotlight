@@ -4,6 +4,7 @@ import QtQuick.Layouts
 import qs.Commons
 import "lib/Chord.js" as Chord
 import "lib/Web.js" as Web
+import "lib/Currency.js" as Currency
 
 // First-run tour, and the standalone shortcut chooser (singleStep). Pure UI:
 // Spotlight.qml owns every read and write and feeds the results back through
@@ -92,6 +93,7 @@ FocusScope {
       clipboardSearch: current.clipboardSearch !== false,
       webSuggestions: current.webSuggestions === true,
       searchEngine: Web.hasEngine(current.searchEngine) ? current.searchEngine : "g",
+      defaultCurrency: Currency.defaultCode(current.defaultCurrency),
       learningEnabled: current.learningEnabled !== false
     }
     selected = ""
@@ -503,7 +505,7 @@ FocusScope {
 
   // Single-select menu in the tour's own chrome. Enter/Space/Down open,
   // Up/Down or j/k move, Enter picks, Esc closes without leaving the tour.
-  component EngineMenu: Rectangle {
+  component ChoiceMenu: Rectangle {
     id: menu
     property string value: ""
     property var options: []
@@ -983,10 +985,23 @@ FocusScope {
           title: "Web search engine"
           description: "Where the web search result opens when you press Enter."
 
-          trailing: EngineMenu {
+          trailing: ChoiceMenu {
             value: tour.draft.searchEngine || "g"
             options: Web.engineOptions()
             onChanged: function(v) { tour.set("searchEngine", v) }
+          }
+        }
+
+        SourceRow {
+          glyph: "󰑤"
+          switchable: false
+          title: "Default currency"
+          description: "Convert amounts like 23 USD to this currency. Explicit targets take priority."
+
+          trailing: ChoiceMenu {
+            value: tour.draft.defaultCurrency || ""
+            options: Currency.currencyOptions()
+            onChanged: function(v) { tour.set("defaultCurrency", v) }
           }
         }
 

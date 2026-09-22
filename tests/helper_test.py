@@ -421,6 +421,22 @@ EXPECTED_AFTER_WRITE = LUA_FIXTURE.replace(
 
 
 class SettingsWriteTests(unittest.TestCase):
+    def test_default_currency_is_optional_and_normalizes_code_spelling(self):
+        self.assertEqual(HELPER.normalize_settings({})["defaultCurrency"], "")
+        self.assertEqual(HELPER.normalize_settings({"defaultCurrency": " eur "})["defaultCurrency"], "EUR")
+        for value in [None, True, 123, [], "€", "eu", "euros", "EUR/JPY"]:
+            self.assertEqual(HELPER.normalize_settings({"defaultCurrency": value})["defaultCurrency"], "")
+
+    def test_default_currency_survives_other_settings_updates_and_can_be_cleared(self):
+        with fake_home():
+            reply = run(HELPER.cmd_write_settings, stdin=b'{"defaultCurrency":"eur"}')
+            self.assertEqual(reply["settings"]["defaultCurrency"], "EUR")
+            run(HELPER.cmd_write_settings, stdin=b'{"webSuggestions":true}')
+            reply = run(HELPER.cmd_read_settings)
+            self.assertEqual(reply["settings"]["defaultCurrency"], "EUR")
+            reply = run(HELPER.cmd_write_settings, stdin=b'{"defaultCurrency":""}')
+            self.assertEqual(reply["settings"]["defaultCurrency"], "")
+
     def test_setup_completed_defaults_false_and_clamps(self):
         self.assertFalse(HELPER.normalize_settings({})["setupCompleted"])
         self.assertFalse(HELPER.normalize_settings({"setupCompleted": "yes"})["setupCompleted"])

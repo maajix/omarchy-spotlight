@@ -670,6 +670,7 @@ def normalize_settings(parsed):
     out = {
         "webSuggestions": False,
         "searchEngine": "g",
+        "defaultCurrency": "",
         "fileSearch": True,
         "fileSearchAlways": True,
         "clipboardSearch": True,
@@ -695,6 +696,9 @@ def normalize_settings(parsed):
     engine = parsed.get("searchEngine")
     if isinstance(engine, str) and re.match(r"^[A-Za-z]{1,8}$", engine):
         out["searchEngine"] = engine.lower()
+    currency = parsed.get("defaultCurrency")
+    if isinstance(currency, str) and re.fullmatch(r"[A-Za-z]{3}", currency.strip()):
+        out["defaultCurrency"] = currency.strip().upper()
     return out
 
 

@@ -130,8 +130,13 @@ converts weight. Amounts accept a decimal point or comma, without thousands sepa
 Rates come from [Frankfurter](https://frankfurter.dev/), using its latest blended daily
 reference rates. The result shows the rate date; Enter copies only the displayed
 number, without grouping spaces or a currency code. Same-currency conversions work
-offline. Historical dates, cryptocurrencies, and an inferred default currency are
-not supported.
+offline. Historical dates and cryptocurrencies are not supported.
+
+Choose **Default currency** on the setup tour’s **What should Spotlight search?** page, or set
+`"defaultCurrency": "EUR"` in your settings. Then `23 USD`, `$23`, and
+`convert: 23 USD` resolve to `23 USD to EUR`. An explicit target such as
+`23 USD to JPY` always wins. The default is **None** (`""`), which requires an
+explicit target. Bare numbers and non-currency units do not trigger currency lookup.
 
 Each pair is cached for 24 hours in `~/.cache/omarchy/spotlight-currency.json` (up to
 128 pairs). Expired rates are refreshed on the next conversion. If that fails, the
@@ -177,6 +182,7 @@ Spotlight works without a configuration file. Optional settings live at `~/.conf
 {
   "webSuggestions": false,
   "searchEngine": "g",
+  "defaultCurrency": "",
   "fileSearch": true,
   "fileSearchAlways": true,
   "clipboardSearch": true,

@@ -174,6 +174,7 @@ Item {
   property var settings: ({
     webSuggestions: false,
     searchEngine: "g",
+    defaultCurrency: "",
     fileSearch: true,
     fileSearchAlways: true,
     clipboardSearch: true,
@@ -581,15 +582,15 @@ Item {
     usageWriteProc.stdinEnabled = false
   }
 
-  // Settings arrive already type-checked and clamped. The one thing the helper
-  // cannot judge is whether the engine key names an engine that exists, so
-  // that is settled here against the table that will be asked for it.
+  // Settings arrive type-checked and clamped. Engine and currency membership
+  // are checked here against the catalogs used by their providers.
   function loadSettings(raw) {
     var reply = root.helperReply(raw)
     var parsed = (reply && reply.settings) ? reply.settings : {}
     root.settings = {
       webSuggestions: parsed.webSuggestions === true,
       searchEngine: Web.hasEngine(parsed.searchEngine) ? parsed.searchEngine : "g",
+      defaultCurrency: Currency.defaultCode(parsed.defaultCurrency),
       fileSearch: parsed.fileSearch !== false,
       fileSearchAlways: parsed.fileSearchAlways !== false,
       clipboardSearch: parsed.clipboardSearch !== false,
@@ -611,6 +612,16 @@ Item {
     // a closed launcher needs a read of its own.
     if (root.settings.setupCompleted === false && !root.autoBindDone && !root.tourActive)
       root.readBinding()
+    if (root.opened) {
+      root.updateCurrency()
+      if (Currency.parse(Query.parse(root.query).text, root.settings.defaultCurrency)) {
+        suggestDebounce.stop()
+        suggestProc.running = false
+        root.suggestionRows = []
+        root.suggestionFor = ""
+      }
+      root.rebuild()
+    }
   }
 
   // ------------------------------------------------------------- providers
@@ -669,7 +680,8 @@ Item {
       }))
     }
 
-    var currency = (!unit && (!filter || filter === "unit")) ? Currency.parse(q) : null
+    var currency = (!unit && (!filter || filter === "unit"))
+      ? Currency.parse(q, root.settings.defaultCurrency) : null
     if (currency) {
       var cached = Currency.entry(root.currencySession, currency.key)
       var converted = Currency.result(currency, cached, Date.now(), Units.formatNumber)
@@ -1572,6 +1584,7 @@ Item {
   // ------------------------------------------------------------- async data
   function loadSuggestions(raw, forQuery) {
     if (forQuery !== String(root.query || "").trim()) return
+    if (Currency.parse(Query.parse(forQuery).text, root.settings.defaultCurrency)) return
     var reply = root.helperReply(raw)
     var list = (reply && Array.isArray(reply.suggestions)) ? reply.suggestions : []
     var limit = Util.clamp(root.settings.maxSuggestions, 0, 8)
@@ -1689,7 +1702,7 @@ Item {
   function updateCurrency() {
     var parsed = Query.parse(root.query)
     var target = root.opened && (!parsed.filter || parsed.filter === "unit")
-      && !Units.convert(parsed.text) ? Currency.parse(parsed.text) : null
+      && !Units.convert(parsed.text) ? Currency.parse(parsed.text, root.settings.defaultCurrency) : null
     var generation = root.currencySession.generation
     var lookup = Currency.select(root.currencySession, target, Date.now())
     if (generation !== root.currencySession.generation) root.stopCurrencyProcess()
@@ -1755,7 +1768,7 @@ Item {
     var wantSuggestions = root.settings.webSuggestions && suggestionText.length >= 2
       && (!parsed.filter || parsed.filter === "web")
       && !Web.detectUrl(suggestionText) && !Web.bang(suggestionText) && !Calc.evaluate(suggestionText)
-      && !Currency.parse(suggestionText)
+      && !Currency.parse(suggestionText, root.settings.defaultCurrency)
       && !NaturalTime.isReminderQuery(suggestionText) && !NaturalTime.isEventQuery(suggestionText)
       && !(fileSuggestGuard && !fileSuggestGuard.implicit)
     if (wantSuggestions) {

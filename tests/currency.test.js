@@ -13,6 +13,27 @@ const reply = (extra = {}) => ({ ok: true, base: "USD", quote: "EUR", rate: 0.92
   date: "2026-09-21", fetchedAt: NOW / 1000, stale: false, ...extra })
 const target = text => Currency.parse(text || "100 USD to EUR")
 
+test("a chosen default expands shorthand while explicit targets take priority", () => {
+  for (const text of ["23 USD", "23usd", "$23", "US$23", "23 dollars"]) {
+    assert.deepEqual(Currency.parse(text, "eur"), target("23 USD to EUR"), text)
+    assert.equal(Currency.parse(text), null)
+  }
+  assert.deepEqual(Currency.parse("23 USD to JPY", "EUR"), target("23 USD to JPY"))
+  assert.deepEqual(Currency.parse("-23,5 GBP", "EUR"), target("-23.5 GBP to EUR"))
+  assert.deepEqual(Currency.parse("0 USD", "EUR"), target("0 USD to EUR"))
+  assert.deepEqual(Currency.parse("23 EUR", "EUR"), target("23 EUR to EUR"))
+  for (const text of ["23", "23 km", "23 ¥", "23 USD to", "23 USD in", "23 USD ->",
+    "23 USD =", "23 USD to nope", "23 USD tomorrow"]) assert.equal(Currency.parse(text, "EUR"), null, text)
+  for (const value of ["", "ZZZ", "eurO", null, 123, "€", "constructor"]) {
+    assert.equal(Currency.defaultCode(value), "")
+    assert.equal(Currency.parse("23 USD", value), null)
+  }
+  assert.equal(Currency.defaultCode(" eur "), "EUR")
+  const options = Currency.currencyOptions()
+  assert.equal(options[0].value, "")
+  assert.deepEqual(options.slice(1).map(o => o.value), Currency.CODES)
+})
+
 test("currency codes and common aliases normalize to explicit pairs", () => {
   for (const text of ["100 USD to EUR", "100usd in eur", "$100 to euros", "US$100 as €",
     "100 dollars -> euro", "100 USD→EUR", "100$=€"]) {
@@ -133,20 +154,62 @@ test("session cache stays bounded, including failed requests", () => {
 // tests routing and row payloads, rather than merely matching implementation text.
 function overlay() {
   const qml = fs.readFileSync(path.join(__dirname, "../Spotlight.qml"), "utf8")
-  const root = { opened: true, query: "", currencySession: Currency.createSession(),
+  const root = { opened: true, query: "", settings: { defaultCurrency: "" },
+    currencySession: Currency.createSession(), helperReply: JSON.parse,
     row: spec => spec, rebuild() {}, stopCurrencyProcess() { this.stops++ }, stops: 0 }
   const timer = { running: false, stop() { this.running = false }, restart() { this.running = true } }
-  const context = vm.createContext({ root, currencyDebounce: timer, Currency, Query, Units,
+  const context = vm.createContext({ root, currencyDebounce: timer,
+    suggestDebounce: { stop() {} }, suggestProc: { running: false }, Currency, Query, Units,
+    Util: { clamp: (v, min, max) => Math.min(max, Math.max(min, v)) },
     Date: { now: () => NOW }, Calc: { evaluate: () => null },
     NaturalTime: { parseReminder: () => null, parseEvent: () => null },
-    Web: { detectUrl: () => "" }, Fuzzy: { MATCH_EXACT: 100 } })
-  for (const name of ["intentRows", "updateCurrency", "loadCurrency"]) {
+    Web: { detectUrl: () => "", hasEngine: () => true }, Fuzzy: { MATCH_EXACT: 100 } })
+  for (const name of ["intentRows", "updateCurrency", "loadCurrency", "loadSettings", "loadSuggestions"]) {
     const source = qml.match(new RegExp("  function " + name + "\\([^]*?\\n  }"))[0]
     vm.runInContext(source, context)
     root[name] = context[name]
   }
   return { root, timer }
 }
+
+test("settings arriving after query starts shorthand and suppress late suggestions", () => {
+  const { root, timer } = overlay()
+  root.query = "23 USD"
+  root.updateCurrency()
+  assert.equal(timer.running, false)
+  root.suggestionRows = ["old suggestion"]
+  root.loadSettings(JSON.stringify({ ok: true, settings: { defaultCurrency: "EUR", setupCompleted: true } }))
+  assert.equal(timer.running, true)
+  assert.equal(root.currencySession.target.quote, "EUR")
+  assert.equal(root.suggestionRows.length, 0)
+  root.loadSuggestions(JSON.stringify({ ok: true, suggestions: ["23 usd today"] }), root.query)
+  assert.equal(root.suggestionRows.length, 0)
+  const old = Currency.begin(root.currencySession)
+  root.loadSettings(JSON.stringify({ ok: true, settings: { defaultCurrency: "JPY", setupCompleted: true } }))
+  assert.equal(root.currencySession.target.quote, "JPY")
+  assert.equal(Currency.accept(root.currencySession, old, reply(), NOW), false)
+  root.loadSettings(JSON.stringify({ ok: true, settings: { defaultCurrency: "", setupCompleted: true } }))
+  assert.equal(root.currencySession.target, null)
+  assert.equal(timer.running, false)
+  assert.equal(root.intentRows(root.query, "unit").length, 0)
+})
+
+test("shorthand works in conversion filters and retains numeric-only copy behavior", () => {
+  const { root } = overlay()
+  root.settings.defaultCurrency = "EUR"
+  root.query = "convert: 23 USD"
+  root.updateCurrency()
+  const request = Currency.begin(root.currencySession)
+  root.loadCurrency(JSON.stringify(reply()), request)
+  const row = root.intentRows("23 USD", "unit")[0]
+  assert.equal(row.title, "21.2382 EUR")
+  assert.equal(row.payload.text, "21.2382")
+  for (const query of ["23", "23 km", "web: 23 USD", "calc: 23 USD", "file: 23 USD"]) {
+    root.query = query
+    root.updateCurrency()
+    assert.equal(root.currencySession.target, null, query)
+  }
+})
 
 test("QML filters, unit precedence, loading rows and copy payloads", () => {
   const { root, timer } = overlay()
