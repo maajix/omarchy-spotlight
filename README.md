@@ -130,7 +130,7 @@ mdn     MDN                npm     npm
 crates  crates.io          docker  Docker Hub
 maps    Maps               tr      Translate
 img     Images             hn      Hacker News
-omarchy Omarchy
+omarchy Omarchy            kagi    Kagi
 ```
 
 The space-separated `w query` is the Wikipedia bang; `w:` is the window filter. Translation accepts a language name or code at the end, such as `to german`, `in de`, or `into pt-br`.
@@ -212,7 +212,8 @@ Spotlight has no telemetry, analytics, or background network service. Almost eve
 
 | Network access | When it happens |
 | --- | --- |
-| `suggestqueries.google.com` | While typing, only when `webSuggestions` is enabled |
+| `kagi.com/api/autosuggest` | While typing, only when `webSuggestions` is enabled and `searchEngine` is `kagi` |
+| `suggestqueries.google.com` | While typing, only when `webSuggestions` is enabled with any other search engine |
 | Your browser | After you activate a web search, URL, or calendar result |
 | tldr-pages (GitHub) | First lookup of a command not yet in `~/.cache/tldr`, via the `tldr` client |
 
