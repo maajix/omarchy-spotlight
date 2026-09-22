@@ -2,7 +2,7 @@
 
 **A fast, local-first command palette for Omarchy.**
 
-Launch apps, jump to open windows, find files, search your clipboard, run Omarchy commands, calculate, convert units, create reminders and calendar events, or search the web, all from one input.
+Launch apps, jump to open windows, find files, search your clipboard, run Omarchy commands, calculate, convert units and currencies, create reminders and calendar events, or search the web, all from one input.
 
 [View Spotlight in the Omarchy Plugin Marketplace](https://plugins.omarchy.org/plugin.html?id=io.github.maajix.spotlight)
 
@@ -56,6 +56,7 @@ From two characters onward, Spotlight searches enabled local providers together 
 | `12*7+3` | Calculate; Enter copies the result |
 | `20% of 250` | Calculate percentages |
 | `10 km to miles` | Convert units offline |
+| `100 USD to EUR` or `$100 to euros` | Convert currencies using daily exchange rates |
 | `remind me in 20m to check the oven` | Create an `omarchy reminder` |
 | `reminders` | Show or clear pending reminders |
 | `meeting with sarah tomorrow at 14:00 for 90min` | Open a calendar event; Shift+Enter creates an `.ics` file |
@@ -75,6 +76,7 @@ Spotlight runs inside the existing `omarchy-shell` process, so there is no separ
 - Unified search across apps, windows, actions, files, clipboard history, and the web
 - Live toggle switches for common system settings
 - Offline calculations, percentages, common math functions, and unit conversions
+- Currency conversions with daily Frankfurter rates, a 24-hour cache, and dated offline fallback
 - Natural-language reminders and calendar events
 - Bang searches for common sites and package registries
 - Keyboard-first navigation with a stable selection as results arrive
@@ -111,12 +113,32 @@ Most of the time, just type. Use a filter when you want results from one provide
 | `cb:` or `clipboard:` | Clipboard history |
 | `web:`, `search:`, or `url:` | Web |
 | `calc:` | Calculator |
-| `unit:` or `convert:` | Unit converter |
+| `unit:` or `convert:` | Unit and currency converter |
 | `reminder:` | Reminders |
 | `calendar:` or `event:` | Calendar events |
 | `man:` or `tldr:` | Command help from tldr pages |
 
 A filter without a query shows a hint instead of launching a broad search.
+
+Currency conversions accept explicit pairs such as `100 USD to EUR`, `$100 to euros`,
+`100 euros in pounds`, or `convert: 100 CAD to JPY`. Codes ignore case. The supported
+names and symbols are dollar(s)/`$`/`US$` (USD), euro(s)/`€` (EUR),
+pound(s)/sterling/`£` (GBP), yen (JPY), and yuan (CNY). Use a code instead of the
+ambiguous `¥` symbol. Valid unit conversions still take precedence: `10 pounds to kg`
+converts weight. Amounts accept a decimal point or comma, without thousands separators.
+
+Rates come from [Frankfurter](https://frankfurter.dev/), using its latest blended daily
+reference rates. The result shows the rate date; Enter copies only the displayed
+number, without grouping spaces or a currency code. Same-currency conversions work
+offline. Historical dates, cryptocurrencies, and an inferred default currency are
+not supported.
+
+Each pair is cached for 24 hours in `~/.cache/omarchy/spotlight-currency.json` (up to
+128 pairs). Expired rates are refreshed on the next conversion. If that fails, the
+last valid rate stays available with its original date and **Cached · refresh
+unavailable** label. Without a cached rate, the row reports **Exchange rate
+unavailable**. Failed lookups have a 60-second retry cooldown within the running
+Spotlight session; edit or reopen the query after that interval to retry.
 
 Bang prefixes send the query directly to a destination:
 
@@ -213,10 +235,15 @@ Spotlight has no telemetry, analytics, or background network service. Almost eve
 | Network access | When it happens |
 | --- | --- |
 | `suggestqueries.google.com` | While typing, only when `webSuggestions` is enabled |
+| `api.frankfurter.dev` | After a complete currency conversion is typed, when its pair has no fresh cached rate; only currency codes are sent, never the amount |
 | Your browser | After you activate a web search, URL, or calendar result |
 | tldr-pages (GitHub) | First lookup of a command not yet in `~/.cache/tldr`, via the `tldr` client |
 
 Live web suggestions are disabled by default. Normal web searches do not send the query anywhere until you activate the result.
+
+Currency lookup is automatic after a 250 ms typing pause, requires no API key, and
+does not fetch at startup or refresh in the background. Recognized currency
+conversions suppress web suggestions.
 
 Learning is optional and stays in `~/.local/state/omarchy/spotlight-usage.json`. It stores bounded selection counts, timestamps, stable IDs, file paths, and normalized query prefixes. Disable it with `"learningEnabled": false`, or remove it with **Reset Spotlight Learning**.
 

@@ -7,6 +7,7 @@ import qs.Commons
 import qs.Ui
 import "lib/Calc.js" as Calc
 import "lib/Units.js" as Units
+import "lib/Currency.js" as Currency
 import "lib/NaturalTime.js" as NaturalTime
 import "lib/Web.js" as Web
 import "lib/Fuzzy.js" as Fuzzy
@@ -102,6 +103,8 @@ Item {
   property var clipboardRows: []
   property string clipboardFor: ""
   property var tldrPage: null
+  property var currencySession: Currency.createSession()
+  property var currencyProcess: null
 
   // Destructive commands need a second Enter. Holds the row key that is armed.
   property string armedKey: ""
@@ -286,6 +289,7 @@ Item {
     root.refreshSettings()
     root.refreshReminders()
     root.refreshToggleStates()
+    root.updateCurrency()
     root.rebuild()
     pointerGate.reset()
     if (root.settings.setupCompleted === false || (tour.started && !tour.singleStep)) root.resumeTour()
@@ -306,6 +310,9 @@ Item {
   // into: the debounces stop, the readers are terminated, and the rows they
   // were filling are dropped rather than left resident.
   function stopQueryWork() {
+    Currency.cancel(root.currencySession)
+    currencyDebounce.stop()
+    root.stopCurrencyProcess()
     suggestDebounce.stop()
     fileDebounce.stop()
     clipboardDebounce.stop()
@@ -659,6 +666,21 @@ Item {
         accessory: "Conversion", icon: "󰑤", mono: true,
         primaryLabel: "Copy result",
         payload: { text: unit.text.replace(/\s/g, "") }
+      }))
+    }
+
+    var currency = (!unit && (!filter || filter === "unit")) ? Currency.parse(q) : null
+    if (currency) {
+      var cached = Currency.entry(root.currencySession, currency.key)
+      var converted = Currency.result(currency, cached, Date.now(), Units.formatNumber)
+      var waiting = currencyDebounce.running || root.currencySession.request !== null
+      out.push(root.row({
+        key: "currency", kind: converted ? "copy" : "noop",
+        title: converted ? converted.text : (waiting ? "Loading exchange rate…" : "Exchange rate unavailable"),
+        subtitle: converted ? converted.detail : currency.base + " → " + currency.quote + " · Frankfurter",
+        accessory: "Currency", section: "Conversions", icon: "󰑤", mono: true,
+        primaryLabel: converted ? "Copy result" : "",
+        payload: converted ? { text: converted.copy } : ({})
       }))
     }
 
@@ -1658,6 +1680,28 @@ Item {
     if (root.opened) root.rebuild()
   }
 
+  function stopCurrencyProcess() {
+    var proc = root.currencyProcess
+    root.currencyProcess = null
+    if (proc) proc.running = false
+  }
+
+  function updateCurrency() {
+    var parsed = Query.parse(root.query)
+    var target = root.opened && (!parsed.filter || parsed.filter === "unit")
+      && !Units.convert(parsed.text) ? Currency.parse(parsed.text) : null
+    var generation = root.currencySession.generation
+    var lookup = Currency.select(root.currencySession, target, Date.now())
+    if (generation !== root.currencySession.generation) root.stopCurrencyProcess()
+    currencyDebounce.stop()
+    if (lookup) currencyDebounce.restart()
+  }
+
+  function loadCurrency(raw, request) {
+    if (!root.opened) return
+    if (Currency.accept(root.currencySession, request, root.helperReply(raw), Date.now())) root.rebuild()
+  }
+
   // Query changes fan out to the async providers on a short debounce so a
   // fast typist does not spawn a process per keystroke.
   onQueryChanged: {
@@ -1669,6 +1713,7 @@ Item {
 
     var q = String(root.query || "").trim()
     var parsed = Query.parse(q)
+    root.updateCurrency()
 
     // The clipboard list is fetched while a clipboard query is on screen and
     // dropped the moment it is not, so the titles are resident for the length
@@ -1710,6 +1755,7 @@ Item {
     var wantSuggestions = root.settings.webSuggestions && suggestionText.length >= 2
       && (!parsed.filter || parsed.filter === "web")
       && !Web.detectUrl(suggestionText) && !Web.bang(suggestionText) && !Calc.evaluate(suggestionText)
+      && !Currency.parse(suggestionText)
       && !NaturalTime.isReminderQuery(suggestionText) && !NaturalTime.isEventQuery(suggestionText)
       && !(fileSuggestGuard && !fileSuggestGuard.implicit)
     if (wantSuggestions) {
@@ -1741,6 +1787,49 @@ Item {
   Timer {
     id: typingGuard
     interval: 400
+  }
+
+  Timer {
+    id: currencyDebounce
+    interval: 250
+    onTriggered: {
+      if (!root.opened) return
+      var request = Currency.begin(root.currencySession)
+      if (!request) return
+      var proc = currencyProcessComponent.createObject(root, { request: request })
+      if (!proc) {
+        root.loadCurrency("", request)
+        return
+      }
+      root.currencyProcess = proc
+      proc.running = true
+    }
+  }
+
+  // Each run owns an immutable request token. A cancelled process can finish
+  // collecting stdout after a replacement starts without adopting its token.
+  Component {
+    id: currencyProcessComponent
+    Process {
+      id: currencyRun
+      required property var request
+      property bool delivered: false
+      command: root.helperArgv(["currency-rate", request.base, request.quote])
+      stdout: StdioCollector {
+        waitForEnd: true
+        onStreamFinished: {
+          currencyRun.delivered = true
+          root.loadCurrency(text, currencyRun.request)
+        }
+      }
+      onExited: {
+        Qt.callLater(function() {
+          if (!currencyRun.delivered) root.loadCurrency("", currencyRun.request)
+          if (root.currencyProcess === currencyRun) root.currencyProcess = null
+          currencyRun.destroy()
+        })
+      }
+    }
   }
 
   Timer {
