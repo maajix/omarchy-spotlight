@@ -28,6 +28,7 @@ import errno
 import fcntl
 import hashlib
 import json
+import math
 import os
 import re
 import select
@@ -38,6 +39,7 @@ import stat
 import subprocess
 import sys
 import time
+from datetime import date, datetime, timezone
 
 EUID = os.geteuid()
 ACTIVE_PROC = None
@@ -71,6 +73,14 @@ SUGGEST_DEADLINE = 3.0
 SUGGEST_COUNT = 8
 SUGGEST_CHARS = 200
 SUGGEST_QUERY_CHARS = 200
+
+CURRENCY_BYTES = 16 * 1024
+CURRENCY_DEADLINE = 3.0
+CURRENCY_TTL = 24 * 60 * 60
+CURRENCY_CACHE_BYTES = 64 * 1024
+CURRENCY_CACHE_KEEP = 128
+CURRENCY_CACHE_NAME = "spotlight-currency.json"
+CURRENCY_CODE_RE = re.compile(r"^[A-Z]{3}$")
 
 FILES_BYTES = 256 * 1024
 FILES_DEADLINE = 3.0
@@ -348,11 +358,15 @@ def dir_at(parent, name, create=False):
 def walk(parts, create=False):
     """Resolve a chain of directory names below $HOME, one descriptor at a time."""
     fd = home_fd()
-    for part in parts:
-        nxt = dir_at(fd, part, create=create)
+    try:
+        for part in parts:
+            nxt = dir_at(fd, part, create=create)
+            os.close(fd)
+            fd = nxt
+        return fd
+    except Exception:
         os.close(fd)
-        fd = nxt
-    return fd
+        raise
 
 
 def system_dir(path):
@@ -430,7 +444,7 @@ def read_json(dirfd, name, cap, fallback):
         return fallback
 
 
-def lock_at(dirfd, name):
+def lock_at(dirfd, name, blocking=True):
     """An exclusive advisory lock on a regular file we own. Never truncates."""
     fd = os.open(name, os.O_RDWR | os.O_CREAT | os.O_NOFOLLOW | os.O_CLOEXEC,
                  0o600, dir_fd=dirfd)
@@ -438,7 +452,7 @@ def lock_at(dirfd, name):
         st = os.fstat(fd)
         if not stat.S_ISREG(st.st_mode) or st.st_uid != EUID:
             raise Denied("%s is not a regular file owned by this user" % name)
-        fcntl.flock(fd, fcntl.LOCK_EX)
+        fcntl.flock(fd, fcntl.LOCK_EX | (0 if blocking else fcntl.LOCK_NB))
     except Exception:
         os.close(fd)
         raise
@@ -659,7 +673,9 @@ def emit(payload):
 def normalize_settings(parsed):
     out = {
         "webSuggestions": False,
+        "currencyRates": True,
         "searchEngine": "g",
+        "defaultCurrency": "",
         "fileSearch": True,
         "fileSearchAlways": True,
         "clipboardSearch": True,
@@ -673,6 +689,7 @@ def normalize_settings(parsed):
     if not isinstance(parsed, dict):
         return out
     out["webSuggestions"] = clamp_bool(parsed.get("webSuggestions"), False)
+    out["currencyRates"] = clamp_bool(parsed.get("currencyRates"), True)
     out["setupCompleted"] = clamp_bool(parsed.get("setupCompleted"), False)
     out["fileSearch"] = clamp_bool(parsed.get("fileSearch"), True)
     out["fileSearchAlways"] = clamp_bool(parsed.get("fileSearchAlways"), True)
@@ -685,6 +702,9 @@ def normalize_settings(parsed):
     engine = parsed.get("searchEngine")
     if isinstance(engine, str) and re.match(r"^[A-Za-z]{1,8}$", engine):
         out["searchEngine"] = engine.lower()
+    currency = parsed.get("defaultCurrency")
+    if isinstance(currency, str) and re.fullmatch(r"[A-Za-z]{3}", currency.strip()):
+        out["defaultCurrency"] = currency.strip().upper()
     return out
 
 
@@ -1628,6 +1648,32 @@ def cmd_toggle_states():
     emit({"states": states})
 
 
+def fetch_json(url, cap, deadline):
+    """Fetch bounded JSON without following redirects."""
+    from http.client import HTTPException
+    from urllib.request import HTTPRedirectHandler, Request, build_opener
+
+    class NoRedirect(HTTPRedirectHandler):
+        def redirect_request(self, req, fp, code, msg, headers, newurl):
+            return None
+
+    request = Request(url, headers={"Accept": "application/json", "User-Agent": "Spotlight"})
+    try:
+        with build_opener(NoRedirect).open(request, timeout=deadline) as response:
+            raw = response.read(cap + 1)
+            charset = response.headers.get_content_charset()
+            if not isinstance(charset, str) or not charset:
+                charset = "utf-8"
+    except HTTPException as exc:
+        raise OSError("incomplete HTTP response") from exc
+    if len(raw) > cap:
+        raise Denied("network response too large")
+    try:
+        return json.loads(raw.decode(charset))
+    except LookupError as exc:
+        raise ValueError("unknown response charset") from exc
+
+
 def cmd_suggest(argv):
     if len(argv) not in (1, 2):
         raise Denied("suggest takes a query and an optional engine")
@@ -1641,29 +1687,14 @@ def cmd_suggest(argv):
     # The endpoint is built here rather than passed in, so nothing upstream can
     # steer the request at a different host. urllib keeps this feature inside
     # Python's standard library; a stock install does not need curl.
-    from urllib.error import URLError
     from urllib.parse import quote
-    from urllib.request import HTTPRedirectHandler, Request, build_opener
-
-    class NoRedirect(HTTPRedirectHandler):
-        def redirect_request(self, req, fp, code, msg, headers, newurl):
-            return None
 
     endpoint = ("https://kagi.com/api/autosuggest?q=" if engine == "kagi" else
                 "https://suggestqueries.google.com/complete/search?client=firefox&hl=en&q=")
     url = endpoint + quote(query, safe="")
     try:
-        request = Request(url, headers={"Accept": "application/json", "User-Agent": "Spotlight"})
-        with build_opener(NoRedirect).open(request, timeout=SUGGEST_DEADLINE) as response:
-            raw = response.read(SUGGEST_BYTES + 1)
-    except (OSError, URLError, ValueError):
-        raw = b""
-    if len(raw) > SUGGEST_BYTES:
-        emit({"suggestions": []})
-        return
-    try:
-        parsed = json.loads(raw.decode("utf-8", "replace")) if raw else []
-    except ValueError:
+        parsed = fetch_json(url, SUGGEST_BYTES, SUGGEST_DEADLINE)
+    except (OSError, ValueError, Denied, RecursionError):
         parsed = []
     items = parsed[1] if isinstance(parsed, list) and len(parsed) > 1 else []
     out = []
@@ -1677,6 +1708,148 @@ def cmd_suggest(argv):
             if s:
                 out.append(s)
     emit({"suggestions": out})
+
+
+def currency_record(value, now, base=None, quote=None):
+    """Project a cache/API record, rejecting invalid dates, rates and pairs."""
+    if not isinstance(value, dict):
+        return None
+    for field, expected in (("base", base), ("quote", quote)):
+        code = value.get(field)
+        if not isinstance(code, str) or not CURRENCY_CODE_RE.fullmatch(code):
+            return None
+        if expected is not None and code != expected:
+            return None
+    rate, fetched = value.get("rate"), value.get("fetchedAt")
+    try:
+        if (type(rate) not in (int, float) or not math.isfinite(rate) or rate <= 0
+                or type(fetched) not in (int, float) or not math.isfinite(fetched)
+                or not 0 < fetched <= now):
+            return None
+        day = value.get("date")
+        if not isinstance(day, str) or not re.fullmatch(r"\d{4}-\d{2}-\d{2}", day):
+            return None
+        if date.fromisoformat(day) > datetime.fromtimestamp(now, timezone.utc).date():
+            return None
+    except (ValueError, OverflowError, OSError):
+        return None
+    return {"base": value["base"], "quote": value["quote"], "rate": rate,
+            "date": day, "fetchedAt": fetched}
+
+
+def _currency_cache_dir(create=False):
+    return walk([".cache", "omarchy"], create=create)
+
+
+def _currency_cache_read(fd, now):
+    # Boundary violations propagate so a planted file is never replaced.
+    payload = read_json(fd, CURRENCY_CACHE_NAME, CURRENCY_CACHE_BYTES, {})
+    if not isinstance(payload, dict) or payload.get("version") != 1:
+        return {}
+    records = payload.get("rates")
+    if not isinstance(records, list) or len(records) > CURRENCY_CACHE_KEEP:
+        return {}
+    out = {}
+    for value in records:
+        record = currency_record(value, now)
+        if record:
+            key = record["base"] + "/" + record["quote"]
+            if key not in out or record["fetchedAt"] > out[key]["fetchedAt"]:
+                out[key] = record
+    return out
+
+
+def currency_cached(base, quote, now):
+    try:
+        fd = _currency_cache_dir()
+        try:
+            return _currency_cache_read(fd, now).get(base + "/" + quote)
+        finally:
+            os.close(fd)
+    except (OSError, Denied, ValueError, RecursionError):
+        return None
+
+
+def currency_store(record):
+    """Merge under a nonblocking lock; persistence must never delay an answer."""
+    fd = lock = None
+    try:
+        fd = _currency_cache_dir(create=True)
+        lock = lock_at(fd, "spotlight-currency.lock", blocking=False)
+        records = _currency_cache_read(fd, time.time())
+        key = record["base"] + "/" + record["quote"]
+        if key not in records or record["fetchedAt"] >= records[key]["fetchedAt"]:
+            records[key] = record
+        rates = sorted(records.values(), key=lambda r: r["fetchedAt"], reverse=True)
+        rates = rates[:CURRENCY_CACHE_KEEP]
+        payload = json.dumps({"version": 1, "rates": rates}, allow_nan=False).encode("utf-8")
+        if len(payload) <= CURRENCY_CACHE_BYTES:
+            write_atomic(fd, CURRENCY_CACHE_NAME, payload)
+    except (OSError, Denied, ValueError, RecursionError):
+        pass
+    finally:
+        if lock is not None:
+            os.close(lock)
+        if fd is not None:
+            os.close(fd)
+
+
+def currency_fetch(base, quote):
+    def expired(_signum, _frame):
+        raise TimeoutError("currency lookup deadline exceeded")
+
+    # Socket timeouts alone restart between reads. This deadline also bounds
+    # connect, TLS and a server that trickles bytes. libc DNS resolution may
+    # still run until the resolver's own timeout before Python handles SIGALRM.
+    previous = signal.signal(signal.SIGALRM, expired)
+    signal.setitimer(signal.ITIMER_REAL, CURRENCY_DEADLINE)
+    try:
+        url = "https://api.frankfurter.dev/v2/rate/" + base.lower() + "/" + quote.lower()
+        value = fetch_json(url, CURRENCY_BYTES, CURRENCY_DEADLINE)
+        now = time.time()
+        if isinstance(value, dict):
+            value["fetchedAt"] = now
+        record = currency_record(value, now, base, quote)
+        if record is None:
+            raise Denied("invalid currency response")
+        return record
+    finally:
+        signal.setitimer(signal.ITIMER_REAL, 0)
+        signal.signal(signal.SIGALRM, previous)
+
+
+def cmd_currency_rate(argv):
+    cached_only = len(argv) == 3 and argv[0] == "--cached-only"
+    pair = argv[1:] if cached_only else argv
+    if len(pair) != 2 or any(not CURRENCY_CODE_RE.fullmatch(v) for v in pair):
+        raise Denied("currency-rate takes two uppercase currency codes")
+    base, quote = pair
+    now = time.time()
+    if base == quote:
+        emit({"base": base, "quote": quote, "rate": 1,
+              "date": datetime.fromtimestamp(now, timezone.utc).date().isoformat(),
+              "fetchedAt": now, "stale": False})
+        return
+    cached = currency_cached(base, quote, now)
+    if cached and now - cached["fetchedAt"] < CURRENCY_TTL:
+        emit(dict(cached, stale=False))
+        return
+    if cached_only:
+        if cached:
+            emit(dict(cached, stale=True))
+        else:
+            raise Denied("currency rate unavailable")
+        return
+    try:
+        record = currency_fetch(base, quote)
+    except (OSError, ValueError, Denied, RecursionError):
+        if cached:
+            emit(dict(cached, stale=True))
+        else:
+            raise Denied("currency rate unavailable") from None
+        return
+    currency_store(record)
+    emit(dict(record, stale=False))
 
 
 def cmd_files(argv):
@@ -2263,6 +2436,7 @@ COMMANDS = {
     "reminders": (cmd_reminders, False),
     "toggle-states": (cmd_toggle_states, False),
     "suggest": (cmd_suggest, True),
+    "currency-rate": (cmd_currency_rate, True),
     "files": (cmd_files, True),
     "tldr": (cmd_tldr, True),
     "write-ics": (cmd_write_ics, True),

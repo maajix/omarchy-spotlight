@@ -73,7 +73,7 @@ Research consistent with this policy will be treated as authorized security test
 
 Spotlight is designed to keep most processing local.
 
-Optional web suggestions may send the current search query to a third-party suggestion endpoint when that feature is enabled. Normal web-search and calendar URLs are opened only after explicit user activation.
+Optional web suggestions may send the current search query to a third-party suggestion endpoint when that feature is enabled. Currency conversions may contact `api.frankfurter.dev` while typing when `currencyRates` is enabled (the default); only the currency codes are sent, never the amount. Set `"currencyRates": false` to disable those network requests while retaining local conversions and cached rates. Normal web-search and calendar URLs are opened only after explicit user activation.
 
 `bin/spotlight-helper` acts as the primary boundary for file access and subprocess execution. Security issues involving this boundary, especially those involving command execution, file validation, paths, permissions, or untrusted input, are particularly important.
 

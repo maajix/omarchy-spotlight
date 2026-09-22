@@ -32,6 +32,7 @@ class HelperTests(unittest.TestCase):
     def test_settings_are_private_by_default_and_bounded(self):
         defaults = HELPER.normalize_settings({})
         self.assertFalse(defaults["webSuggestions"])
+        self.assertTrue(defaults["currencyRates"])
         self.assertTrue(defaults["fileSearchAlways"])
         self.assertTrue(defaults["clipboardSearch"])
         self.assertTrue(defaults["clipboardSearchAlways"])
@@ -40,6 +41,7 @@ class HelperTests(unittest.TestCase):
 
         settings = HELPER.normalize_settings({
             "webSuggestions": "yes",
+            "currencyRates": False,
             "maxApps": 999,
             "maxSuggestions": -5,
             "maxResults": 999,
@@ -47,6 +49,7 @@ class HelperTests(unittest.TestCase):
             "searchEngine": "invalid-value",
         })
         self.assertFalse(settings["webSuggestions"])
+        self.assertFalse(settings["currencyRates"])
         self.assertEqual(settings["maxApps"], 24)
         self.assertEqual(settings["maxSuggestions"], 0)
         self.assertEqual(settings["maxResults"], 50)
@@ -241,6 +244,31 @@ class HelperTests(unittest.TestCase):
                         HELPER.cmd_suggest(["query", "kagi"])
                 self.assertEqual(json.loads(buf.getvalue())["suggestions"], [])
                 opener.open.assert_called_once()
+
+    def test_suggestions_decode_declared_charset_and_handle_truncated_http(self):
+        from email.message import Message
+        from http.client import IncompleteRead
+
+        headers = Message()
+        headers["Content-Type"] = "text/javascript; charset=ISO-8859-1"
+        response = mock.MagicMock()
+        response.__enter__.return_value = response
+        response.headers = headers
+        response.read.return_value = '["café", ["café au lait"]]'.encode("iso-8859-1")
+        opener = mock.Mock()
+        opener.open.return_value = response
+        with mock.patch("urllib.request.build_opener", return_value=opener):
+            out = io.StringIO()
+            with contextlib.redirect_stdout(out):
+                HELPER.cmd_suggest(["café"])
+        self.assertEqual(json.loads(out.getvalue())["suggestions"], ["café au lait"])
+
+        response.read.side_effect = IncompleteRead(b"partial")
+        with mock.patch("urllib.request.build_opener", return_value=opener):
+            out = io.StringIO()
+            with contextlib.redirect_stdout(out):
+                HELPER.cmd_suggest(["café"])
+        self.assertEqual(json.loads(out.getvalue())["suggestions"], [])
 
     def test_settings_creation_is_private_and_never_overwrites(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -455,6 +483,24 @@ EXPECTED_AFTER_WRITE = LUA_FIXTURE.replace(
 
 
 class SettingsWriteTests(unittest.TestCase):
+    def test_default_currency_is_optional_and_normalizes_code_spelling(self):
+        self.assertEqual(HELPER.normalize_settings({})["defaultCurrency"], "")
+        self.assertEqual(HELPER.normalize_settings({"defaultCurrency": " eur "})["defaultCurrency"], "EUR")
+        for value in [None, True, 123, [], "€", "eu", "euros", "EUR/JPY"]:
+            self.assertEqual(HELPER.normalize_settings({"defaultCurrency": value})["defaultCurrency"], "")
+
+    def test_default_currency_survives_other_settings_updates_and_can_be_cleared(self):
+        with fake_home():
+            reply = run(HELPER.cmd_write_settings, stdin=b'{"defaultCurrency":"eur","currencyRates":false}')
+            self.assertEqual(reply["settings"]["defaultCurrency"], "EUR")
+            self.assertFalse(reply["settings"]["currencyRates"])
+            run(HELPER.cmd_write_settings, stdin=b'{"webSuggestions":true}')
+            reply = run(HELPER.cmd_read_settings)
+            self.assertEqual(reply["settings"]["defaultCurrency"], "EUR")
+            self.assertFalse(reply["settings"]["currencyRates"])
+            reply = run(HELPER.cmd_write_settings, stdin=b'{"defaultCurrency":""}')
+            self.assertEqual(reply["settings"]["defaultCurrency"], "")
+
     def test_setup_completed_defaults_false_and_clamps(self):
         self.assertFalse(HELPER.normalize_settings({})["setupCompleted"])
         self.assertFalse(HELPER.normalize_settings({"setupCompleted": "yes"})["setupCompleted"])
@@ -1720,6 +1766,225 @@ class TldrTests(unittest.TestCase):
         for name in ["../x", "-v", "", "a b/c"]:
             with self.assertRaises(HELPER.Denied):
                 HELPER.cmd_tldr([name])
+
+
+class CurrencyTests(unittest.TestCase):
+    def setUp(self):
+        self.directory = tempfile.TemporaryDirectory()
+        self.addCleanup(self.directory.cleanup)
+        self.home = Path(self.directory.name)
+        self.cache = self.home / ".cache" / "omarchy" / HELPER.CURRENCY_CACHE_NAME
+        self.now = time.time()
+        self.record = {"base": "USD", "quote": "EUR", "rate": 0.9234,
+                       "date": HELPER.datetime.fromtimestamp(self.now, HELPER.timezone.utc).date().isoformat(),
+                       "fetchedAt": self.now}
+        patch = mock.patch.dict(os.environ, {"HOME": str(self.home)})
+        patch.start()
+        self.addCleanup(patch.stop)
+        patch = mock.patch.object(HELPER.time, "time", return_value=self.now)
+        patch.start()
+        self.addCleanup(patch.stop)
+
+    def run_rate(self, args=None):
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            status = HELPER.main(["currency-rate"] + (args or ["USD", "EUR"]))
+        self.assertEqual(status, 0)
+        return json.loads(out.getvalue())
+
+    def test_cold_fetch_then_warm_cache_and_private_permissions(self):
+        with mock.patch.object(HELPER, "currency_fetch", return_value=self.record) as fetch:
+            first = self.run_rate()
+            second = self.run_rate()
+        fetch.assert_called_once_with("USD", "EUR")
+        self.assertEqual(first, second)
+        self.assertTrue(first["ok"])
+        self.assertFalse(first["stale"])
+        self.assertEqual(first["rate"], 0.9234)
+        self.assertEqual(stat.S_IMODE(self.cache.stat().st_mode), 0o600)
+        self.assertEqual(stat.S_IMODE(self.cache.parent.stat().st_mode), 0o700)
+
+    def test_cached_only_never_fetches_and_keeps_identity_conversions(self):
+        with mock.patch.object(HELPER, "currency_fetch") as fetch:
+            self.assertFalse(self.run_rate(["--cached-only", "USD", "EUR"])["ok"])
+            identity = self.run_rate(["--cached-only", "EUR", "EUR"])
+            self.assertEqual(identity["rate"], 1)
+            HELPER.currency_store(self.record)
+            cached = self.run_rate(["--cached-only", "USD", "EUR"])
+            self.assertEqual(cached["rate"], self.record["rate"])
+            fetch.assert_not_called()
+
+    def test_cached_only_returns_expired_rate_without_network(self):
+        expired = dict(self.record, fetchedAt=self.now - HELPER.CURRENCY_TTL)
+        HELPER.currency_store(expired)
+        with mock.patch.object(HELPER, "currency_fetch") as fetch:
+            cached = self.run_rate(["--cached-only", "USD", "EUR"])
+            fetch.assert_not_called()
+        self.assertTrue(cached["stale"])
+        self.assertEqual(cached["rate"], expired["rate"])
+
+    def test_rate_date_uses_utc_even_when_local_date_is_yesterday(self):
+        now = HELPER.datetime(2026, 9, 22, 0, 30, tzinfo=HELPER.timezone.utc).timestamp()
+        record = dict(self.record, date="2026-09-22", fetchedAt=now)
+        try:
+            with mock.patch.dict(os.environ, {"TZ": "Etc/GMT+7"}):
+                time.tzset()
+                self.assertEqual(HELPER.currency_record(record, now), record)
+        finally:
+            time.tzset()
+
+    def test_invalid_cached_timestamps_are_not_trusted(self):
+        for stamp in [True, -1, 0, "1", self.now + 1, float("nan"), float("inf")]:
+            self.assertIsNone(HELPER.currency_record(dict(self.record, fetchedAt=stamp), self.now))
+
+    def test_expired_rate_refreshes_and_failure_keeps_original_date_and_timestamp(self):
+        expired = dict(self.record, fetchedAt=self.now - HELPER.CURRENCY_TTL)
+        HELPER.currency_store(expired)
+        original = self.cache.read_bytes()
+        with mock.patch.object(HELPER, "currency_fetch", side_effect=TimeoutError):
+            response = self.run_rate()
+        self.assertTrue(response["ok"])
+        self.assertTrue(response["stale"])
+        self.assertEqual(response["date"], expired["date"])
+        self.assertEqual(response["fetchedAt"], expired["fetchedAt"])
+        self.assertEqual(self.cache.read_bytes(), original)
+        with mock.patch.object(HELPER, "currency_fetch", return_value=self.record) as fetch:
+            self.assertFalse(self.run_rate()["stale"])
+        fetch.assert_called_once()
+        self.assertEqual(HELPER.currency_cached("USD", "EUR", self.now), self.record)
+
+    def test_cold_offline_failure_is_one_normalized_error(self):
+        with mock.patch.object(HELPER, "currency_fetch", side_effect=OSError("offline")):
+            self.assertEqual(self.run_rate(), {"ok": False, "error": "currency rate unavailable"})
+
+    def test_same_currency_never_fetches(self):
+        with mock.patch.object(HELPER, "currency_fetch") as fetch:
+            response = self.run_rate(["USD", "USD"])
+        fetch.assert_not_called()
+        self.assertEqual(response["rate"], 1)
+        self.assertFalse(self.cache.exists())
+
+    def test_invalid_arguments_never_reach_network(self):
+        with mock.patch.object(HELPER, "currency_fetch") as fetch:
+            for args in [["usd", "EUR"], ["USD/../../", "EUR"], ["USD"],
+                         ["USD", "EUR", "100"], ["USD", "EUR\n"], ["€", "USD"]]:
+                self.assertFalse(self.run_rate(args)["ok"])
+        fetch.assert_not_called()
+
+    def test_bad_cache_is_ignored_and_write_failure_preserves_fetched_answer(self):
+        self.cache.parent.mkdir(parents=True)
+        for data in [b"{", b"[]", b'{"version":2,"rates":[]}', b"x" * (HELPER.CURRENCY_CACHE_BYTES + 1)]:
+            self.cache.write_bytes(data)
+            with mock.patch.object(HELPER, "currency_fetch", return_value=self.record):
+                response = self.run_rate()
+            self.assertTrue(response["ok"])
+            self.assertEqual(response["rate"], self.record["rate"])
+        self.cache.unlink()
+        with mock.patch.object(HELPER, "currency_fetch", return_value=self.record), \
+                mock.patch.object(HELPER, "write_atomic", side_effect=OSError("disk full")):
+            self.assertTrue(self.run_rate()["ok"])
+
+    def test_unsafe_cache_file_and_directory_are_never_written(self):
+        self.cache.parent.mkdir(parents=True)
+        victim = self.home / "victim"
+        victim.write_text("untouched")
+        self.cache.symlink_to(victim)
+        with mock.patch.object(HELPER, "currency_fetch", return_value=self.record):
+            self.assertTrue(self.run_rate()["ok"])
+        self.assertTrue(self.cache.is_symlink())
+        self.assertEqual(victim.read_text(), "untouched")
+        self.cache.unlink()
+        self.cache.parent.chmod(0o777)
+        with mock.patch.object(HELPER, "currency_fetch", return_value=self.record):
+            self.assertTrue(self.run_rate()["ok"])
+        self.assertFalse(self.cache.exists())
+
+    def test_cache_merges_pairs_and_evicts_oldest_fetches(self):
+        for i in range(HELPER.CURRENCY_CACHE_KEEP + 2):
+            code = "A" + chr(65 + i // 26) + chr(65 + i % 26)
+            HELPER.currency_store(dict(self.record, quote=code, fetchedAt=self.now - 200 + i))
+        cached = json.loads(self.cache.read_text())
+        self.assertEqual(len(cached["rates"]), HELPER.CURRENCY_CACHE_KEEP)
+        self.assertLess(self.cache.stat().st_size, HELPER.CURRENCY_CACHE_BYTES)
+        self.assertIsNone(HELPER.currency_cached("USD", "AAA", self.now))
+        self.assertIsNotNone(HELPER.currency_cached("USD", "AEZ", self.now))
+
+    def test_busy_cache_lock_does_not_block_success(self):
+        self.cache.parent.mkdir(parents=True)
+        fd = os.open(self.cache.parent, os.O_RDONLY | os.O_DIRECTORY)
+        lock = HELPER.lock_at(fd, "spotlight-currency.lock")
+        try:
+            with mock.patch.object(HELPER, "currency_fetch", return_value=self.record):
+                self.assertTrue(self.run_rate()["ok"])
+            self.assertFalse(self.cache.exists())
+        finally:
+            os.close(lock)
+            os.close(fd)
+
+    def test_network_contract_is_fixed_bounded_and_rejects_redirects(self):
+        response = mock.MagicMock()
+        response.__enter__.return_value = response
+        response.read.return_value = json.dumps(self.record).encode()
+        opener = mock.Mock()
+        opener.open.return_value = response
+        with mock.patch("urllib.request.build_opener", return_value=opener) as build:
+            record = HELPER.currency_fetch("USD", "EUR")
+        self.assertEqual(record, self.record)
+        request = opener.open.call_args.args[0]
+        self.assertEqual(request.full_url, "https://api.frankfurter.dev/v2/rate/usd/eur")
+        self.assertEqual(opener.open.call_args.kwargs["timeout"], HELPER.CURRENCY_DEADLINE)
+        response.read.assert_called_once_with(HELPER.CURRENCY_BYTES + 1)
+        handler = build.call_args.args[0]()
+        self.assertIsNone(handler.redirect_request(None, None, 302, "", {}, "http://localhost/"))
+
+    def test_bad_network_responses_cannot_replace_an_expired_rate(self):
+        expired = dict(self.record, fetchedAt=self.now - HELPER.CURRENCY_TTL)
+        HELPER.currency_store(expired)
+        original = self.cache.read_bytes()
+        invalid = [dict(self.record, rate=v) for v in [0, -1, "1", True, float("nan"), float("inf")]]
+        invalid += [dict(self.record, base="GBP"), dict(self.record, quote="JPY"),
+                    dict(self.record, date="2026-02-30"), dict(self.record, date="9999-12-31"), [], {}]
+        bodies = [json.dumps(value).encode() for value in invalid]
+        bodies += [b"not json", b"\xff", b" " * (HELPER.CURRENCY_BYTES + 1)]
+        for body in bodies:
+            with self.subTest(body=body[:100]):
+                response = mock.MagicMock()
+                response.__enter__.return_value = response
+                response.read.return_value = body
+                opener = mock.Mock()
+                opener.open.return_value = response
+                with mock.patch("urllib.request.build_opener", return_value=opener):
+                    result = self.run_rate()
+                self.assertTrue(result["stale"])
+                self.assertEqual(result["rate"], expired["rate"])
+                self.assertEqual(self.cache.read_bytes(), original)
+
+    def test_http_errors_preserve_cached_fallback(self):
+        from urllib.error import HTTPError
+        from http.client import IncompleteRead
+        HELPER.currency_store(dict(self.record, fetchedAt=self.now - HELPER.CURRENCY_TTL))
+        for error in [HTTPError("", 404, "missing pair", {}, None),
+                      HTTPError("", 429, "rate limited", {}, None), IncompleteRead(b"")]:
+            with mock.patch("urllib.request.build_opener", side_effect=error):
+                self.assertTrue(self.run_rate()["stale"])
+            if isinstance(error, HTTPError):
+                error.close()
+
+    def test_total_deadline_interrupts_a_stalled_reader_and_restores_alarm(self):
+        import signal
+        response = mock.MagicMock()
+        response.__enter__.return_value = response
+        response.read.side_effect = lambda *_: time.sleep(2)
+        opener = mock.Mock()
+        opener.open.return_value = response
+        previous = signal.getsignal(signal.SIGALRM)
+        start = time.monotonic()
+        with mock.patch.object(HELPER, "CURRENCY_DEADLINE", 0.03), \
+                mock.patch("urllib.request.build_opener", return_value=opener):
+            self.assertFalse(self.run_rate()["ok"])
+        self.assertLess(time.monotonic() - start, 1)
+        self.assertEqual(signal.getsignal(signal.SIGALRM), previous)
+        self.assertEqual(signal.getitimer(signal.ITIMER_REAL), (0.0, 0.0))
 
 
 if __name__ == "__main__":

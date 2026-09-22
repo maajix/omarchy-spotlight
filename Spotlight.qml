@@ -7,6 +7,7 @@ import qs.Commons
 import qs.Ui
 import "lib/Calc.js" as Calc
 import "lib/Units.js" as Units
+import "lib/Currency.js" as Currency
 import "lib/NaturalTime.js" as NaturalTime
 import "lib/Web.js" as Web
 import "lib/Fuzzy.js" as Fuzzy
@@ -102,6 +103,9 @@ Item {
   property var clipboardRows: []
   property string clipboardFor: ""
   property var tldrPage: null
+  property var currencySession: Currency.createSession()
+  property var currencyProcess: null
+  property var pendingCurrency: null
 
   // Destructive commands need a second Enter. Holds the row key that is armed.
   property string armedKey: ""
@@ -170,7 +174,9 @@ Item {
 
   property var settings: ({
     webSuggestions: false,
+    currencyRates: true,
     searchEngine: "g",
+    defaultCurrency: "",
     fileSearch: true,
     fileSearchAlways: true,
     clipboardSearch: true,
@@ -261,6 +267,7 @@ Item {
     root.opened = true
     root.tourActive = false
     root.armedKey = ""
+    root.pendingCurrency = null
     root.rows = []
     root.pinnedKey = ""
     input.text = initial
@@ -286,6 +293,7 @@ Item {
     root.refreshSettings()
     root.refreshReminders()
     root.refreshToggleStates()
+    root.updateCurrency()
     root.rebuild()
     pointerGate.reset()
     if (root.settings.setupCompleted === false || (tour.started && !tour.singleStep)) root.resumeTour()
@@ -306,6 +314,10 @@ Item {
   // into: the debounces stop, the readers are terminated, and the rows they
   // were filling are dropped rather than left resident.
   function stopQueryWork() {
+    root.pendingCurrency = null
+    Currency.cancel(root.currencySession)
+    currencyDebounce.stop()
+    root.stopCurrencyProcess()
     suggestDebounce.stop()
     fileDebounce.stop()
     clipboardDebounce.stop()
@@ -426,6 +438,7 @@ Item {
   function dismiss() {
     root.opened = false
     root.armedKey = ""
+    root.pendingCurrency = null
     if (root.shell && typeof root.shell.hide === "function") root.shell.hide(root.pluginId)
   }
 
@@ -574,15 +587,18 @@ Item {
     usageWriteProc.stdinEnabled = false
   }
 
-  // Settings arrive already type-checked and clamped. The one thing the helper
-  // cannot judge is whether the engine key names an engine that exists, so
-  // that is settled here against the table that will be asked for it.
+  // Settings arrive type-checked and clamped. Engine and currency membership
+  // are checked here against the catalogs used by their providers.
   function loadSettings(raw) {
     var reply = root.helperReply(raw)
     var parsed = (reply && reply.settings) ? reply.settings : {}
+    var oldCurrency = root.settings.defaultCurrency
+    var oldRates = root.settings.currencyRates
     root.settings = {
       webSuggestions: parsed.webSuggestions === true,
+      currencyRates: parsed.currencyRates !== false,
       searchEngine: Web.hasEngine(parsed.searchEngine) ? parsed.searchEngine : "g",
+      defaultCurrency: Currency.defaultCode(parsed.defaultCurrency),
       fileSearch: parsed.fileSearch !== false,
       fileSearchAlways: parsed.fileSearchAlways !== false,
       clipboardSearch: parsed.clipboardSearch !== false,
@@ -604,6 +620,27 @@ Item {
     // a closed launcher needs a read of its own.
     if (root.settings.setupCompleted === false && !root.autoBindDone && !root.tourActive)
       root.readBinding()
+    if (root.opened && (oldCurrency !== root.settings.defaultCurrency
+        || oldRates !== root.settings.currencyRates)) {
+      root.pendingCurrency = null
+      if (oldRates !== root.settings.currencyRates) {
+        Currency.cancel(root.currencySession)
+        currencyDebounce.stop()
+        root.stopCurrencyProcess()
+      }
+      root.updateCurrency()
+      if (root.currencyQuery(Query.parse(root.query).text)) {
+        suggestDebounce.stop()
+        suggestProc.running = false
+        root.suggestionRows = []
+        root.suggestionFor = ""
+      }
+      root.rebuild()
+    }
+  }
+
+  function currencyQuery(text) {
+    return Currency.parse(text, root.settings.defaultCurrency)
   }
 
   // ------------------------------------------------------------- providers
@@ -659,6 +696,21 @@ Item {
         accessory: "Conversion", icon: "󰑤", mono: true,
         primaryLabel: "Copy result",
         payload: { text: unit.text.replace(/\s/g, "") }
+      }))
+    }
+
+    var currency = (!unit && (!filter || filter === "unit")) ? root.currencyQuery(q) : null
+    if (currency) {
+      var cached = Currency.entry(root.currencySession, currency.key)
+      var converted = Currency.result(currency, cached, Date.now(), Units.formatNumber)
+      var waiting = currencyDebounce.running || root.currencySession.request !== null
+      out.push(root.row({
+        key: "currency", kind: converted ? "copy" : waiting ? "currency-wait" : "noop",
+        title: converted ? converted.text : (waiting ? "Loading exchange rate…" : "Exchange rate unavailable"),
+        subtitle: converted ? converted.detail : currency.base + " → " + currency.quote + " · Frankfurter",
+        accessory: "Currency", section: "Conversions", icon: "󰑤", mono: true,
+        primaryLabel: converted ? "Copy result" : waiting ? "Copy when ready" : "",
+        payload: converted ? { text: converted.copy } : ({})
       }))
     }
 
@@ -1373,6 +1425,11 @@ Item {
   function activate(index, secondary) {
     var r = root.rows[index]
     if (!r || r.kind === "noop") return
+    if (r.kind === "currency-wait") {
+      if (!secondary && root.currencySession.target)
+        root.pendingCurrency = { query: root.query, key: root.currencySession.target.key }
+      return
+    }
 
     // One confirmation for the rows that end the session.
     if (r.confirm && !secondary && root.armedKey !== r.key) {
@@ -1550,6 +1607,7 @@ Item {
   // ------------------------------------------------------------- async data
   function loadSuggestions(raw, forQuery) {
     if (forQuery !== String(root.query || "").trim()) return
+    if (root.currencyQuery(Query.parse(forQuery).text)) return
     var reply = root.helperReply(raw)
     var list = (reply && Array.isArray(reply.suggestions)) ? reply.suggestions : []
     var limit = Util.clamp(root.settings.maxSuggestions, 0, 8)
@@ -1658,10 +1716,40 @@ Item {
     if (root.opened) root.rebuild()
   }
 
+  function stopCurrencyProcess() {
+    var proc = root.currencyProcess
+    root.currencyProcess = null
+    if (proc) proc.running = false
+  }
+
+  function updateCurrency() {
+    var parsed = Query.parse(root.query)
+    var target = root.opened && (!parsed.filter || parsed.filter === "unit")
+      && !Units.convert(parsed.text) ? root.currencyQuery(parsed.text) : null
+    var generation = root.currencySession.generation
+    var lookup = Currency.select(root.currencySession, target, Date.now())
+    if (generation !== root.currencySession.generation) root.stopCurrencyProcess()
+    currencyDebounce.stop()
+    if (lookup) currencyDebounce.restart()
+  }
+
+  function loadCurrency(raw, request) {
+    if (!root.opened) return
+    if (!Currency.accept(root.currencySession, request, root.helperReply(raw), Date.now())) return
+    root.rebuild()
+    var pending = root.pendingCurrency
+    if (!pending || pending.query !== root.query || !root.currencySession.target
+        || pending.key !== root.currencySession.target.key) return
+    root.pendingCurrency = null
+    var index = root.indexOfKey("currency")
+    if (index >= 0 && root.rows[index].kind === "copy") root.activate(index, false)
+  }
+
   // Query changes fan out to the async providers on a short debounce so a
   // fast typist does not spawn a process per keystroke.
   onQueryChanged: {
     root.armedKey = ""
+    root.pendingCurrency = null
     // A new query invalidates a deliberate cursor: the row it named may not
     // even be in the list any more.
     root.pinnedKey = ""
@@ -1669,6 +1757,7 @@ Item {
 
     var q = String(root.query || "").trim()
     var parsed = Query.parse(q)
+    root.updateCurrency()
 
     // The clipboard list is fetched while a clipboard query is on screen and
     // dropped the moment it is not, so the titles are resident for the length
@@ -1710,6 +1799,7 @@ Item {
     var wantSuggestions = root.settings.webSuggestions && suggestionText.length >= 2
       && (!parsed.filter || parsed.filter === "web")
       && !Web.detectUrl(suggestionText) && !Web.bang(suggestionText) && !Calc.evaluate(suggestionText)
+      && !root.currencyQuery(suggestionText)
       && !NaturalTime.isReminderQuery(suggestionText) && !NaturalTime.isEventQuery(suggestionText)
       && !(fileSuggestGuard && !fileSuggestGuard.implicit)
     if (wantSuggestions) {
@@ -1741,6 +1831,54 @@ Item {
   Timer {
     id: typingGuard
     interval: 400
+  }
+
+  Timer {
+    id: currencyDebounce
+    interval: 250
+    onTriggered: {
+      if (!root.opened) return
+      var request = Currency.begin(root.currencySession)
+      if (!request) return
+      var proc = currencyProcessComponent.createObject(root, {
+        request: request, cachedOnly: !root.settings.currencyRates
+      })
+      if (!proc) {
+        root.loadCurrency("", request)
+        return
+      }
+      root.currencyProcess = proc
+      proc.running = true
+    }
+  }
+
+  // Each run owns an immutable request token. A cancelled process can finish
+  // collecting stdout after a replacement starts without adopting its token.
+  Component {
+    id: currencyProcessComponent
+    Process {
+      id: currencyRun
+      required property var request
+      required property bool cachedOnly
+      property bool delivered: false
+      command: root.helperArgv(cachedOnly
+        ? ["currency-rate", "--cached-only", request.base, request.quote]
+        : ["currency-rate", request.base, request.quote])
+      stdout: StdioCollector {
+        waitForEnd: true
+        onStreamFinished: {
+          currencyRun.delivered = true
+          root.loadCurrency(text, currencyRun.request)
+        }
+      }
+      onExited: {
+        Qt.callLater(function() {
+          if (!currencyRun.delivered) root.loadCurrency("", currencyRun.request)
+          if (root.currencyProcess === currencyRun) root.currencyProcess = null
+          currencyRun.destroy()
+        })
+      }
+    }
   }
 
   Timer {

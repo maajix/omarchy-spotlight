@@ -4,6 +4,7 @@ import QtQuick.Layouts
 import qs.Commons
 import "lib/Chord.js" as Chord
 import "lib/Web.js" as Web
+import "lib/Currency.js" as Currency
 
 // First-run tour, and the standalone shortcut chooser (singleStep). Pure UI:
 // Spotlight.qml owns every read and write and feeds the results back through
@@ -38,6 +39,7 @@ FocusScope {
   // at the same step after a focus loss instead of restarting it.
   property bool started: false
   property var draft: ({})
+  property bool currencyInputValid: true
   property string selected: ""
 
   // out
@@ -68,7 +70,8 @@ FocusScope {
   readonly property string primaryText: step === 0 ? "Get started"
       : step === 1 ? (selected === "" ? (singleStep ? "Done" : "Continue") : occupied ? "Replace and set" : "Set shortcut")
       : step === 2 ? "Continue" : "Finish"
-  readonly property bool primaryEnabled: step !== 1 || (!sameAsCurrent && bindingState !== "busy")
+  readonly property bool primaryEnabled: step === 2 ? currencyInputValid
+      : step !== 1 || (!sameAsCurrent && bindingState !== "busy")
   readonly property string statusText: bindingState === "busy" ? "Saving..."
       : bindingState === "ok" ? "Shortcut set to " + currentBinding
       : bindingState === "reverted" ? (currentBinding ? "Restored " + currentBinding : "Shortcut removed")
@@ -91,10 +94,13 @@ FocusScope {
       fileSearchAlways: current.fileSearchAlways !== false,
       clipboardSearch: current.clipboardSearch !== false,
       webSuggestions: current.webSuggestions === true,
+      currencyRates: current.currencyRates !== false,
       searchEngine: Web.hasEngine(current.searchEngine) ? current.searchEngine : "g",
+      defaultCurrency: Currency.defaultCode(current.defaultCurrency),
       learningEnabled: current.learningEnabled !== false
     }
     selected = ""
+    currencyInputValid = true
     singleStep = single
     step = at
     started = true
@@ -503,7 +509,7 @@ FocusScope {
 
   // Single-select menu in the tour's own chrome. Enter/Space/Down open,
   // Up/Down or j/k move, Enter picks, Esc closes without leaving the tour.
-  component EngineMenu: Rectangle {
+  component ChoiceMenu: Rectangle {
     id: menu
     property string value: ""
     property var options: []
@@ -985,10 +991,65 @@ FocusScope {
           title: "Web search engine"
           description: "Where the web search result opens when you press Enter, and which provider answers search suggestions."
 
-          trailing: EngineMenu {
+          trailing: ChoiceMenu {
             value: tour.draft.searchEngine || "g"
             options: Web.engineOptions()
             onChanged: function(v) { tour.set("searchEngine", v) }
+          }
+        }
+
+        SourceRow {
+          glyph: "󰑤"
+          title: "Currency rates"
+          description: "Fetch rates from Frankfurter for complete currency queries. On by default."
+          checked: tour.draft.currencyRates !== false
+          onToggled: tour.set("currencyRates", !tour.draft.currencyRates)
+        }
+
+        SourceRow {
+          glyph: "󰑤"
+          switchable: false
+          title: "Default currency"
+          description: tour.currencyInputValid
+            ? "Type a 3-letter currency code, or leave blank. Explicit targets take priority."
+            : "Enter a supported 3-letter currency code, or clear the field."
+
+          trailing: TextField {
+            id: currencyCodeField
+            implicitWidth: Style.space(200)
+            implicitHeight: Style.space(30)
+            text: tour.draft.defaultCurrency || ""
+            placeholderText: "None or USD"
+            maximumLength: 3
+            font.family: tour.fontFamily
+            font.pixelSize: Style.font.body
+            color: tour.foreground
+            selectByMouse: true
+            Keys.onPressed: function(event) {
+              if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
+                event.accepted = true
+                if (tour.currencyInputValid) tour.primary()
+              } else if (event.key === Qt.Key_Escape) {
+                event.accepted = true
+                tour.currencyInputValid = true
+                tour.draft = Object.assign({}, tour.draft)
+                tour.forceActiveFocus()
+              } else if (event.key === Qt.Key_Left && cursorPosition === 0) {
+                event.accepted = true
+              }
+            }
+            background: Rectangle {
+              radius: tour.rowRadius
+              color: currencyCodeField.activeFocus ? tour.fillHot : tour.fill
+              border.width: tour.hairline
+              border.color: !tour.currencyInputValid ? Color.urgent
+                : currencyCodeField.activeFocus ? tour.lineFocus : tour.line
+            }
+            onTextEdited: {
+              var valid = text === "" || Currency.defaultCode(text) !== ""
+              tour.currencyInputValid = valid
+              if (valid) tour.set("defaultCurrency", Currency.defaultCode(text))
+            }
           }
         }
 
