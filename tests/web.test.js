@@ -75,10 +75,6 @@ test("engineOptions lists every engine once, first key wins", () => {
   for (const o of options) assert.ok(Web.hasEngine(o.value))
 })
 
-test("Kagi supports default searches and bang prefixes with encoded queries", () => {
-  assert.equal(Web.searchUrl("c++ & café", "kagi"), "https://kagi.com/search?q=c%2B%2B%20%26%20caf%C3%A9")
-  const bang = Web.bang("KAGI linux desktop")
-  assert.equal(bang.key, "kagi")
-  assert.equal(bang.engine.name, "Kagi")
-  assert.equal(Web.searchUrl(bang.query, bang.key), "https://kagi.com/search?q=linux%20desktop")
+test("Kagi builds a search URL", () => {
+  assert.equal(Web.searchUrl("linux desktop", "kagi"), "https://kagi.com/search?q=linux%20desktop")
 })

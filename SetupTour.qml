@@ -983,7 +983,7 @@ FocusScope {
           glyph: "󰖟"
           switchable: false
           title: "Web search engine"
-          description: "Where the web search result opens when you press Enter."
+          description: "Where the web search result opens when you press Enter, and which provider answers search suggestions."
 
           trailing: EngineMenu {
             value: tour.draft.searchEngine || "g"

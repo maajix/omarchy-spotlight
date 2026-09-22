@@ -1632,6 +1632,8 @@ def cmd_suggest(argv):
     if len(argv) not in (1, 2):
         raise Denied("suggest takes a query and an optional engine")
     engine = argv[1] if len(argv) == 2 else "g"
+    if not re.fullmatch(r"[a-z]{1,8}", engine):
+        raise Denied("suggest engine must be a bang key")
     query = clamp_text(argv[0], SUGGEST_QUERY_CHARS).strip()
     if not query:
         emit({"suggestions": []})
