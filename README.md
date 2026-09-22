@@ -122,6 +122,7 @@ Bang prefixes send the query directly to a destination:
 
 ```text
 g       Google             ddg     DuckDuckGo
+kagi    Kagi
 yt      YouTube            gh      GitHub
 w       Wikipedia          wde     German Wikipedia
 aw      ArchWiki           aur     AUR
@@ -212,11 +213,14 @@ Spotlight has no telemetry, analytics, or background network service. Almost eve
 
 | Network access | When it happens |
 | --- | --- |
-| `suggestqueries.google.com` | While typing, only when `webSuggestions` is enabled |
+| `kagi.com/api/autosuggest` | While typing, only when `webSuggestions` is enabled and `searchEngine` is `kagi` |
+| `suggestqueries.google.com` | While typing, only when `webSuggestions` is enabled with any other search engine |
 | Your browser | After you activate a web search, URL, or calendar result |
 | tldr-pages (GitHub) | First lookup of a command not yet in `~/.cache/tldr`, via the `tldr` client |
 
 Live web suggestions are disabled by default. Normal web searches do not send the query anywhere until you activate the result.
+
+Choose **Kagi** in the setup tour's **Web search engine** menu (or set `"searchEngine": "kagi"`) to use Kagi for searches and optional suggestions. You can also type `kagi your query` for a single search. Suggestions use Kagi's [documented autocomplete endpoint](https://help.kagi.com/kagi/getting-started/setting-default.html); unavailable suggestions return no results without falling back to another provider.
 
 Learning is optional and stays in `~/.local/state/omarchy/spotlight-usage.json`. It stores bounded selection counts, timestamps, stable IDs, file paths, and normalized query prefixes. Disable it with `"learningEnabled": false`, or remove it with **Reset Spotlight Learning**.
 

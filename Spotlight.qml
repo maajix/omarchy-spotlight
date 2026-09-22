@@ -1751,7 +1751,7 @@ Item {
     onTriggered: {
       suggestProc.running = false
       suggestProc.forQuery = suggestDebounce.forQuery
-      suggestProc.command = root.helperArgv(["suggest", suggestDebounce.pattern])
+      suggestProc.command = root.helperArgv(["suggest", suggestDebounce.pattern, root.settings.searchEngine || "g"])
       suggestProc.running = true
     }
   }

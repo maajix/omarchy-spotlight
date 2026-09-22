@@ -1629,8 +1629,9 @@ def cmd_toggle_states():
 
 
 def cmd_suggest(argv):
-    if len(argv) != 1:
-        raise Denied("suggest takes one query")
+    if len(argv) not in (1, 2):
+        raise Denied("suggest takes a query and an optional engine")
+    engine = argv[1] if len(argv) == 2 else "g"
     query = clamp_text(argv[0], SUGGEST_QUERY_CHARS).strip()
     if not query:
         emit({"suggestions": []})
@@ -1646,8 +1647,9 @@ def cmd_suggest(argv):
         def redirect_request(self, req, fp, code, msg, headers, newurl):
             return None
 
-    url = ("https://suggestqueries.google.com/complete/search"
-           "?client=firefox&hl=en&q=" + quote(query, safe=""))
+    endpoint = ("https://kagi.com/api/autosuggest?q=" if engine == "kagi" else
+                "https://suggestqueries.google.com/complete/search?client=firefox&hl=en&q=")
+    url = endpoint + quote(query, safe="")
     try:
         request = Request(url, headers={"Accept": "application/json", "User-Agent": "Spotlight"})
         with build_opener(NoRedirect).open(request, timeout=SUGGEST_DEADLINE) as response:
