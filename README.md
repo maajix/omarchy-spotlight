@@ -220,8 +220,6 @@ Spotlight has no telemetry, analytics, or background network service. Almost eve
 
 Live web suggestions are disabled by default. Normal web searches do not send the query anywhere until you activate the result.
 
-Choose **Kagi** in the setup tour's **Web search engine** menu (or set `"searchEngine": "kagi"`) to use Kagi for searches and optional suggestions. You can also type `kagi your query` for a single search. Suggestions use Kagi's [documented autocomplete endpoint](https://help.kagi.com/kagi/getting-started/setting-default.html); unavailable suggestions return no results without falling back to another provider.
-
 Learning is optional and stays in `~/.local/state/omarchy/spotlight-usage.json`. It stores bounded selection counts, timestamps, stable IDs, file paths, and normalized query prefixes. Disable it with `"learningEnabled": false`, or remove it with **Reset Spotlight Learning**.
 
 The helper bounds file and subprocess output, validates persistent files and ownership, rejects symlinks, uses private atomic writes, applies subprocess deadlines, and cleans up process groups. Clipboard previews sent to the shell are bounded to one line; the full selected value goes directly from the helper to `wl-copy`.
