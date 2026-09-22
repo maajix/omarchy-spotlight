@@ -208,6 +208,40 @@ class HelperTests(unittest.TestCase):
                 HELPER.cmd_suggest(["firefox"])
         self.assertEqual(json.loads(buf.getvalue())["suggestions"], [])
 
+    def test_suggestions_route_to_a_fixed_provider(self):
+        for args, endpoint in (
+            (["c++ & café", "kagi"], "https://kagi.com/api/autosuggest?q="),
+            (["c++ & café"], "https://suggestqueries.google.com/complete/search?client=firefox&hl=en&q="),
+        ):
+            with self.subTest(args=args):
+                opener = mock.MagicMock()
+                opener.open.return_value.__enter__.return_value.read.return_value = json.dumps([args[0], ["first"]]).encode()
+                buf = io.StringIO()
+                with mock.patch("urllib.request.build_opener", return_value=opener):
+                    with contextlib.redirect_stdout(buf):
+                        HELPER.cmd_suggest(args)
+                self.assertEqual(opener.open.call_args.args[0].full_url, endpoint + "c%2B%2B%20%26%20caf%C3%A9")
+                self.assertEqual(json.loads(buf.getvalue())["suggestions"], ["first"])
+        for args in ([], ["q", "kagi", "extra"], ["q", "Kagi"], ["q", "https://example.com"],
+                     ["q", ""], ["q", "abcdefghi"], ["q", "kagi\n"]):
+            with self.subTest(args=args):
+                with self.assertRaises(HELPER.Denied):
+                    HELPER.cmd_suggest(args)
+
+    def test_suggestion_failures_do_not_fall_back_to_another_provider(self):
+        from urllib.error import URLError
+        for raw, error in ((b"not json", None), (None, URLError("boom"))):
+            with self.subTest(raw=raw, error=error):
+                opener = mock.MagicMock()
+                opener.open.side_effect = error
+                opener.open.return_value.__enter__.return_value.read.return_value = raw
+                buf = io.StringIO()
+                with mock.patch("urllib.request.build_opener", return_value=opener):
+                    with contextlib.redirect_stdout(buf):
+                        HELPER.cmd_suggest(["query", "kagi"])
+                self.assertEqual(json.loads(buf.getvalue())["suggestions"], [])
+                opener.open.assert_called_once()
+
     def test_settings_creation_is_private_and_never_overwrites(self):
         with tempfile.TemporaryDirectory() as directory:
             old_home = os.environ.get("HOME")

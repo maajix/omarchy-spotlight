@@ -71,5 +71,10 @@ test("engineOptions lists every engine once, first key wins", () => {
   const google = options.filter((o) => o.label === "Google")
   assert.deepEqual(google, [{ value: "g", label: "Google" }])
   assert.ok(options.some((o) => o.value === "ddg" && o.label === "DuckDuckGo"))
+  assert.ok(options.some((o) => o.value === "kagi" && o.label === "Kagi"))
   for (const o of options) assert.ok(Web.hasEngine(o.value))
+})
+
+test("Kagi builds a search URL", () => {
+  assert.equal(Web.searchUrl("linux desktop", "kagi"), "https://kagi.com/search?q=linux%20desktop")
 })

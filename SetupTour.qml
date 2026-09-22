@@ -974,7 +974,9 @@ FocusScope {
         SourceRow {
           glyph: "󱐋"
           title: "Search suggestions"
-          description: "Complete your query while you type. Every keystroke is sent to Google, so this is off by default."
+          description: "Complete your query while you type. Queries are sent to "
+            + (tour.draft.searchEngine === "kagi" ? "Kagi" : "Google")
+            + ", so this is off by default."
           checked: tour.draft.webSuggestions === true
           onToggled: tour.set("webSuggestions", !tour.draft.webSuggestions)
         }
@@ -983,7 +985,7 @@ FocusScope {
           glyph: "󰖟"
           switchable: false
           title: "Web search engine"
-          description: "Where the web search result opens when you press Enter."
+          description: "Where the web search result opens when you press Enter, and which provider answers search suggestions."
 
           trailing: ChoiceMenu {
             value: tour.draft.searchEngine || "g"
