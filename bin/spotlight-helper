@@ -1650,6 +1650,7 @@ def cmd_toggle_states():
 
 def fetch_json(url, cap, deadline):
     """Fetch bounded JSON without following redirects."""
+    from http.client import HTTPException
     from urllib.request import HTTPRedirectHandler, Request, build_opener
 
     class NoRedirect(HTTPRedirectHandler):
@@ -1657,11 +1658,20 @@ def fetch_json(url, cap, deadline):
             return None
 
     request = Request(url, headers={"Accept": "application/json", "User-Agent": "Spotlight"})
-    with build_opener(NoRedirect).open(request, timeout=deadline) as response:
-        raw = response.read(cap + 1)
+    try:
+        with build_opener(NoRedirect).open(request, timeout=deadline) as response:
+            raw = response.read(cap + 1)
+            charset = response.headers.get_content_charset()
+            if not isinstance(charset, str) or not charset:
+                charset = "utf-8"
+    except HTTPException as exc:
+        raise OSError("incomplete HTTP response") from exc
     if len(raw) > cap:
         raise Denied("network response too large")
-    return json.loads(raw.decode("utf-8"))
+    try:
+        return json.loads(raw.decode(charset))
+    except LookupError as exc:
+        raise ValueError("unknown response charset") from exc
 
 
 def cmd_suggest(argv):
@@ -1809,11 +1819,11 @@ def currency_fetch(base, quote):
 
 
 def cmd_currency_rate(argv):
-    from http.client import HTTPException
-
-    if len(argv) != 2 or any(not CURRENCY_CODE_RE.fullmatch(v) for v in argv):
+    cached_only = len(argv) == 3 and argv[0] == "--cached-only"
+    pair = argv[1:] if cached_only else argv
+    if len(pair) != 2 or any(not CURRENCY_CODE_RE.fullmatch(v) for v in pair):
         raise Denied("currency-rate takes two uppercase currency codes")
-    base, quote = argv
+    base, quote = pair
     now = time.time()
     if base == quote:
         emit({"base": base, "quote": quote, "rate": 1,
@@ -1824,9 +1834,15 @@ def cmd_currency_rate(argv):
     if cached and now - cached["fetchedAt"] < CURRENCY_TTL:
         emit(dict(cached, stale=False))
         return
+    if cached_only:
+        if cached:
+            emit(dict(cached, stale=True))
+        else:
+            raise Denied("currency rate unavailable")
+        return
     try:
         record = currency_fetch(base, quote)
-    except (OSError, ValueError, Denied, RecursionError, HTTPException):
+    except (OSError, ValueError, Denied, RecursionError):
         if cached:
             emit(dict(cached, stale=True))
         else:

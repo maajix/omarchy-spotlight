@@ -252,8 +252,9 @@ Spotlight has no telemetry, analytics, or background network service. Almost eve
 Live web suggestions are disabled by default. Normal web searches do not send the query anywhere until you activate the result.
 
 Currency lookup is automatic after a 250 ms typing pause when `currencyRates` is
-enabled (the default). Set `"currencyRates": false` to disable currency lookups.
-It requires no API key and does not fetch at startup or refresh in the background.
+enabled (the default). Set `"currencyRates": false` to disable network rate
+requests; same-currency conversions and cached rates still work. It requires no
+API key and does not fetch at startup or refresh in the background.
 Recognized currency conversions suppress web suggestions.
 
 Learning is optional and stays in `~/.local/state/omarchy/spotlight-usage.json`. It stores bounded selection counts, timestamps, stable IDs, file paths, and normalized query prefixes. Disable it with `"learningEnabled": false`, or remove it with **Reset Spotlight Learning**.

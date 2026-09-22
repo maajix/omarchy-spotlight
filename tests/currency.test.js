@@ -29,7 +29,8 @@ test("a chosen default expands shorthand while explicit targets take priority", 
     assert.equal(Currency.parse("23 USD", value), null)
   }
   assert.equal(Currency.defaultCode(" eur "), "EUR")
-  for (const text of ["2 cup", "5 all", "3 try", "23 usd", "23usd", "10 pen"]) {
+  for (const text of ["2 cup", "5 all", "3 try", "23 usd", "23usd", "10 pen",
+    "10 pound", "10 pounds"]) {
     assert.equal(Currency.parse(text, "EUR"), null, text)
   }
 })
@@ -157,15 +158,20 @@ function overlay() {
   const root = { opened: true, query: "", settings: { defaultCurrency: "", currencyRates: true },
     currencySession: Currency.createSession(), helperReply: JSON.parse,
     row: spec => spec, rebuild() { this.rebuilds++ }, rebuilds: 0,
+    rows: [], indexOfKey(key) { return this.rows.findIndex(row => row.key === key) },
+    bumpUsage() {}, dismiss() { this.opened = false; this.pendingCurrency = null },
+    copyCalls: [],
     stopCurrencyProcess() { this.stops++ }, stops: 0 }
   const timer = { running: false, stop() { this.running = false }, restart() { this.running = true } }
   const context = vm.createContext({ root, currencyDebounce: timer,
     suggestDebounce: { stop() {} }, suggestProc: { running: false }, Currency, Query, Units,
-    Util: { clamp: (v, min, max) => Math.min(max, Math.max(min, v)) },
+    Util: { clamp: (v, min, max) => Math.min(max, Math.max(min, v)),
+      execArgv: argv => root.copyCalls.push(argv) },
     Date: { now: () => NOW }, Calc: { evaluate: () => null },
     NaturalTime: { parseReminder: () => null, parseEvent: () => null },
     Web: { detectUrl: () => "", hasEngine: () => true }, Fuzzy: { MATCH_EXACT: 100 } })
-  for (const name of ["currencyQuery", "intentRows", "updateCurrency", "loadCurrency", "loadSettings", "loadSuggestions"]) {
+  for (const name of ["currencyQuery", "intentRows", "updateCurrency", "loadCurrency",
+    "loadSettings", "loadSuggestions", "activate"]) {
     const source = qml.match(new RegExp("  function " + name + "\\([^]*?\\n  }"))[0]
     vm.runInContext(source, context)
     root[name] = context[name]
@@ -195,7 +201,7 @@ test("settings arriving after query starts shorthand and suppress late suggestio
   assert.equal(root.intentRows(root.query, "unit").length, 0)
 })
 
-test("unchanged settings avoid a second rebuild; disabling rates stops lookups", () => {
+test("unchanged settings avoid a second rebuild; disabled rates use local conversions", () => {
   const { root, timer } = overlay()
   root.query = "23 USD"
   root.loadSettings(JSON.stringify({ ok: true, settings: { defaultCurrency: "EUR", currencyRates: true } }))
@@ -204,11 +210,15 @@ test("unchanged settings avoid a second rebuild; disabling rates stops lookups",
   assert.equal(root.currencyQuery("2 cup"), null)
   root.loadSettings(JSON.stringify({ ok: true, settings: { defaultCurrency: "EUR", currencyRates: true } }))
   assert.equal(root.rebuilds, 1)
+  const inFlight = Currency.begin(root.currencySession)
   root.loadSettings(JSON.stringify({ ok: true, settings: { defaultCurrency: "EUR", currencyRates: false } }))
   assert.equal(root.rebuilds, 2)
-  assert.equal(timer.running, false)
-  assert.equal(root.currencySession.target, null)
-  assert.equal(root.intentRows("23 USD", "unit").length, 0)
+  assert.equal(Currency.accept(root.currencySession, inFlight, reply(), NOW), false)
+  assert.ok(root.stops > 0)
+  assert.equal(timer.running, true)
+  assert.equal(root.currencySession.target.quote, "EUR")
+  assert.equal(root.intentRows("23 USD", "unit")[0].kind, "currency-wait")
+  assert.equal(root.intentRows("100 EUR to EUR", "unit")[0].kind, "copy")
 })
 
 test("shorthand works in conversion filters and retains numeric-only copy behavior", () => {
@@ -221,11 +231,30 @@ test("shorthand works in conversion filters and retains numeric-only copy behavi
   const row = root.intentRows("23 USD", "unit")[0]
   assert.equal(row.title, "21.2382 EUR")
   assert.equal(row.payload.text, "21.2382")
-  for (const query of ["23", "23 km", "web: 23 USD", "calc: 23 USD", "file: 23 USD"]) {
+  for (const query of ["23", "23 km", "web: 23 USD", "calc: 23 USD", "file: 23 USD",
+    "convert: f 100 USD"]) {
     root.query = query
     root.updateCurrency()
     assert.equal(root.currencySession.target, null, query)
   }
+  assert.equal(root.intentRows("f 100 USD", "unit").length, 0)
+})
+
+test("Enter on a loading rate copies the completed result", () => {
+  const { root, timer } = overlay()
+  root.query = "100 USD to EUR"
+  root.updateCurrency()
+  root.rows = root.intentRows(root.query, "unit")
+  assert.equal(root.rows[0].primaryLabel, "Copy when ready")
+  root.activate(0, false)
+  assert.equal(root.pendingCurrency.key, "USD/EUR")
+  assert.equal(root.copyCalls.length, 0)
+  root.rebuild = function() { this.rows = this.intentRows(this.query, "unit") }
+  const request = Currency.begin(root.currencySession)
+  timer.stop()
+  root.loadCurrency(JSON.stringify(reply()), request)
+  assert.deepEqual(Array.from(root.copyCalls[0]), ["wl-copy", "--", "92.34"])
+  assert.equal(root.opened, false)
 })
 
 test("QML filters, unit precedence, loading rows and copy payloads", () => {

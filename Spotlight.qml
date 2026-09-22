@@ -105,6 +105,7 @@ Item {
   property var tldrPage: null
   property var currencySession: Currency.createSession()
   property var currencyProcess: null
+  property var pendingCurrency: null
 
   // Destructive commands need a second Enter. Holds the row key that is armed.
   property string armedKey: ""
@@ -266,6 +267,7 @@ Item {
     root.opened = true
     root.tourActive = false
     root.armedKey = ""
+    root.pendingCurrency = null
     root.rows = []
     root.pinnedKey = ""
     input.text = initial
@@ -312,6 +314,7 @@ Item {
   // into: the debounces stop, the readers are terminated, and the rows they
   // were filling are dropped rather than left resident.
   function stopQueryWork() {
+    root.pendingCurrency = null
     Currency.cancel(root.currencySession)
     currencyDebounce.stop()
     root.stopCurrencyProcess()
@@ -435,6 +438,7 @@ Item {
   function dismiss() {
     root.opened = false
     root.armedKey = ""
+    root.pendingCurrency = null
     if (root.shell && typeof root.shell.hide === "function") root.shell.hide(root.pluginId)
   }
 
@@ -618,8 +622,14 @@ Item {
       root.readBinding()
     if (root.opened && (oldCurrency !== root.settings.defaultCurrency
         || oldRates !== root.settings.currencyRates)) {
+      root.pendingCurrency = null
+      if (oldRates !== root.settings.currencyRates) {
+        Currency.cancel(root.currencySession)
+        currencyDebounce.stop()
+        root.stopCurrencyProcess()
+      }
       root.updateCurrency()
-      if (root.currencyQuery(root.query)) {
+      if (root.currencyQuery(Query.parse(root.query).text)) {
         suggestDebounce.stop()
         suggestProc.running = false
         root.suggestionRows = []
@@ -629,9 +639,8 @@ Item {
     }
   }
 
-  function currencyQuery(q) {
-    return root.settings.currencyRates
-      ? Currency.parse(Query.parse(q).text, root.settings.defaultCurrency) : null
+  function currencyQuery(text) {
+    return Currency.parse(text, root.settings.defaultCurrency)
   }
 
   // ------------------------------------------------------------- providers
@@ -700,7 +709,7 @@ Item {
         title: converted ? converted.text : (waiting ? "Loading exchange rate…" : "Exchange rate unavailable"),
         subtitle: converted ? converted.detail : currency.base + " → " + currency.quote + " · Frankfurter",
         accessory: "Currency", section: "Conversions", icon: "󰑤", mono: true,
-        primaryLabel: converted ? "Copy result" : "",
+        primaryLabel: converted ? "Copy result" : waiting ? "Copy when ready" : "",
         payload: converted ? { text: converted.copy } : ({})
       }))
     }
@@ -1415,7 +1424,12 @@ Item {
 
   function activate(index, secondary) {
     var r = root.rows[index]
-    if (!r || r.kind === "noop" || r.kind === "currency-wait") return
+    if (!r || r.kind === "noop") return
+    if (r.kind === "currency-wait") {
+      if (!secondary && root.currencySession.target)
+        root.pendingCurrency = { query: root.query, key: root.currencySession.target.key }
+      return
+    }
 
     // One confirmation for the rows that end the session.
     if (r.confirm && !secondary && root.armedKey !== r.key) {
@@ -1593,7 +1607,7 @@ Item {
   // ------------------------------------------------------------- async data
   function loadSuggestions(raw, forQuery) {
     if (forQuery !== String(root.query || "").trim()) return
-    if (root.currencyQuery(forQuery)) return
+    if (root.currencyQuery(Query.parse(forQuery).text)) return
     var reply = root.helperReply(raw)
     var list = (reply && Array.isArray(reply.suggestions)) ? reply.suggestions : []
     var limit = Util.clamp(root.settings.maxSuggestions, 0, 8)
@@ -1711,7 +1725,7 @@ Item {
   function updateCurrency() {
     var parsed = Query.parse(root.query)
     var target = root.opened && (!parsed.filter || parsed.filter === "unit")
-      && !Units.convert(parsed.text) ? root.currencyQuery(root.query) : null
+      && !Units.convert(parsed.text) ? root.currencyQuery(parsed.text) : null
     var generation = root.currencySession.generation
     var lookup = Currency.select(root.currencySession, target, Date.now())
     if (generation !== root.currencySession.generation) root.stopCurrencyProcess()
@@ -1721,13 +1735,21 @@ Item {
 
   function loadCurrency(raw, request) {
     if (!root.opened) return
-    if (Currency.accept(root.currencySession, request, root.helperReply(raw), Date.now())) root.rebuild()
+    if (!Currency.accept(root.currencySession, request, root.helperReply(raw), Date.now())) return
+    root.rebuild()
+    var pending = root.pendingCurrency
+    if (!pending || pending.query !== root.query || !root.currencySession.target
+        || pending.key !== root.currencySession.target.key) return
+    root.pendingCurrency = null
+    var index = root.indexOfKey("currency")
+    if (index >= 0 && root.rows[index].kind === "copy") root.activate(index, false)
   }
 
   // Query changes fan out to the async providers on a short debounce so a
   // fast typist does not spawn a process per keystroke.
   onQueryChanged: {
     root.armedKey = ""
+    root.pendingCurrency = null
     // A new query invalidates a deliberate cursor: the row it named may not
     // even be in the list any more.
     root.pinnedKey = ""
@@ -1818,7 +1840,9 @@ Item {
       if (!root.opened) return
       var request = Currency.begin(root.currencySession)
       if (!request) return
-      var proc = currencyProcessComponent.createObject(root, { request: request })
+      var proc = currencyProcessComponent.createObject(root, {
+        request: request, cachedOnly: !root.settings.currencyRates
+      })
       if (!proc) {
         root.loadCurrency("", request)
         return
@@ -1835,8 +1859,11 @@ Item {
     Process {
       id: currencyRun
       required property var request
+      required property bool cachedOnly
       property bool delivered: false
-      command: root.helperArgv(["currency-rate", request.base, request.quote])
+      command: root.helperArgv(cachedOnly
+        ? ["currency-rate", "--cached-only", request.base, request.quote]
+        : ["currency-rate", request.base, request.quote])
       stdout: StdioCollector {
         waitForEnd: true
         onStreamFinished: {

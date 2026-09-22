@@ -245,6 +245,31 @@ class HelperTests(unittest.TestCase):
                 self.assertEqual(json.loads(buf.getvalue())["suggestions"], [])
                 opener.open.assert_called_once()
 
+    def test_suggestions_decode_declared_charset_and_handle_truncated_http(self):
+        from email.message import Message
+        from http.client import IncompleteRead
+
+        headers = Message()
+        headers["Content-Type"] = "text/javascript; charset=ISO-8859-1"
+        response = mock.MagicMock()
+        response.__enter__.return_value = response
+        response.headers = headers
+        response.read.return_value = '["café", ["café au lait"]]'.encode("iso-8859-1")
+        opener = mock.Mock()
+        opener.open.return_value = response
+        with mock.patch("urllib.request.build_opener", return_value=opener):
+            out = io.StringIO()
+            with contextlib.redirect_stdout(out):
+                HELPER.cmd_suggest(["café"])
+        self.assertEqual(json.loads(out.getvalue())["suggestions"], ["café au lait"])
+
+        response.read.side_effect = IncompleteRead(b"partial")
+        with mock.patch("urllib.request.build_opener", return_value=opener):
+            out = io.StringIO()
+            with contextlib.redirect_stdout(out):
+                HELPER.cmd_suggest(["café"])
+        self.assertEqual(json.loads(out.getvalue())["suggestions"], [])
+
     def test_settings_creation_is_private_and_never_overwrites(self):
         with tempfile.TemporaryDirectory() as directory:
             old_home = os.environ.get("HOME")
@@ -1778,6 +1803,25 @@ class CurrencyTests(unittest.TestCase):
         self.assertEqual(first["rate"], 0.9234)
         self.assertEqual(stat.S_IMODE(self.cache.stat().st_mode), 0o600)
         self.assertEqual(stat.S_IMODE(self.cache.parent.stat().st_mode), 0o700)
+
+    def test_cached_only_never_fetches_and_keeps_identity_conversions(self):
+        with mock.patch.object(HELPER, "currency_fetch") as fetch:
+            self.assertFalse(self.run_rate(["--cached-only", "USD", "EUR"])["ok"])
+            identity = self.run_rate(["--cached-only", "EUR", "EUR"])
+            self.assertEqual(identity["rate"], 1)
+            HELPER.currency_store(self.record)
+            cached = self.run_rate(["--cached-only", "USD", "EUR"])
+            self.assertEqual(cached["rate"], self.record["rate"])
+            fetch.assert_not_called()
+
+    def test_cached_only_returns_expired_rate_without_network(self):
+        expired = dict(self.record, fetchedAt=self.now - HELPER.CURRENCY_TTL)
+        HELPER.currency_store(expired)
+        with mock.patch.object(HELPER, "currency_fetch") as fetch:
+            cached = self.run_rate(["--cached-only", "USD", "EUR"])
+            fetch.assert_not_called()
+        self.assertTrue(cached["stale"])
+        self.assertEqual(cached["rate"], expired["rate"])
 
     def test_rate_date_uses_utc_even_when_local_date_is_yesterday(self):
         now = HELPER.datetime(2026, 9, 22, 0, 30, tzinfo=HELPER.timezone.utc).timestamp()

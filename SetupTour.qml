@@ -1025,21 +1025,30 @@ FocusScope {
             font.pixelSize: Style.font.body
             color: tour.foreground
             selectByMouse: true
+            Keys.onPressed: function(event) {
+              if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
+                event.accepted = true
+                if (tour.currencyInputValid) tour.primary()
+              } else if (event.key === Qt.Key_Escape) {
+                event.accepted = true
+                tour.currencyInputValid = true
+                tour.draft = Object.assign({}, tour.draft)
+                tour.forceActiveFocus()
+              } else if (event.key === Qt.Key_Left && cursorPosition === 0) {
+                event.accepted = true
+              }
+            }
             background: Rectangle {
               radius: tour.rowRadius
               color: currencyCodeField.activeFocus ? tour.fillHot : tour.fill
               border.width: tour.hairline
-              border.color: !tour.currencyInputValid ? "#e57373"
+              border.color: !tour.currencyInputValid ? Color.urgent
                 : currencyCodeField.activeFocus ? tour.lineFocus : tour.line
             }
             onTextEdited: {
               var valid = text === "" || Currency.defaultCode(text) !== ""
               tour.currencyInputValid = valid
               if (valid) tour.set("defaultCurrency", Currency.defaultCode(text))
-            }
-            onEditingFinished: {
-              if (!tour.currencyInputValid) text = tour.draft.defaultCurrency || ""
-              tour.currencyInputValid = true
             }
           }
         }
