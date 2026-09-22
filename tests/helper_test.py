@@ -228,6 +228,20 @@ class HelperTests(unittest.TestCase):
                 with self.assertRaises(HELPER.Denied):
                     HELPER.cmd_suggest(args)
 
+    def test_suggestion_failures_do_not_fall_back_to_another_provider(self):
+        from urllib.error import URLError
+        for raw, error in ((b"not json", None), (None, URLError("boom"))):
+            with self.subTest(raw=raw, error=error):
+                opener = mock.MagicMock()
+                opener.open.side_effect = error
+                opener.open.return_value.__enter__.return_value.read.return_value = raw
+                buf = io.StringIO()
+                with mock.patch("urllib.request.build_opener", return_value=opener):
+                    with contextlib.redirect_stdout(buf):
+                        HELPER.cmd_suggest(["query", "kagi"])
+                self.assertEqual(json.loads(buf.getvalue())["suggestions"], [])
+                opener.open.assert_called_once()
+
     def test_settings_creation_is_private_and_never_overwrites(self):
         with tempfile.TemporaryDirectory() as directory:
             old_home = os.environ.get("HOME")
