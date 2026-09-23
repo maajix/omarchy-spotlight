@@ -5,14 +5,7 @@ import qs.Commons
 import "lib/Web.js" as Web
 import "lib/Currency.js" as Currency
 
-// The settings surface, opened from the "Spotlight Settings" command. Pure UI,
-// the same contract the setup tour has: Spotlight.qml owns every read and
-// write, feeds the current settings in and persists whatever `changed` reports.
-//
-// Edits apply as they are made rather than behind a Save button, which is what
-// a switch already promises when it slides. `draft` is what the switches read:
-// the write is debounced and comes back through the helper's own clamping, so
-// binding the controls straight to `settings` would make them lag a click.
+// Spotlight.qml owns persistence; draft keeps controls responsive during writes.
 FocusScope {
   id: panel
 
@@ -27,13 +20,13 @@ FocusScope {
   property int surfaceRadius: 12
   property int rowRadius: 8
   property var settings: ({})
+  property var pendingSettings: ({})
+  property bool saveFailed: false
   property string currentBinding: ""
   property real availableHeight: Style.space(720)
 
   // owned
-  // Seeded with the documented defaults rather than an empty object: the rows
-  // are constructed before the panel is ever opened, and a stepper bound to a
-  // missing key is an undefined assigned to an int.
+  // Steppers need values before the first settings read.
   readonly property var defaults: ({
     fileSearch: true,
     fileSearchAlways: true,
@@ -50,8 +43,7 @@ FocusScope {
   })
   property var draft: panel.defaults
   property bool currencyValid: true
-  // Wiping the learning data is not undoable, so the button arms first, the
-  // way the destructive rows in the result list do.
+  // Reset requires two presses.
   property bool resetArmed: false
 
   // out
@@ -69,11 +61,8 @@ FocusScope {
 
   readonly property color dim: chrome.dim
 
-  // Seeded from the settings Spotlight last read, then owned here until the
-  // panel closes. Every key the GUI can change has to appear, including the
-  // numeric ones the tour never touches.
   function open() {
-    var s = panel.settings || {}
+    var s = Object.assign({}, panel.settings || {}, panel.pendingSettings)
     panel.draft = {
       fileSearch: s.fileSearch !== false,
       fileSearchAlways: s.fileSearchAlways !== false,
@@ -211,11 +200,18 @@ FocusScope {
 
         Text {
           Layout.fillWidth: true
-          text: "Changes save as you make them."
-          color: panel.dim
+          text: panel.saveFailed ? "Settings not saved. Check the file, then retry." : "Changes save as you make them."
+          color: panel.saveFailed ? Color.urgent : panel.dim
           font.family: panel.fontFamily
           font.pixelSize: Style.font.caption
         }
+      }
+
+      TextButton {
+        visible: panel.saveFailed
+        chrome: panel.chrome
+        text: "Retry save"
+        onClicked: panel.action("retry")
       }
 
       TextButton {
@@ -264,6 +260,7 @@ FocusScope {
             description: "When off, files only appear after you type f, f: or a path."
             checked: panel.draft.fileSearchAlways === true
             onToggled: panel.toggle("fileSearchAlways")
+            onActiveFocusChanged: if (activeFocus) panel.ensureVisible(filesRow)
           }
         }
 
@@ -285,6 +282,7 @@ FocusScope {
             description: "When off, clipboard entries only appear after you type c or c:."
             checked: panel.draft.clipboardSearchAlways === true
             onToggled: panel.toggle("clipboardSearchAlways")
+            onActiveFocusChanged: if (activeFocus) panel.ensureVisible(clipboardRow)
           }
         }
 
@@ -456,6 +454,7 @@ FocusScope {
         GroupLabel { text: "SHORTCUT" }
 
         SettingRow {
+          id: shortcutRow
           chrome: panel.chrome
           glyph: "󰌌"
           switchable: false
@@ -478,6 +477,7 @@ FocusScope {
               chrome: panel.chrome
               text: "Change"
               onClicked: panel.action("shortcut")
+              onActiveFocusChanged: if (activeFocus) panel.ensureVisible(shortcutRow)
             }
           }
         }
@@ -485,6 +485,7 @@ FocusScope {
         GroupLabel { text: "MAINTENANCE" }
 
         SettingRow {
+          id: maintenanceRow
           chrome: panel.chrome
           glyph: "󰑐"
           switchable: false
@@ -499,18 +500,21 @@ FocusScope {
               chrome: panel.chrome
               text: "Run setup tour"
               onClicked: panel.action("tour")
+              onActiveFocusChanged: if (activeFocus) panel.ensureVisible(maintenanceRow)
             }
 
             Pill {
               chrome: panel.chrome
               text: "Data folder"
               onClicked: panel.action("data")
+              onActiveFocusChanged: if (activeFocus) panel.ensureVisible(maintenanceRow)
             }
 
             Pill {
               chrome: panel.chrome
-              text: panel.resetArmed ? "Click again to reset" : "Reset learning data"
+              text: panel.resetArmed ? "Press again to reset" : "Reset learning data"
               selected: panel.resetArmed
+              onActiveFocusChanged: if (activeFocus) panel.ensureVisible(maintenanceRow)
               onClicked: {
                 if (!panel.resetArmed) { panel.resetArmed = true; return }
                 panel.resetArmed = false

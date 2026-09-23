@@ -17,9 +17,13 @@ Rectangle {
   implicitWidth: pillRow.implicitWidth + Style.space(24)
   implicitHeight: Style.space(32)
   radius: pill.chrome.rowRadius
-  color: pill.selected ? pill.chrome.accentFill : pill.hot ? pill.chrome.fillHot : pill.chrome.fill
+  activeFocusOnTab: true
+  Keys.onSpacePressed: pill.clicked()
+  Keys.onReturnPressed: pill.clicked()
+  Keys.onEnterPressed: pill.clicked()
+  color: pill.selected ? pill.chrome.accentFill : pill.activeFocus || pill.hot ? pill.chrome.fillHot : pill.chrome.fill
   border.width: pill.chrome.hairline
-  border.color: pill.selected ? pill.chrome.lineFocus : pill.hot ? pill.chrome.lineHot : pill.chrome.line
+  border.color: pill.activeFocus || pill.selected ? pill.chrome.lineFocus : pill.hot ? pill.chrome.lineHot : pill.chrome.line
 
   Behavior on color { ColorAnimation { duration: 100 } }
 
@@ -52,6 +56,6 @@ Rectangle {
     anchors.fill: parent
     hoverEnabled: true
     cursorShape: Qt.PointingHandCursor
-    onClicked: pill.clicked()
+    onClicked: { pill.forceActiveFocus(); pill.clicked() }
   }
 }

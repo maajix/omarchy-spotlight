@@ -156,6 +156,7 @@ test("session cache stays bounded, including failed requests", () => {
 function overlay() {
   const qml = fs.readFileSync(path.join(__dirname, "../Spotlight.qml"), "utf8")
   const root = { opened: true, query: "", settings: { defaultCurrency: "", currencyRates: true },
+    settingsWrites: { pending: {}, active: {} },
     currencySession: Currency.createSession(), helperReply: JSON.parse,
     row: spec => spec, rebuild() { this.rebuilds++ }, rebuilds: 0,
     rows: [], indexOfKey(key) { return this.rows.findIndex(row => row.key === key) },

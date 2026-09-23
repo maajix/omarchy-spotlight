@@ -18,6 +18,7 @@ import "lib/FileRank.js" as FileRank
 import "lib/Query.js" as Query
 import "lib/Ranking.js" as Ranking
 import "lib/Chord.js" as Chord
+import "lib/SettingsQueue.js" as SettingsQueue
 
 // Spotlight — a Raycast-shaped command palette for Omarchy.
 //
@@ -203,14 +204,10 @@ Item {
   property bool autoBindDone: false
 
   // ------------------------------------------------------- settings panel
-  // The settings GUI replaces the search card the same way the tour does, and
-  // keeps the same split: SettingsPanel.qml paints, this file writes.
+  // The panel paints settings; this file writes them.
   property bool settingsActive: false
-  // Keys the panel has changed but not yet written. A switch writes as it
-  // slides, so the patch is coalesced and the write debounced: a run of clicks
-  // ends in one helper call instead of one per switch, and the helper keeps
-  // its single-writer invariant.
-  property var pendingSettings: ({})
+  property var settingsWrites: SettingsQueue.create()
+  readonly property bool settingsSaveFailed: settingsWrites.failed
 
   // ------------------------------------------------------------- theme
   // Shares the [menu] surface tokens, so any theme that styles the Omarchy
@@ -507,14 +504,11 @@ Item {
     root.armedKey = ""
     root.tourActive = false
     root.settingsActive = true
-    // The shortcut row shows the live binding, and the panel can hand the
-    // shortcut step of the tour whatever it reads.
     root.readBinding()
     settingsPanel.open()
   }
 
-  // Leaving the panel by any route - Done, Esc, the overlay closing under it -
-  // must not drop an edit that is still sitting in the debounce.
+  // Flush edits on every exit.
   function leaveSettingsPanel() {
     if (!root.settingsActive) return
     root.settingsActive = false
@@ -527,33 +521,34 @@ Item {
   }
 
   function queueSetting(key, value) {
-    var next = Object.assign({}, root.pendingSettings)
-    next[key] = value
-    root.pendingSettings = next
+    var patch = ({})
+    patch[key] = value
+    root.queueSettings(patch)
+  }
+
+  function queueSettings(patch) {
+    root.settingsWrites = SettingsQueue.add(root.settingsWrites, patch)
     settingsWriteDebounce.restart()
   }
 
   function flushSettings() {
     settingsWriteDebounce.stop()
-    var patch = root.pendingSettings
-    if (Object.keys(patch).length === 0) return
-    // One writer at a time: the helper merges without a lock because this file
-    // guarantees it. A write still in flight simply pushes the next one back.
-    if (settingsWriteProc.running) {
-      settingsWriteDebounce.restart()
-      return
-    }
-    root.pendingSettings = ({})
-    root.writeSettings(patch)
-  }
-
-  function writeSettings(patch) {
-    settingsWriteProc.running = false
+    if (settingsWriteProc.running) return
+    var next = SettingsQueue.take(root.settingsWrites)
+    if (!next.patch) return
+    root.settingsWrites = next.state
     settingsWriteProc.stdinEnabled = true
     settingsWriteProc.command = root.helperArgv(["write-settings"])
     settingsWriteProc.running = true
-    settingsWriteProc.write(JSON.stringify(patch))
+    settingsWriteProc.write(JSON.stringify(next.patch))
     settingsWriteProc.stdinEnabled = false
+  }
+
+  function completeSettingsWrite(raw) {
+    var reply = root.helperReply(raw)
+    if (reply) root.loadSettings(raw)
+    root.settingsWrites = SettingsQueue.settle(root.settingsWrites, !!reply)
+    if (reply) root.flushSettings()
   }
 
   // ------------------------------------------------------------- tour
@@ -562,7 +557,8 @@ Item {
     root.armedKey = ""
     root.bindingState = ""
     root.tourActive = true
-    tour.start(root.settings, step, single)
+    tour.start(Object.assign({}, root.settings, root.settingsWrites.active,
+                             root.settingsWrites.pending), step, single)
     root.readBinding()
   }
 
@@ -570,7 +566,10 @@ Item {
   // looked at (single-step Done, or Esc on the shortcut chooser).
   function finishTour(patch) {
     root.tourActive = false
-    if (Object.keys(patch || {}).length > 0) root.writeSettings(patch)
+    if (Object.keys(patch || {}).length > 0) {
+      root.queueSettings(patch)
+      root.flushSettings()
+    }
     Qt.callLater(function() { input.forceActiveFocus() })
   }
 
@@ -702,6 +701,8 @@ Item {
     // First run: the flag usually lands after open() has already drawn the
     // search card, so the tour is raised from here as well.
     if (root.opened && !root.tourActive && !root.settingsActive
+        && root.settingsWrites.pending.setupCompleted !== true
+        && root.settingsWrites.active.setupCompleted !== true
         && root.settings.setupCompleted === false)
       root.resumeTour()
     // resumeTour has just read the binding when the launcher is open; only
@@ -2189,9 +2190,7 @@ Item {
     }
   }
 
-  // Coalesces a run of switch flips into one write. Short enough that closing
-  // the panel right after a click still lands inside it; leaveSettingsPanel
-  // flushes whatever it is still holding either way.
+  // Coalesce nearby edits; closing the panel flushes immediately.
   Timer {
     id: settingsWriteDebounce
     interval: 300
@@ -2200,9 +2199,10 @@ Item {
 
   Process {
     id: settingsWriteProc
+    onExited: root.flushSettings()
     stdout: StdioCollector {
       waitForEnd: true
-      onStreamFinished: if (root.helperReply(text)) root.loadSettings(text)
+      onStreamFinished: root.completeSettingsWrite(text)
     }
   }
 
@@ -2693,10 +2693,10 @@ Item {
         height: root.footerHeight
 
         Text {
-          text: "󰣇  Omarchy"
+          text: root.settingsSaveFailed ? "Settings not saved" : "󰣇  Omarchy"
           textFormat: Text.PlainText
-          color: root.foreground
-          opacity: 0.35
+          color: root.settingsSaveFailed ? Color.urgent : root.foreground
+          opacity: root.settingsSaveFailed ? 1 : 0.35
           font.family: root.fontFamily
           font.pixelSize: Style.font.caption
           anchors.left: parent.left
@@ -2784,10 +2784,10 @@ Item {
       surfaceRadius: root.cardRadius
       rowRadius: root.rowRadius
       settings: root.settings
+      pendingSettings: Object.assign({}, root.settingsWrites.active, root.settingsWrites.pending)
+      saveFailed: root.settingsSaveFailed
       currentBinding: root.tourBinding.current
-      // Half the screen, floored so a short display still shows a few rows.
-      // A settings list that runs edge to edge reads as a document; capping it
-      // keeps it a panel, and the rest scrolls.
+      // Cap the panel height; the remaining rows scroll.
       availableHeight: Math.min(panel.height - Style.space(96),
                                 Math.max(Style.space(420), panel.height * 0.5))
       onChanged: function(key, value) { root.queueSetting(key, value) }
@@ -2812,9 +2812,11 @@ Item {
           root.openDataFolder()
           break
         case "reset":
-          // Stays on the panel: the button has already asked twice, and the
-          // only thing left to show is that the data is gone.
           root.resetLearning()
+          break
+        case "retry":
+          root.settingsWrites = SettingsQueue.add(root.settingsWrites, {})
+          root.flushSettings()
           break
         }
       }

@@ -8,9 +8,14 @@ Text {
   property SpotlightPalette chrome: SpotlightPalette {}
   signal clicked()
 
-  color: tbMouse.containsMouse ? tb.chrome.foreground : tb.chrome.dim
+  activeFocusOnTab: true
+  Keys.onSpacePressed: tb.clicked()
+  Keys.onReturnPressed: tb.clicked()
+  Keys.onEnterPressed: tb.clicked()
+  color: tb.activeFocus || tbMouse.containsMouse ? tb.chrome.foreground : tb.chrome.dim
   font.family: tb.chrome.fontFamily
   font.pixelSize: Style.font.body
+  font.underline: tb.activeFocus
 
   MouseArea {
     id: tbMouse
@@ -18,6 +23,6 @@ Text {
     anchors.margins: -Style.space(6)
     hoverEnabled: true
     cursorShape: Qt.PointingHandCursor
-    onClicked: tb.clicked()
+    onClicked: { tb.forceActiveFocus(); tb.clicked() }
   }
 }
