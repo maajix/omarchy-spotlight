@@ -10,6 +10,8 @@ Rectangle {
   property SpotlightPalette chrome: SpotlightPalette {}
   property string value: ""
   property var options: []
+  // The list opens above the menu when it would run past this item's bottom edge.
+  property Item bounds: null
   signal changed(string value)
 
   readonly property bool hot: menuMouse.containsMouse
@@ -77,7 +79,9 @@ Rectangle {
 
   Popup {
     id: popup
-    y: menu.height + Style.space(4)
+    y: popup.visible && menu.bounds
+       && menu.mapToItem(menu.bounds, 0, menu.height + Style.space(4) + popup.height).y > menu.bounds.height
+       ? -popup.height - Style.space(4) : menu.height + Style.space(4)
     width: menu.width
     padding: Style.space(4)
     implicitHeight: Math.min(list.contentHeight + padding * 2, Style.space(240))

@@ -285,6 +285,7 @@ FocusScope {
 
           trailing: ChoiceMenu {
             chrome: panel.chrome
+            bounds: panel
             value: panel.draft.searchEngine
             options: Web.engineOptions()
             onChanged: function(v) { panel.set("searchEngine", v) }
