@@ -207,6 +207,8 @@ Item {
   // The panel paints settings; this file writes them.
   property bool settingsActive: false
   property var settingsWrites: SettingsQueue.create()
+  // Set by a saved write: a read started before it must not undo it.
+  property bool settingsReadStale: false
   readonly property bool settingsSaveFailed: settingsWrites.failed
 
   // ------------------------------------------------------------- theme
@@ -341,6 +343,7 @@ Item {
   }
 
   function refreshSettings() {
+    root.settingsReadStale = false
     settingsProc.running = false
     settingsProc.command = root.helperArgv(["read-settings"])
     settingsProc.running = true
@@ -554,7 +557,10 @@ Item {
 
   function completeSettingsWrite(raw) {
     var reply = root.helperReply(raw)
-    if (reply) root.loadSettings(raw)
+    if (reply) {
+      root.settingsReadStale = true
+      root.loadSettings(raw)
+    }
     root.settingsWrites = SettingsQueue.settle(root.settingsWrites, !!reply)
     if (reply) root.flushSettings()
   }
@@ -2090,7 +2096,7 @@ Item {
     id: settingsProc
     stdout: StdioCollector {
       waitForEnd: true
-      onStreamFinished: root.loadSettings(text)
+      onStreamFinished: if (!root.settingsReadStale) root.loadSettings(text)
     }
   }
 
@@ -2204,7 +2210,9 @@ Item {
 
   Process {
     id: settingsWriteProc
-    onExited: root.flushSettings()
+    // A helper that never started sends no reply, so nothing else settles it.
+    onRunningChanged: if (!running && Object.keys(root.settingsWrites.active).length)
+      root.settingsWrites = SettingsQueue.settle(root.settingsWrites, false)
     stdout: StdioCollector {
       waitForEnd: true
       onStreamFinished: root.completeSettingsWrite(text)
@@ -2820,7 +2828,7 @@ Item {
           root.resetLearning()
           break
         case "retry":
-          root.settingsWrites = SettingsQueue.add(root.settingsWrites, {})
+          root.settingsWrites = SettingsQueue.retry(root.settingsWrites)
           root.flushSettings()
           break
         }

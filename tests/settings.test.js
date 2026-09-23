@@ -29,6 +29,10 @@ test("a failed write stays pending until retry, with newer edits taking priority
   assert.equal(state.failed, true)
   assert.deepEqual(state.pending, { fileSearch: true, maxApps: 10 })
   assert.equal(Queue.take(state).patch, null)
-  state = Queue.add(state, {})
-  assert.deepEqual(Queue.take(state).patch, { fileSearch: true, maxApps: 10 })
+  // A later edit queues up but does not write over a file fixed by hand.
+  state = Queue.add(state, { maxResults: 30 })
+  assert.equal(state.failed, true)
+  assert.equal(Queue.take(state).patch, null)
+  state = Queue.retry(state)
+  assert.deepEqual(Queue.take(state).patch, { fileSearch: true, maxApps: 10, maxResults: 30 })
 })
