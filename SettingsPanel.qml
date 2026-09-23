@@ -3,7 +3,6 @@ import QtQuick.Controls
 import QtQuick.Layouts
 import qs.Commons
 import "lib/Web.js" as Web
-import "lib/Currency.js" as Currency
 
 // Spotlight.qml owns persistence; draft keeps controls responsive during writes.
 FocusScope {
@@ -26,27 +25,14 @@ FocusScope {
   property real availableHeight: Style.space(720)
 
   // owned
-  // Steppers need values before the first settings read.
-  readonly property var defaults: ({
-    fileSearch: true,
-    fileSearchAlways: true,
-    clipboardSearch: true,
-    clipboardSearchAlways: true,
-    webSuggestions: false,
-    currencyRates: true,
-    searchEngine: "g",
-    defaultCurrency: "",
-    learningEnabled: true,
-    maxResults: 20,
-    maxApps: 8,
-    maxSuggestions: 4
-  })
-  property var draft: panel.defaults
+  // Spotlight.qml normalizes settings; queued patches only hold values these
+  // controls or the tour produced.
+  property var draft: panel.settings
   // Reset requires two presses.
   property bool resetArmed: false
 
   // out
-  signal changed(string key, var value)
+  signal changed(var patch)
   signal action(string name)
   signal closed()
 
@@ -61,23 +47,7 @@ FocusScope {
   readonly property color dim: chrome.dim
 
   function open() {
-    var s = Object.assign({}, panel.settings || {}, panel.pendingSettings)
-    panel.draft = {
-      fileSearch: s.fileSearch !== false,
-      fileSearchAlways: s.fileSearchAlways !== false,
-      clipboardSearch: s.clipboardSearch !== false,
-      clipboardSearchAlways: s.clipboardSearchAlways !== false,
-      webSuggestions: s.webSuggestions === true,
-      currencyRates: s.currencyRates !== false,
-      searchEngine: Web.hasEngine(s.searchEngine) ? s.searchEngine : "g",
-      defaultCurrency: Currency.defaultCode(s.defaultCurrency),
-      learningEnabled: s.learningEnabled !== false,
-      // Util.clamp falls back to the minimum, not to the default, so a key
-      // that never made it into the read keeps its documented default here.
-      maxResults: Util.clamp(s.maxResults === undefined ? panel.defaults.maxResults : s.maxResults, 8, 50),
-      maxApps: Util.clamp(s.maxApps === undefined ? panel.defaults.maxApps : s.maxApps, 3, 24),
-      maxSuggestions: Util.clamp(s.maxSuggestions === undefined ? panel.defaults.maxSuggestions : s.maxSuggestions, 0, 8)
-    }
+    panel.draft = Object.assign({}, panel.settings, panel.pendingSettings)
     currencyCodeField.revert()
     panel.resetArmed = false
     // After the layout has settled: the rows are still being sized when open()
@@ -87,10 +57,10 @@ FocusScope {
   }
 
   function set(key, value) {
-    var next = Object.assign({}, panel.draft)
-    next[key] = value
-    panel.draft = next
-    panel.changed(key, value)
+    var patch = ({})
+    patch[key] = value
+    panel.draft = Object.assign({}, panel.draft, patch)
+    panel.changed(patch)
   }
 
   function toggle(key) { panel.set(key, panel.draft[key] !== true) }
@@ -101,8 +71,15 @@ FocusScope {
     })
   }
 
-  // Tab walks the rows; a row below the fold has to bring itself into view or
-  // the focus ring lands somewhere the user cannot see.
+  // Tab walks the rows; a row below the fold has to come into view or the focus
+  // ring lands somewhere the user cannot see. Whatever holds focus inside a row
+  // scrolls that whole row in.
+  readonly property Item focusedItem: Window.activeFocusItem
+  onFocusedItemChanged: {
+    for (var item = panel.focusedItem; item; item = item.parent)
+      if (item.parent === content) { panel.ensureVisible(item); break }
+  }
+
   function ensureVisible(item) {
     if (!item || !flick.visible) return
     var top = item.mapToItem(content, 0, 0).y
@@ -127,8 +104,6 @@ FocusScope {
   Keys.onPressed: function(event) {
     if (event.key === Qt.Key_Escape) { panel.finish(); event.accepted = true }
   }
-
-  onVisibleChanged: if (!visible) panel.resetArmed = false
 
   // ------------------------------------------------------------- pieces
   component GroupLabel: Text {
@@ -239,64 +214,53 @@ FocusScope {
         GroupLabel { text: "SEARCH" }
 
         SettingRow {
-          id: filesRow
           chrome: panel.chrome
           glyph: "󰉋"
           title: "Files and folders"
           description: "Find files in your home directory by name."
           checked: panel.draft.fileSearch === true
           onToggled: panel.toggle("fileSearch")
-          onActiveFocusChanged: if (activeFocus) panel.ensureVisible(filesRow)
 
           SubToggle {
             chrome: panel.chrome
             enabled: panel.draft.fileSearch === true
-            opacity: enabled ? 1 : 0.45
             text: "Include files in every search"
             description: "When off, files only appear after you type f, f: or a path."
             checked: panel.draft.fileSearchAlways === true
             onToggled: panel.toggle("fileSearchAlways")
-            onActiveFocusChanged: if (activeFocus) panel.ensureVisible(filesRow)
           }
         }
 
         SettingRow {
-          id: clipboardRow
           chrome: panel.chrome
           glyph: "󰅌"
           title: "Clipboard history"
           description: "Search what you copied earlier and copy it again with Enter."
           checked: panel.draft.clipboardSearch === true
           onToggled: panel.toggle("clipboardSearch")
-          onActiveFocusChanged: if (activeFocus) panel.ensureVisible(clipboardRow)
 
           SubToggle {
             chrome: panel.chrome
             enabled: panel.draft.clipboardSearch === true
-            opacity: enabled ? 1 : 0.45
             text: "Include clipboard in every search"
             description: "When off, clipboard entries only appear after you type c or c:."
             checked: panel.draft.clipboardSearchAlways === true
             onToggled: panel.toggle("clipboardSearchAlways")
-            onActiveFocusChanged: if (activeFocus) panel.ensureVisible(clipboardRow)
           }
         }
 
         SettingRow {
-          id: learningRow
           chrome: panel.chrome
           glyph: "󰧐"
           title: "Learn from your choices"
           description: "Results you pick often move up over time. Nothing leaves this machine."
           checked: panel.draft.learningEnabled === true
           onToggled: panel.toggle("learningEnabled")
-          onActiveFocusChanged: if (activeFocus) panel.ensureVisible(learningRow)
         }
 
         GroupLabel { text: "WEB" }
 
         SettingRow {
-          id: suggestionsRow
           chrome: panel.chrome
           glyph: "󱐋"
           title: "Search suggestions"
@@ -305,11 +269,9 @@ FocusScope {
             + ", so this is off by default."
           checked: panel.draft.webSuggestions === true
           onToggled: panel.toggle("webSuggestions")
-          onActiveFocusChanged: if (activeFocus) panel.ensureVisible(suggestionsRow)
         }
 
         SettingRow {
-          id: engineRow
           chrome: panel.chrome
           glyph: "󰖟"
           switchable: false
@@ -318,28 +280,24 @@ FocusScope {
 
           trailing: ChoiceMenu {
             chrome: panel.chrome
-            value: panel.draft.searchEngine || "g"
+            value: panel.draft.searchEngine
             options: Web.engineOptions()
             onChanged: function(v) { panel.set("searchEngine", v) }
-            onActiveFocusChanged: if (activeFocus) panel.ensureVisible(engineRow)
           }
         }
 
         GroupLabel { text: "CURRENCY" }
 
         SettingRow {
-          id: currencyRatesRow
           chrome: panel.chrome
           glyph: "󰑤"
           title: "Currency rates"
           description: "Fetch rates from Frankfurter for complete currency queries. On by default."
           checked: panel.draft.currencyRates !== false
           onToggled: panel.toggle("currencyRates")
-          onActiveFocusChanged: if (activeFocus) panel.ensureVisible(currencyRatesRow)
         }
 
         SettingRow {
-          id: currencyCodeRow
           chrome: panel.chrome
           glyph: "󰠓"
           switchable: false
@@ -354,14 +312,12 @@ FocusScope {
             implicitWidth: Style.space(160)
             code: panel.draft.defaultCurrency || ""
             onPicked: function(code) { panel.set("defaultCurrency", code) }
-            onActiveFocusChanged: if (activeFocus) panel.ensureVisible(currencyCodeRow)
           }
         }
 
         GroupLabel { text: "RESULTS" }
 
         SettingRow {
-          id: maxResultsRow
           chrome: panel.chrome
           glyph: "󰒺"
           switchable: false
@@ -374,12 +330,10 @@ FocusScope {
             from: 8
             to: 50
             onChanged: function(v) { panel.set("maxResults", v) }
-            onActiveFocusChanged: if (activeFocus) panel.ensureVisible(maxResultsRow)
           }
         }
 
         SettingRow {
-          id: maxAppsRow
           chrome: panel.chrome
           glyph: "󰀻"
           switchable: false
@@ -392,12 +346,10 @@ FocusScope {
             from: 3
             to: 24
             onChanged: function(v) { panel.set("maxApps", v) }
-            onActiveFocusChanged: if (activeFocus) panel.ensureVisible(maxAppsRow)
           }
         }
 
         SettingRow {
-          id: maxSuggestionsRow
           chrome: panel.chrome
           glyph: "󱐋"
           switchable: false
@@ -410,14 +362,12 @@ FocusScope {
             from: 0
             to: 8
             onChanged: function(v) { panel.set("maxSuggestions", v) }
-            onActiveFocusChanged: if (activeFocus) panel.ensureVisible(maxSuggestionsRow)
           }
         }
 
         GroupLabel { text: "SHORTCUT" }
 
         SettingRow {
-          id: shortcutRow
           chrome: panel.chrome
           glyph: "󰌌"
           switchable: false
@@ -440,7 +390,6 @@ FocusScope {
               chrome: panel.chrome
               text: "Change"
               onClicked: panel.action("shortcut")
-              onActiveFocusChanged: if (activeFocus) panel.ensureVisible(shortcutRow)
             }
           }
         }
@@ -448,7 +397,6 @@ FocusScope {
         GroupLabel { text: "MAINTENANCE" }
 
         SettingRow {
-          id: maintenanceRow
           chrome: panel.chrome
           glyph: "󰑐"
           switchable: false
@@ -463,21 +411,18 @@ FocusScope {
               chrome: panel.chrome
               text: "Run setup tour"
               onClicked: panel.action("tour")
-              onActiveFocusChanged: if (activeFocus) panel.ensureVisible(maintenanceRow)
             }
 
             Pill {
               chrome: panel.chrome
               text: "Data folder"
               onClicked: panel.action("data")
-              onActiveFocusChanged: if (activeFocus) panel.ensureVisible(maintenanceRow)
             }
 
             Pill {
               chrome: panel.chrome
               text: panel.resetArmed ? "Press again to reset" : "Reset learning data"
               selected: panel.resetArmed
-              onActiveFocusChanged: if (activeFocus) panel.ensureVisible(maintenanceRow)
               onClicked: {
                 if (!panel.resetArmed) { panel.resetArmed = true; return }
                 panel.resetArmed = false

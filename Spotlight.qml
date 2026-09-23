@@ -544,12 +544,6 @@ Item {
     if (root.opened) Qt.callLater(function() { input.forceActiveFocus() })
   }
 
-  function queueSetting(key, value) {
-    var patch = ({})
-    patch[key] = value
-    root.queueSettings(patch)
-  }
-
   function queueSettings(patch) {
     root.settingsWrites = SettingsQueue.add(root.settingsWrites, patch)
     settingsWriteDebounce.restart()
@@ -2820,12 +2814,11 @@ Item {
       // Cap the panel height; the remaining rows scroll.
       availableHeight: Math.min(panel.height - Style.space(96),
                                 Math.max(Style.space(420), panel.height * 0.5))
-      onChanged: function(key, value) { root.queueSetting(key, value) }
+      onChanged: function(patch) { root.queueSettings(patch) }
       onClosed: root.closeSettingsPanel()
       onAction: function(name) {
         switch (name) {
         case "edit":
-          root.leaveSettingsPanel()
           root.editSettingsFile()
           break
         case "shortcut":
@@ -2837,7 +2830,6 @@ Item {
           root.showTour(0, false)
           break
         case "data":
-          root.leaveSettingsPanel()
           root.dismiss()
           root.openDataFolder()
           break

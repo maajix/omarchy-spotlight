@@ -15,6 +15,7 @@ Item {
   Layout.fillWidth: true
   implicitHeight: subRow.implicitHeight
   activeFocusOnTab: enabled
+  opacity: enabled ? 1 : 0.45
   Keys.onSpacePressed: sub.toggled()
 
   RowLayout {

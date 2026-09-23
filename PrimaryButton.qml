@@ -25,7 +25,7 @@ Rectangle {
   Text {
     id: pbLabel
     anchors.centerIn: parent
-    text: pb.glyph === "" ? pb.text : pb.text + "  " + pb.glyph
+    text: pb.text + "  " + pb.glyph
     color: pb.chrome.onAccent
     font.family: pb.chrome.fontFamily
     font.pixelSize: Style.font.subtitle

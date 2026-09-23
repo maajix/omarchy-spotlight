@@ -87,13 +87,6 @@ FocusScope {
     rowRadius: tour.rowRadius
   }
   readonly property color dim: chrome.dim
-  readonly property color line: chrome.line
-  readonly property color lineHot: chrome.lineHot
-  readonly property color lineFocus: chrome.lineFocus
-  readonly property color fill: chrome.fill
-  readonly property color fillHot: chrome.fillHot
-  readonly property color accentFill: chrome.accentFill
-  readonly property color onAccent: chrome.onAccent
 
   function start(current, at, single) {
     draft = {
@@ -266,9 +259,8 @@ FocusScope {
       Item { Layout.fillWidth: true }
 
       TextButton {
-
-        chrome: tour.chrome
         id: skipBtn
+        chrome: tour.chrome
         text: "Skip tour"
         opacity: tour.step < 3 ? 1 : 0
         enabled: tour.step < 3
@@ -282,7 +274,6 @@ FocusScope {
       spacing: Style.space(6)
 
       IconTile {
-
         chrome: tour.chrome
         visible: tour.step === 0 && !tour.singleStep
         Layout.alignment: Qt.AlignHCenter
@@ -348,7 +339,6 @@ FocusScope {
         spacing: Style.space(14)
 
         ChordCaps {
-
           chrome: tour.chrome
           Layout.alignment: Qt.AlignHCenter
           Layout.topMargin: Style.space(4)
@@ -372,9 +362,9 @@ FocusScope {
           radius: tour.rowRadius
           activeFocusOnTab: true
           readonly property bool hot: recMouse.containsMouse
-          color: activeFocus || hot ? tour.fillHot : tour.fill
+          color: activeFocus || hot ? tour.chrome.fillHot : tour.chrome.fill
           border.width: tour.hairline
-          border.color: activeFocus ? tour.lineFocus : hot ? tour.lineHot : tour.line
+          border.color: activeFocus ? tour.chrome.lineFocus : hot ? tour.chrome.lineHot : tour.chrome.line
 
           Behavior on color { ColorAnimation { duration: 100 } }
 
@@ -442,7 +432,6 @@ FocusScope {
             }
 
             TextButton {
-
               chrome: tour.chrome
               visible: tour.selected !== ""
               text: "Clear"
@@ -469,7 +458,6 @@ FocusScope {
             model: tour.presets
 
             Pill {
-
               chrome: tour.chrome
               required property string modelData
               text: modelData
@@ -496,9 +484,8 @@ FocusScope {
           }
 
           Pill {
-
-            chrome: tour.chrome
             id: undoBtn
+            chrome: tour.chrome
             visible: tour.bindingManaged && tour.bindingState !== "busy"
             text: tour.bindingState === "ok" || tour.previousBinding === "" ? "Undo" : "Restore " + tour.previousBinding
             onClicked: tour.revertRequested()
@@ -511,7 +498,6 @@ FocusScope {
         spacing: Style.space(10)
 
         SettingRow {
-
           chrome: tour.chrome
           glyph: "󰉋"
           title: "Files and folders"
@@ -520,10 +506,8 @@ FocusScope {
           onToggled: tour.set("fileSearch", !tour.draft.fileSearch)
 
           SubToggle {
-
             chrome: tour.chrome
             enabled: tour.draft.fileSearch === true
-            opacity: enabled ? 1 : 0.45
             text: "Include files in every search"
             description: "When off, files only appear after you type f, f: or a path."
             checked: tour.draft.fileSearchAlways === true
@@ -532,7 +516,6 @@ FocusScope {
         }
 
         SettingRow {
-
           chrome: tour.chrome
           glyph: "󰅌"
           title: "Clipboard history"
@@ -542,7 +525,6 @@ FocusScope {
         }
 
         SettingRow {
-
           chrome: tour.chrome
           glyph: "󱐋"
           title: "Search suggestions"
@@ -554,7 +536,6 @@ FocusScope {
         }
 
         SettingRow {
-
           chrome: tour.chrome
           glyph: "󰖟"
           switchable: false
@@ -570,7 +551,6 @@ FocusScope {
         }
 
         SettingRow {
-
           chrome: tour.chrome
           glyph: "󰑤"
           title: "Currency rates"
@@ -580,7 +560,6 @@ FocusScope {
         }
 
         SettingRow {
-
           chrome: tour.chrome
           glyph: "󰑤"
           switchable: false
@@ -599,7 +578,6 @@ FocusScope {
         }
 
         SettingRow {
-
           chrome: tour.chrome
           glyph: "󰧐"
           title: "Learn from your choices"
@@ -624,7 +602,6 @@ FocusScope {
         spacing: Style.space(14)
 
         ChordCaps {
-
           chrome: tour.chrome
           Layout.alignment: Qt.AlignHCenter
           Layout.topMargin: Style.space(4)
@@ -686,7 +663,6 @@ FocusScope {
       spacing: Style.space(12)
 
       Pill {
-
         chrome: tour.chrome
         visible: !tour.singleStep && tour.step > 0
         text: "󰁍  Back"
@@ -696,7 +672,6 @@ FocusScope {
       Item { Layout.fillWidth: true }
 
       PrimaryButton {
-
         chrome: tour.chrome
         text: tour.primaryText
         glyph: tour.step === 3 || tour.singleStep ? "󰄬" : "󰁔"
