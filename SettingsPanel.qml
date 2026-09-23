@@ -27,7 +27,7 @@ FocusScope {
   // owned
   // Spotlight.qml normalizes settings; queued patches only hold values these
   // controls or the tour produced.
-  property var draft: panel.settings
+  readonly property var draft: Object.assign({}, panel.settings, panel.pendingSettings)
   // Reset requires two presses.
   property bool resetArmed: false
   // Set by Spotlight.qml once the helper confirms the reset.
@@ -49,7 +49,6 @@ FocusScope {
   readonly property color dim: chrome.dim
 
   function open() {
-    panel.draft = Object.assign({}, panel.settings, panel.pendingSettings)
     currencyCodeField.revert()
     panel.resetArmed = false
     panel.resetDone = false
@@ -62,7 +61,6 @@ FocusScope {
   function set(key, value) {
     var patch = ({})
     patch[key] = value
-    panel.draft = Object.assign({}, panel.draft, patch)
     panel.changed(patch)
   }
 
