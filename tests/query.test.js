@@ -76,10 +76,11 @@ test("default selection favors matching apps, then unique views", () => {
   assert.equal(Query.firstSelectableIndex([{ kind: "noop" }, view("wifi")], "wifi"), 1)
 })
 
-test("a full name picks its exact match: an app first, then the view", () => {
+test("a full name picks its exact match: the view first, then an app", () => {
   const view = (name) => ({ kind: "view", resultType: "view", title: `${name}:` })
   const app = (name) => ({ kind: "app", resultType: "app", title: name })
-  assert.equal(Query.firstSelectableIndex([view("docker"), app("Docker")], "docker"), 1)
+  assert.equal(Query.firstSelectableIndex([view("docker"), app("Docker")], "docker"), 0)
+  assert.equal(Query.firstSelectableIndex([view("docker"), app("Dockerfiles")], "docker"), 0)
   assert.equal(Query.firstSelectableIndex([view("docker"), app("Docker Desktop")], "docker"), 0)
   assert.equal(Query.firstSelectableIndex([view("bluetooth"), app("Bluetooth Manager")], "bluetooth"), 0)
   assert.equal(Query.firstSelectableIndex([view("audio"), app("Audio Recorder")], "Audio"), 0)
