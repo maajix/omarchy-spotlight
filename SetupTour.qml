@@ -614,7 +614,7 @@ FocusScope {
         Text {
           Layout.fillWidth: true
           text: tour.currentBinding !== "" ? "opens Spotlight from anywhere"
-                                           : "Set one any time with Change Spotlight Shortcut."
+                                           : "Set one any time in Spotlight Settings."
           color: tour.dim
           font.family: tour.fontFamily
           font.pixelSize: Style.font.caption

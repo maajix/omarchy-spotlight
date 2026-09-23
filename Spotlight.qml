@@ -1552,7 +1552,7 @@ Item {
       return
     }
     root.armedKey = ""
-    if (!secondary && r.kind !== "spotlight-reset") root.bumpUsage(r)
+    if (!secondary) root.bumpUsage(r)
 
     switch (r.kind) {
     case "app":
@@ -1653,18 +1653,9 @@ Item {
       root.showTour(0, false)
       break
 
-    case "spotlight-shortcut":
-      root.showTour(1, true)
-      break
-
     case "spotlight-data":
       root.dismiss()
       root.openDataFolder()
-      break
-
-    case "spotlight-reset":
-      root.dismiss()
-      root.resetLearning()
       break
     }
   }
