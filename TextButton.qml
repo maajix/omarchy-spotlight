@@ -23,6 +23,6 @@ Text {
     anchors.margins: -Style.space(6)
     hoverEnabled: true
     cursorShape: Qt.PointingHandCursor
-    onClicked: { tb.forceActiveFocus(); tb.clicked() }
+    onClicked: tb.clicked()
   }
 }

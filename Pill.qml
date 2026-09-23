@@ -56,6 +56,6 @@ Rectangle {
     anchors.fill: parent
     hoverEnabled: true
     cursorShape: Qt.PointingHandCursor
-    onClicked: { pill.forceActiveFocus(); pill.clicked() }
+    onClicked: pill.clicked()
   }
 }

@@ -38,6 +38,6 @@ Rectangle {
     hoverEnabled: true
     enabled: pb.enabled
     cursorShape: Qt.PointingHandCursor
-    onClicked: { pb.forceActiveFocus(); pb.clicked() }
+    onClicked: pb.clicked()
   }
 }

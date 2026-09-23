@@ -448,7 +448,8 @@ FocusScope {
               chrome: tour.chrome
               visible: tour.selected !== ""
               text: "Clear"
-              onClicked: tour.selected = ""
+              // Clear hides itself, so it must not keep the focus it may hold.
+              onClicked: { tour.selected = ""; recorder.forceActiveFocus() }
             }
           }
         }
