@@ -1,5 +1,4 @@
 import QtQuick
-import QtQuick.Controls
 import QtQuick.Layouts
 import qs.Commons
 import "lib/Chord.js" as Chord
@@ -39,7 +38,6 @@ FocusScope {
   // at the same step after a focus loss instead of restarting it.
   property bool started: false
   property var draft: ({})
-  property bool currencyInputValid: true
   property string selected: ""
 
   // out
@@ -54,7 +52,7 @@ FocusScope {
   readonly property var subtitles: [
     "One search box for apps, files, your clipboard, quick calculations and the web. Four short steps, skip any of them.",
     "This key combination opens Spotlight from anywhere. Pick a preset or press your own.",
-    "You can change all of this later under Edit Spotlight Settings.",
+    "You can change all of this later under Spotlight Settings.",
     "Open Spotlight and start typing. A few things to try:"
   ]
   readonly property bool sameAsCurrent: selected !== "" && selected === currentBinding
@@ -70,7 +68,7 @@ FocusScope {
   readonly property string primaryText: step === 0 ? "Get started"
       : step === 1 ? (selected === "" ? (singleStep ? "Done" : "Continue") : occupied ? "Replace and set" : "Set shortcut")
       : step === 2 ? "Continue" : "Finish"
-  readonly property bool primaryEnabled: step === 2 ? currencyInputValid
+  readonly property bool primaryEnabled: step === 2 ? currencyCodeField.valid
       : step !== 1 || (!sameAsCurrent && bindingState !== "busy")
   readonly property string statusText: bindingState === "busy" ? "Saving..."
       : bindingState === "ok" ? "Shortcut set to " + currentBinding
@@ -79,14 +77,16 @@ FocusScope {
       : bindingState === "error" ? "Could not write the shortcut. Edit ~/.config/hypr/bindings.lua by hand." : ""
 
   // palette
-  readonly property color dim: Util.alpha(foreground, 0.6)
-  readonly property color line: Util.alpha(foreground, 0.1)
-  readonly property color lineHot: Util.alpha(foreground, 0.22)
-  readonly property color lineFocus: Util.alpha(accent, 0.7)
-  readonly property color fill: Util.alpha(foreground, 0.04)
-  readonly property color fillHot: Util.alpha(foreground, 0.08)
-  readonly property color accentFill: Util.alpha(accent, 0.14)
-  readonly property color onAccent: Color.background
+  // The shared pieces (SettingRow, ChoiceMenu, Pill, ...) read their colours
+  // from this one object, and so does the tour's own chrome.
+  readonly property SpotlightPalette chrome: SpotlightPalette {
+    foreground: tour.foreground
+    accent: tour.accent
+    fontFamily: tour.fontFamily
+    hairline: tour.hairline
+    rowRadius: tour.rowRadius
+  }
+  readonly property color dim: chrome.dim
 
   function start(current, at, single) {
     draft = {
@@ -100,7 +100,7 @@ FocusScope {
       learningEnabled: current.learningEnabled !== false
     }
     selected = ""
-    currencyInputValid = true
+    currencyCodeField.revert()
     singleStep = single
     step = at
     started = true
@@ -136,12 +136,13 @@ FocusScope {
   }
 
   // The recorder takes the keyboard on the shortcut step; everywhere else
-  // the scope itself does, so Enter/Esc/Left work without a focused control.
+  // focusHome does, so Enter/Esc/Left work without a focused control. The
+  // scope itself would hand focus back to a control from an earlier step.
   function focusStep() {
     Qt.callLater(function() {
       if (!tour.visible) return
       if (tour.step === 1) recorder.forceActiveFocus()
-      else tour.forceActiveFocus()
+      else focusHome.forceActiveFocus()
     })
   }
 
@@ -156,174 +157,6 @@ FocusScope {
   }
 
   // ------------------------------------------------------------- pieces
-  component TextButton: Text {
-    id: tb
-    signal clicked()
-    color: tbMouse.containsMouse ? tour.foreground : tour.dim
-    font.family: tour.fontFamily
-    font.pixelSize: Style.font.body
-
-    MouseArea {
-      id: tbMouse
-      anchors.fill: parent
-      anchors.margins: -Style.space(6)
-      hoverEnabled: true
-      cursorShape: Qt.PointingHandCursor
-      onClicked: tb.clicked()
-    }
-  }
-
-  // Filled accent button; the one call to action per step.
-  component Primary: Rectangle {
-    id: pb
-    property string text: ""
-    property string glyph: "󰁔"
-    signal clicked()
-    implicitWidth: pbLabel.implicitWidth + Style.space(36)
-    implicitHeight: Style.space(36)
-    radius: tour.rowRadius
-    color: pbMouse.containsMouse && enabled ? Qt.lighter(tour.accent, 1.12) : tour.accent
-    opacity: enabled ? 1 : 0.4
-
-    Behavior on color { ColorAnimation { duration: 100 } }
-
-    Text {
-      id: pbLabel
-      anchors.centerIn: parent
-      text: pb.text + "  " + pb.glyph
-      color: tour.onAccent
-      font.family: tour.fontFamily
-      font.pixelSize: Style.font.subtitle
-      font.bold: true
-    }
-
-    MouseArea {
-      id: pbMouse
-      anchors.fill: parent
-      hoverEnabled: true
-      cursorShape: Qt.PointingHandCursor
-      onClicked: pb.clicked()
-    }
-  }
-
-  component Pill: Rectangle {
-    id: pill
-    property string text: ""
-    property string hint: ""
-    property bool selected: false
-    signal clicked()
-    readonly property bool hot: pillMouse.containsMouse
-    implicitWidth: pillRow.implicitWidth + Style.space(24)
-    implicitHeight: Style.space(32)
-    radius: tour.rowRadius
-    color: selected ? tour.accentFill : hot ? tour.fillHot : tour.fill
-    border.width: tour.hairline
-    border.color: selected ? tour.lineFocus : hot ? tour.lineHot : tour.line
-
-    Behavior on color { ColorAnimation { duration: 100 } }
-
-    Row {
-      id: pillRow
-      anchors.centerIn: parent
-      spacing: Style.space(6)
-
-      Text {
-        id: pillLabel
-        text: pill.text
-        color: pill.selected ? tour.accent : tour.foreground
-        font.family: tour.fontFamily
-        font.pixelSize: Style.font.body
-        font.bold: pill.selected
-      }
-
-      Text {
-        visible: pill.hint !== ""
-        anchors.baseline: pillLabel.baseline
-        text: pill.hint
-        color: tour.dim
-        font.family: tour.fontFamily
-        font.pixelSize: Style.font.caption
-      }
-    }
-
-    MouseArea {
-      id: pillMouse
-      anchors.fill: parent
-      hoverEnabled: true
-      cursorShape: Qt.PointingHandCursor
-      onClicked: pill.clicked()
-    }
-  }
-
-  component Keycap: Rectangle {
-    id: cap
-    property string text: ""
-    property bool small: false
-    property bool dimmed: false
-    implicitWidth: Math.max(small ? 0 : Style.space(52), capLabel.implicitWidth + Style.space(small ? 14 : 28))
-    implicitHeight: small ? Style.space(24) : Style.space(44)
-    radius: small ? Style.space(5) : tour.rowRadius
-    color: tour.fillHot
-    border.width: tour.hairline
-    border.color: tour.lineHot
-
-    Text {
-      id: capLabel
-      anchors.centerIn: parent
-      text: cap.text
-      color: cap.dimmed ? tour.dim : tour.foreground
-      font.family: tour.fontFamily
-      font.pixelSize: cap.small ? Style.font.caption : Style.font.title
-      font.bold: !cap.small
-    }
-  }
-
-  // "CTRL + SPACE" as keycaps with plus signs between them.
-  component ChordCaps: RowLayout {
-    id: caps
-    property string chord: ""
-    spacing: Style.space(8)
-
-    Repeater {
-      model: caps.chord === "" ? ["No shortcut yet"] : caps.chord.split(" + ")
-
-      RowLayout {
-        required property string modelData
-        required property int index
-        spacing: Style.space(8)
-
-        Text {
-          visible: index > 0
-          text: "+"
-          color: tour.dim
-          font.family: tour.fontFamily
-          font.pixelSize: Style.font.title
-        }
-
-        Keycap { text: modelData; dimmed: caps.chord === "" }
-      }
-    }
-  }
-
-  component IconTile: Rectangle {
-    id: tile
-    property string glyph: ""
-    property real size: Style.space(40)
-    property real glyphSize: Style.font.iconLarge
-    implicitWidth: size
-    implicitHeight: size
-    radius: tour.rowRadius
-    color: tour.accentFill
-
-    Text {
-      anchors.centerIn: parent
-      text: tile.glyph
-      color: tour.accent
-      font.family: tour.fontFamily
-      font.pixelSize: tile.glyphSize
-    }
-  }
-
   component Feature: RowLayout {
     id: feat
     property string glyph: ""
@@ -332,7 +165,7 @@ FocusScope {
     Layout.fillWidth: true
     spacing: Style.space(12)
 
-    IconTile { glyph: feat.glyph }
+    IconTile { chrome: tour.chrome; glyph: feat.glyph }
 
     ColumnLayout {
       Layout.fillWidth: true
@@ -358,298 +191,6 @@ FocusScope {
     }
   }
 
-  // Bordered settings row: icon tile, title, description, switch. The whole
-  // row toggles; children declared inside land below the title as extras.
-  component SourceRow: Rectangle {
-    id: row
-    property string glyph: ""
-    property string title: ""
-    property string description: ""
-    property bool checked: false
-    // false: no switch, the row is a label for whatever sits in `trailing`.
-    property bool switchable: true
-    default property alias extra: extraCol.data
-    property alias trailing: trailingSlot.data
-    signal toggled()
-    readonly property bool hot: switchable && rowMouse.containsMouse
-    Layout.fillWidth: true
-    implicitHeight: body.implicitHeight + Style.space(24)
-    radius: tour.rowRadius
-    activeFocusOnTab: switchable
-    color: activeFocus || hot ? tour.fillHot : tour.fill
-    border.width: tour.hairline
-    border.color: activeFocus ? tour.lineFocus : hot ? tour.lineHot : tour.line
-    Keys.onSpacePressed: row.toggled()
-
-    Behavior on color { ColorAnimation { duration: 100 } }
-
-    MouseArea {
-      id: rowMouse
-      anchors.fill: parent
-      enabled: row.switchable
-      hoverEnabled: true
-      cursorShape: Qt.PointingHandCursor
-      onClicked: row.toggled()
-    }
-
-    ColumnLayout {
-      id: body
-      anchors { left: parent.left; right: parent.right; top: parent.top }
-      anchors.margins: Style.space(12)
-      spacing: Style.space(10)
-
-      RowLayout {
-        Layout.fillWidth: true
-        spacing: Style.space(12)
-
-        IconTile { glyph: row.glyph }
-
-        ColumnLayout {
-          Layout.fillWidth: true
-          spacing: Style.space(2)
-
-          Text {
-            Layout.fillWidth: true
-            text: row.title
-            color: tour.foreground
-            font.family: tour.fontFamily
-            font.pixelSize: Style.font.subtitle
-            font.bold: true
-            elide: Text.ElideRight
-          }
-
-          Text {
-            Layout.fillWidth: true
-            text: row.description
-            color: tour.dim
-            font.family: tour.fontFamily
-            font.pixelSize: Style.font.caption
-            wrapMode: Text.WordWrap
-          }
-        }
-
-        PillSwitch {
-          visible: row.switchable
-          checked: row.checked
-          accent: tour.accent
-          foreground: tour.foreground
-          knobOn: tour.onAccent
-        }
-
-        Item {
-          id: trailingSlot
-          visible: children.length > 0
-          implicitWidth: childrenRect.width
-          implicitHeight: childrenRect.height
-        }
-      }
-
-      ColumnLayout {
-        id: extraCol
-        Layout.fillWidth: true
-        Layout.leftMargin: Style.space(52)
-        spacing: Style.space(8)
-        visible: extraCol.children.length > 0
-      }
-    }
-  }
-
-  component SubToggle: Item {
-    id: sub
-    property string text: ""
-    property string description: ""
-    property bool checked: false
-    signal toggled()
-    Layout.fillWidth: true
-    implicitHeight: subRow.implicitHeight
-
-    RowLayout {
-      id: subRow
-      anchors { left: parent.left; right: parent.right }
-      spacing: Style.space(10)
-
-      ColumnLayout {
-        Layout.fillWidth: true
-        spacing: Style.space(2)
-
-        Text {
-          Layout.fillWidth: true
-          text: sub.text
-          color: tour.foreground
-          font.family: tour.fontFamily
-          font.pixelSize: Style.font.body
-          elide: Text.ElideRight
-        }
-
-        Text {
-          Layout.fillWidth: true
-          visible: sub.description !== ""
-          text: sub.description
-          color: tour.dim
-          font.family: tour.fontFamily
-          font.pixelSize: Style.font.caption
-          wrapMode: Text.WordWrap
-        }
-      }
-
-      PillSwitch {
-        checked: sub.checked
-        accent: tour.accent
-        foreground: tour.foreground
-        knobOn: tour.onAccent
-      }
-    }
-
-    MouseArea {
-      anchors.fill: parent
-      cursorShape: Qt.PointingHandCursor
-      onClicked: sub.toggled()
-    }
-  }
-
-  // Single-select menu in the tour's own chrome. Enter/Space/Down open,
-  // Up/Down or j/k move, Enter picks, Esc closes without leaving the tour.
-  component ChoiceMenu: Rectangle {
-    id: menu
-    property string value: ""
-    property var options: []
-    signal changed(string value)
-    readonly property bool hot: menuMouse.containsMouse
-    implicitWidth: Style.space(200)
-    implicitHeight: Style.space(30)
-    radius: tour.rowRadius
-    activeFocusOnTab: true
-    color: activeFocus || hot ? tour.fillHot : tour.fill
-    border.width: tour.hairline
-    border.color: activeFocus ? tour.lineFocus : hot ? tour.lineHot : tour.line
-
-    function currentLabel() {
-      for (var i = 0; i < options.length; i++)
-        if (options[i].value === value) return options[i].label
-      return value
-    }
-
-    function indexOfValue() {
-      for (var i = 0; i < options.length; i++)
-        if (options[i].value === value) return i
-      return 0
-    }
-
-    Keys.onPressed: function(event) {
-      if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter
-          || event.key === Qt.Key_Space || event.key === Qt.Key_Down) {
-        popup.opened ? popup.close() : popup.open()
-        event.accepted = true
-      }
-    }
-
-    Text {
-      anchors { left: parent.left; right: chevron.left; verticalCenter: parent.verticalCenter }
-      anchors.leftMargin: Style.space(12)
-      anchors.rightMargin: Style.space(8)
-      text: menu.currentLabel()
-      color: tour.foreground
-      font.family: tour.fontFamily
-      font.pixelSize: Style.font.body
-      elide: Text.ElideRight
-    }
-
-    Text {
-      id: chevron
-      anchors { right: parent.right; verticalCenter: parent.verticalCenter }
-      anchors.rightMargin: Style.space(10)
-      text: "󰅀"
-      color: tour.dim
-      font.family: tour.fontFamily
-      font.pixelSize: Style.font.body
-    }
-
-    MouseArea {
-      id: menuMouse
-      anchors.fill: parent
-      hoverEnabled: true
-      cursorShape: Qt.PointingHandCursor
-      onClicked: {
-        menu.forceActiveFocus()
-        popup.opened ? popup.close() : popup.open()
-      }
-    }
-
-    Popup {
-      id: popup
-      y: menu.height + Style.space(4)
-      width: menu.width
-      padding: Style.space(4)
-      implicitHeight: Math.min(list.contentHeight + padding * 2, Style.space(240))
-      focus: true
-
-      background: Rectangle {
-        radius: tour.rowRadius
-        color: Color.popups.background
-        border.width: tour.hairline
-        border.color: tour.lineHot
-      }
-
-      onOpened: {
-        list.currentIndex = menu.indexOfValue()
-        list.positionViewAtIndex(list.currentIndex, ListView.Contain)
-        list.forceActiveFocus()
-      }
-
-      contentItem: ListView {
-        id: list
-        clip: true
-        spacing: Style.space(2)
-        boundsBehavior: Flickable.StopAtBounds
-        model: menu.options
-
-        function pick() {
-          var o = menu.options[list.currentIndex]
-          if (!o) return
-          menu.value = o.value
-          menu.changed(o.value)
-          popup.close()
-        }
-
-        Keys.onPressed: function(event) {
-          if (event.key === Qt.Key_Escape) popup.close()
-          else if (event.key === Qt.Key_Down || event.text === "j") list.currentIndex = Math.min(menu.options.length - 1, list.currentIndex + 1)
-          else if (event.key === Qt.Key_Up || event.text === "k") list.currentIndex = Math.max(0, list.currentIndex - 1)
-          else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) list.pick()
-          else return
-          event.accepted = true
-        }
-
-        delegate: Rectangle {
-          required property var modelData
-          required property int index
-          width: list.width
-          height: Style.space(28)
-          radius: Style.space(5)
-          color: index === list.currentIndex ? tour.fillHot : "transparent"
-
-          Text {
-            anchors { left: parent.left; right: parent.right; verticalCenter: parent.verticalCenter }
-            anchors.leftMargin: Style.space(10)
-            anchors.rightMargin: Style.space(10)
-            text: modelData.label
-            color: modelData.value === menu.value ? tour.accent : tour.foreground
-            font.family: tour.fontFamily
-            font.pixelSize: Style.font.body
-            elide: Text.ElideRight
-          }
-
-          MouseArea {
-            anchors.fill: parent
-            hoverEnabled: true
-            cursorShape: Qt.PointingHandCursor
-            onPositionChanged: list.currentIndex = parent.index
-            onClicked: list.pick()
-          }
-        }
-      }
-    }
-  }
 
   // ------------------------------------------------------------- surface
   width: Math.min(Style.space(580), (parent ? parent.width : Style.space(800)) - Style.space(48))
@@ -658,6 +199,8 @@ FocusScope {
   Behavior on height {
     NumberAnimation { duration: 110; easing.type: Easing.OutCubic }
   }
+
+  Item { id: focusHome }
 
   Rectangle {
     anchors.fill: parent
@@ -720,6 +263,7 @@ FocusScope {
 
       TextButton {
         id: skipBtn
+        chrome: tour.chrome
         text: "Skip tour"
         opacity: tour.step < 3 ? 1 : 0
         enabled: tour.step < 3
@@ -733,6 +277,7 @@ FocusScope {
       spacing: Style.space(6)
 
       IconTile {
+        chrome: tour.chrome
         visible: tour.step === 0 && !tour.singleStep
         Layout.alignment: Qt.AlignHCenter
         Layout.bottomMargin: Style.space(8)
@@ -797,6 +342,7 @@ FocusScope {
         spacing: Style.space(14)
 
         ChordCaps {
+          chrome: tour.chrome
           Layout.alignment: Qt.AlignHCenter
           Layout.topMargin: Style.space(4)
           chord: tour.shownChord
@@ -819,9 +365,9 @@ FocusScope {
           radius: tour.rowRadius
           activeFocusOnTab: true
           readonly property bool hot: recMouse.containsMouse
-          color: activeFocus || hot ? tour.fillHot : tour.fill
+          color: activeFocus || hot ? tour.chrome.fillHot : tour.chrome.fill
           border.width: tour.hairline
-          border.color: activeFocus ? tour.lineFocus : hot ? tour.lineHot : tour.line
+          border.color: activeFocus ? tour.chrome.lineFocus : hot ? tour.chrome.lineHot : tour.chrome.line
 
           Behavior on color { ColorAnimation { duration: 100 } }
 
@@ -889,9 +435,11 @@ FocusScope {
             }
 
             TextButton {
+              chrome: tour.chrome
               visible: tour.selected !== ""
               text: "Clear"
-              onClicked: tour.selected = ""
+              // Clear hides itself, so it must not keep the focus it may hold.
+              onClicked: { tour.selected = ""; recorder.forceActiveFocus() }
             }
           }
         }
@@ -913,6 +461,7 @@ FocusScope {
             model: tour.presets
 
             Pill {
+              chrome: tour.chrome
               required property string modelData
               text: modelData
               hint: tour.chipCaption(modelData)
@@ -939,6 +488,7 @@ FocusScope {
 
           Pill {
             id: undoBtn
+            chrome: tour.chrome
             visible: tour.bindingManaged && tour.bindingState !== "busy"
             text: tour.bindingState === "ok" || tour.previousBinding === "" ? "Undo" : "Restore " + tour.previousBinding
             onClicked: tour.revertRequested()
@@ -950,7 +500,8 @@ FocusScope {
       ColumnLayout {
         spacing: Style.space(10)
 
-        SourceRow {
+        SettingRow {
+          chrome: tour.chrome
           glyph: "󰉋"
           title: "Files and folders"
           description: "Find files in your home directory by name."
@@ -958,8 +509,8 @@ FocusScope {
           onToggled: tour.set("fileSearch", !tour.draft.fileSearch)
 
           SubToggle {
+            chrome: tour.chrome
             enabled: tour.draft.fileSearch === true
-            opacity: enabled ? 1 : 0.45
             text: "Include files in every search"
             description: "When off, files only appear after you type f, f: or a path."
             checked: tour.draft.fileSearchAlways === true
@@ -967,7 +518,8 @@ FocusScope {
           }
         }
 
-        SourceRow {
+        SettingRow {
+          chrome: tour.chrome
           glyph: "󰅌"
           title: "Clipboard history"
           description: "Search what you copied earlier and copy it again with Enter."
@@ -975,7 +527,8 @@ FocusScope {
           onToggled: tour.set("clipboardSearch", !tour.draft.clipboardSearch)
         }
 
-        SourceRow {
+        SettingRow {
+          chrome: tour.chrome
           glyph: "󱐋"
           title: "Search suggestions"
           description: "Complete your query while you type. Queries are sent to "
@@ -985,75 +538,50 @@ FocusScope {
           onToggled: tour.set("webSuggestions", !tour.draft.webSuggestions)
         }
 
-        SourceRow {
+        SettingRow {
+          chrome: tour.chrome
           glyph: "󰖟"
           switchable: false
           title: "Web search engine"
           description: "Where the web search result opens when you press Enter, and which provider answers search suggestions."
 
           trailing: ChoiceMenu {
+            chrome: tour.chrome
             value: tour.draft.searchEngine || "g"
             options: Web.engineOptions()
             onChanged: function(v) { tour.set("searchEngine", v) }
           }
         }
 
-        SourceRow {
+        SettingRow {
+          chrome: tour.chrome
           glyph: "󰑤"
           title: "Currency rates"
-          description: "Fetch rates from Frankfurter for complete currency queries. On by default."
+          description: "Fetch rates from Frankfurter for complete currency queries."
           checked: tour.draft.currencyRates !== false
           onToggled: tour.set("currencyRates", !tour.draft.currencyRates)
         }
 
-        SourceRow {
+        SettingRow {
+          chrome: tour.chrome
           glyph: "󰑤"
           switchable: false
           title: "Default currency"
-          description: tour.currencyInputValid
+          description: currencyCodeField.valid
             ? "Type a 3-letter currency code, or leave blank. Explicit targets take priority."
             : "Enter a supported 3-letter currency code, or clear the field."
 
-          trailing: TextField {
+          trailing: CurrencyField {
             id: currencyCodeField
+            chrome: tour.chrome
             implicitWidth: Style.space(200)
-            implicitHeight: Style.space(30)
-            text: tour.draft.defaultCurrency || ""
-            placeholderText: "None or USD"
-            maximumLength: 3
-            font.family: tour.fontFamily
-            font.pixelSize: Style.font.body
-            color: tour.foreground
-            selectByMouse: true
-            Keys.onPressed: function(event) {
-              if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
-                event.accepted = true
-                if (tour.currencyInputValid) tour.primary()
-              } else if (event.key === Qt.Key_Escape) {
-                event.accepted = true
-                tour.currencyInputValid = true
-                tour.draft = Object.assign({}, tour.draft)
-                tour.forceActiveFocus()
-              } else if (event.key === Qt.Key_Left && cursorPosition === 0) {
-                event.accepted = true
-              }
-            }
-            background: Rectangle {
-              radius: tour.rowRadius
-              color: currencyCodeField.activeFocus ? tour.fillHot : tour.fill
-              border.width: tour.hairline
-              border.color: !tour.currencyInputValid ? Color.urgent
-                : currencyCodeField.activeFocus ? tour.lineFocus : tour.line
-            }
-            onTextEdited: {
-              var valid = text === "" || Currency.defaultCode(text) !== ""
-              tour.currencyInputValid = valid
-              if (valid) tour.set("defaultCurrency", Currency.defaultCode(text))
-            }
+            code: tour.draft.defaultCurrency || ""
+            onPicked: function(code) { tour.set("defaultCurrency", code) }
           }
         }
 
-        SourceRow {
+        SettingRow {
+          chrome: tour.chrome
           glyph: "󰧐"
           title: "Learn from your choices"
           description: "Results you pick often move up over time. Nothing leaves this machine."
@@ -1077,6 +605,7 @@ FocusScope {
         spacing: Style.space(14)
 
         ChordCaps {
+          chrome: tour.chrome
           Layout.alignment: Qt.AlignHCenter
           Layout.topMargin: Style.space(4)
           chord: tour.currentBinding
@@ -1085,7 +614,7 @@ FocusScope {
         Text {
           Layout.fillWidth: true
           text: tour.currentBinding !== "" ? "opens Spotlight from anywhere"
-                                           : "Set one any time with Change Spotlight Shortcut."
+                                           : "Set one any time in Spotlight Settings."
           color: tour.dim
           font.family: tour.fontFamily
           font.pixelSize: Style.font.caption
@@ -1093,7 +622,7 @@ FocusScope {
         }
 
         GridLayout {
-          Layout.fillWidth: true
+          Layout.alignment: Qt.AlignHCenter
           Layout.topMargin: Style.space(6)
           columns: 2
           columnSpacing: Style.space(12)
@@ -1105,7 +634,7 @@ FocusScope {
             // Two cells per example: the query as a keycap, then what it does.
             Item {
               required property var modelData
-              Layout.fillWidth: true
+              implicitWidth: cell.implicitWidth
               implicitHeight: cell.implicitHeight
 
               RowLayout {
@@ -1113,7 +642,7 @@ FocusScope {
                 anchors { left: parent.left; right: parent.right }
                 spacing: Style.space(8)
 
-                Keycap { small: true; text: parent.parent.modelData[0] }
+                Keycap { chrome: tour.chrome; small: true; text: parent.parent.modelData[0] }
 
                 Text {
                   Layout.fillWidth: true
@@ -1137,6 +666,7 @@ FocusScope {
       spacing: Style.space(12)
 
       Pill {
+        chrome: tour.chrome
         visible: !tour.singleStep && tour.step > 0
         text: "󰁍  Back"
         onClicked: tour.back()
@@ -1144,7 +674,8 @@ FocusScope {
 
       Item { Layout.fillWidth: true }
 
-      Primary {
+      PrimaryButton {
+        chrome: tour.chrome
         text: tour.primaryText
         glyph: tour.step === 3 || tour.singleStep ? "󰄬" : "󰁔"
         enabled: tour.primaryEnabled

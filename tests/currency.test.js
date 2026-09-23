@@ -156,6 +156,7 @@ test("session cache stays bounded, including failed requests", () => {
 function overlay() {
   const qml = fs.readFileSync(path.join(__dirname, "../Spotlight.qml"), "utf8")
   const root = { opened: true, query: "", settings: { defaultCurrency: "", currencyRates: true },
+    settingsWrites: { pending: {}, active: {} },
     currencySession: Currency.createSession(), helperReply: JSON.parse,
     row: spec => spec, rebuild() { this.rebuilds++ }, rebuilds: 0,
     rows: [], indexOfKey(key) { return this.rows.findIndex(row => row.key === key) },
@@ -169,9 +170,9 @@ function overlay() {
       execArgv: argv => root.copyCalls.push(argv) },
     Date: { now: () => NOW }, Calc: { evaluate: () => null },
     NaturalTime: { parseReminder: () => null, parseEvent: () => null },
-    Web: { detectUrl: () => "", hasEngine: () => true }, Fuzzy: { MATCH_EXACT: 100 } })
+    Web: { detectUrl: () => "", canonicalEngine: key => key }, Fuzzy: { MATCH_EXACT: 100 } })
   for (const name of ["currencyQuery", "intentRows", "updateCurrency", "loadCurrency",
-    "loadSettings", "loadSuggestions", "activate"]) {
+    "loadSettings", "setupPending", "loadSuggestions", "activate"]) {
     const source = qml.match(new RegExp("  function " + name + "\\([^]*?\\n  }"))[0]
     vm.runInContext(source, context)
     root[name] = context[name]

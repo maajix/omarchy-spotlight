@@ -257,7 +257,9 @@ o.bind("ALT + SHIFT + SPACE", "Spotlight reminder",
 
 ## Settings
 
-Spotlight works without a configuration file. Optional settings live at `~/.config/omarchy/spotlight.json` and are re-read every time Spotlight opens:
+Search for `spotlight settings` and press Enter to open the settings panel: switches for the search sources, the web engine, currency, the result limits, the shortcut, and buttons for the setup tour, the data folder and resetting what Spotlight has learned. Changes save as you make them.
+
+Everything the panel writes lives at `~/.config/omarchy/spotlight.json`, which Spotlight re-reads every time it opens. `Ctrl + Enter` on the same result opens that file in an editor instead, and hand edits are picked up on the next open:
 
 ```json
 {
@@ -277,7 +279,7 @@ Spotlight works without a configuration file. Optional settings live at `~/.conf
 }
 ```
 
-Search for `spotlight settings` to create or edit the file, open Spotlight's data directory, reset learning, rerun the setup tour, or change the shortcut. Creating the settings file never overwrites an existing one.
+Opening the file creates it with the defaults above when it does not exist yet, and never overwrites one that does. `Open Spotlight Data Folder` and `Run Setup Tour` remain searchable as their own results.
 
 `searchEngine` accepts any supported bang key. The numeric limits are validated before use:
 
@@ -339,7 +341,7 @@ requests; same-currency conversions and cached rates still work. It requires no
 API key and does not fetch at startup or refresh in the background.
 Recognized currency conversions suppress web suggestions.
 
-Learning is optional and stays in `~/.local/state/omarchy/spotlight-usage.json`. It stores bounded selection counts, timestamps, stable IDs, file paths, and normalized query prefixes. Disable it with `"learningEnabled": false`, or remove it with **Reset Spotlight Learning**.
+Learning is optional and stays in `~/.local/state/omarchy/spotlight-usage.json`. It stores bounded selection counts, timestamps, stable IDs, file paths, and normalized query prefixes. Disable it with `"learningEnabled": false`, or remove it with **Reset learning data** in the settings panel.
 
 The helper bounds file and subprocess output, validates persistent files and ownership, rejects symlinks, uses private atomic writes, applies subprocess deadlines, and cleans up process groups. Clipboard previews sent to the shell are bounded to one line; the full selected value goes directly from the helper to `wl-copy`.
 

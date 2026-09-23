@@ -956,6 +956,14 @@ class SettingsWriteTests(unittest.TestCase):
             self.assertTrue(on_disk["setupCompleted"])
             self.assertEqual(stat.S_IMODE((cfg / "spotlight.json").stat().st_mode), 0o600)
 
+    def test_write_settings_clamps_every_numeric_limit(self):
+        with fake_home():
+            reply = run(HELPER.cmd_write_settings,
+                        stdin=b'{"maxResults": 1, "maxApps": 99, "maxSuggestions": -4}')
+            self.assertEqual(reply["settings"]["maxResults"], 8)
+            self.assertEqual(reply["settings"]["maxApps"], 24)
+            self.assertEqual(reply["settings"]["maxSuggestions"], 0)
+
     def test_write_settings_creates_file(self):
         with fake_home() as home:
             reply = run(HELPER.cmd_write_settings, stdin=b'{"webSuggestions": true}')
@@ -1002,6 +1010,26 @@ class SettingsWriteTests(unittest.TestCase):
             with self.assertRaises(HELPER.Denied):
                 run(HELPER.cmd_write_settings, stdin=b'{"setupCompleted": true}')
             self.assertEqual((cfg / "spotlight.json").read_bytes(), b"{broken")
+
+    def test_write_settings_reports_symlink_without_touching_target(self):
+        with fake_home() as home:
+            cfg = home / ".config" / "omarchy"
+            cfg.mkdir(parents=True)
+            target = cfg / "target.json"
+            target.write_text('{"maxResults": 12}')
+            (cfg / "spotlight.json").symlink_to(target)
+            reply = run(HELPER.main, ["write-settings"], b'{"maxResults": 30}')
+            self.assertEqual(reply, {"ok": False, "error": "spotlight.json is a symlink"})
+            self.assertEqual(target.read_text(), '{"maxResults": 12}')
+
+    def test_read_settings_treats_a_corrupt_file_as_set_up(self):
+        with fake_home() as home:
+            cfg = home / ".config" / "omarchy"
+            cfg.mkdir(parents=True)
+            (cfg / "spotlight.json").write_bytes(b"{broken")
+            self.assertTrue(run(HELPER.cmd_read_settings)["settings"]["setupCompleted"])
+            (cfg / "spotlight.json").unlink()
+            self.assertFalse(run(HELPER.cmd_read_settings)["settings"]["setupCompleted"])
 
 
 class BindingTests(unittest.TestCase):

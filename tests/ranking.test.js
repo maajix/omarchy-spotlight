@@ -161,5 +161,5 @@ test("V1 app and command counts migrate to stable V2 ids", () => {
 
 test("only primary activations reach the learning call", () => {
   const qml = fs.readFileSync(path.join(__dirname, "..", "Spotlight.qml"), "utf8")
-  assert.match(qml, /if \(!secondary && r\.kind !== "spotlight-reset"\) root\.bumpUsage\(r\)/)
+  assert.match(qml, /if \(!secondary\) root\.bumpUsage\(r\)/)
 })

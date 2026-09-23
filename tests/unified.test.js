@@ -63,16 +63,14 @@ test("one character starts only explicitly filtered file and clipboard providers
   assert.match(qml, /clipboardSearchAlways && parsed\.text\.length >= 2/)
 })
 
-test("spotlight settings finds all four local maintenance actions", () => {
+test("spotlight settings finds all three local maintenance actions", () => {
   const rows = Fuzzy.rank(Commands.commands(), "spotlight settings", 20)
     .filter(row => row.key.startsWith("spotlight."))
   assert.deepEqual(rows.map(row => row.title).sort(), [
-    "Edit Spotlight Settings",
+    "Spotlight Settings",
     "Open Spotlight Data Folder",
-    "Open Spotlight Plugin Folder",
-    "Reset Spotlight Learning"
+    "Open Spotlight Plugin Folder"
   ].sort())
-  assert.equal(rows.find(row => row.key === "spotlight.reset").confirm, true)
 })
 
 test("every asynchronous query result is rejected after the query changes", () => {

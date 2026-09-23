@@ -1337,9 +1337,17 @@ def cmd_read_settings():
         emit({"settings": normalize_settings({})})
         return
     try:
-        parsed = read_json(fd, "spotlight.json", SETTINGS_BYTES, {})
+        raw = read_file(fd, "spotlight.json", SETTINGS_BYTES)
     finally:
         os.close(fd)
+    try:
+        parsed = json.loads(raw.decode("utf-8", "replace")) if raw else {}
+    except ValueError:
+        parsed = None
+    # A hand edit that no longer parses is not a first run: no tour, no
+    # shortcut claimed. write-settings refuses to touch it as well.
+    if not isinstance(parsed, dict):
+        parsed = {"setupCompleted": True}
     emit({"settings": normalize_settings(parsed)})
 
 
