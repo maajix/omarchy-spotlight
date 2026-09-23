@@ -210,6 +210,8 @@ Item {
   // Set by a saved write: a read started before it must not undo it.
   property bool settingsReadStale: false
   readonly property bool settingsSaveFailed: settingsWrites.failed
+  // spotlight.json was asked for while a write was queued; open it once saved.
+  property bool editAfterSave: false
 
   // ------------------------------------------------------------- theme
   // Shares the [menu] surface tokens, so any theme that styles the Omarchy
@@ -486,6 +488,17 @@ Item {
   // ------------------------------------------------------- maintenance
   function editSettingsFile() {
     root.dismiss()
+    root.editAfterSave = true
+    root.openEditorWhenSaved()
+  }
+
+  // The editor must show the file with the panel's last edits in it. A failed
+  // write will not land by itself, so it does not hold the editor back.
+  function openEditorWhenSaved() {
+    var writes = root.settingsWrites
+    if (!root.editAfterSave || Object.keys(writes.active).length
+        || (Object.keys(writes.pending).length && !writes.failed)) return
+    root.editAfterSave = false
     maintenanceProc.running = false
     maintenanceProc.action = "settings"
     maintenanceProc.command = root.helperArgv(["ensure-settings"])
@@ -563,6 +576,7 @@ Item {
     }
     root.settingsWrites = SettingsQueue.settle(root.settingsWrites, !!reply)
     if (reply) root.flushSettings()
+    root.openEditorWhenSaved()
   }
 
   // ------------------------------------------------------------- tour
@@ -2211,8 +2225,10 @@ Item {
   Process {
     id: settingsWriteProc
     // A helper that never started sends no reply, so nothing else settles it.
-    onRunningChanged: if (!running && Object.keys(root.settingsWrites.active).length)
+    onRunningChanged: if (!running && Object.keys(root.settingsWrites.active).length) {
       root.settingsWrites = SettingsQueue.settle(root.settingsWrites, false)
+      root.openEditorWhenSaved()
+    }
     stdout: StdioCollector {
       waitForEnd: true
       onStreamFinished: root.completeSettingsWrite(text)
