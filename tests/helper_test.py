@@ -578,6 +578,15 @@ class SettingsWriteTests(unittest.TestCase):
                 run(HELPER.cmd_write_settings, stdin=b'{"setupCompleted": true}')
             self.assertEqual((cfg / "spotlight.json").read_bytes(), b"{broken")
 
+    def test_read_settings_treats_a_corrupt_file_as_set_up(self):
+        with fake_home() as home:
+            cfg = home / ".config" / "omarchy"
+            cfg.mkdir(parents=True)
+            (cfg / "spotlight.json").write_bytes(b"{broken")
+            self.assertTrue(run(HELPER.cmd_read_settings)["settings"]["setupCompleted"])
+            (cfg / "spotlight.json").unlink()
+            self.assertFalse(run(HELPER.cmd_read_settings)["settings"]["setupCompleted"])
+
 
 class BindingTests(unittest.TestCase):
     def setUp(self):
