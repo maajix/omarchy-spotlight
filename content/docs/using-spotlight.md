@@ -38,7 +38,7 @@ Spotlight runs inside the existing `omarchy-shell` process, so there is no separ
 | `PageUp` `PageDown` | Move one screen |
 | `Enter` | Run the primary action shown in the footer |
 | `Shift+Enter` or `Ctrl+Enter` | Run the secondary action, when available |
-| `Tab` | Complete the query with the selected app name |
+| `Tab` | Complete the query from the selected row: a view's colon filter or an app name |
 | `Esc` | Clear the query; close Spotlight when already empty |
 
 The search field is a normal text input, so selection, caret movement, and shortcuts such as `Ctrl+V` work as expected.

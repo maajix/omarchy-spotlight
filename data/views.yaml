@@ -1,0 +1,73 @@
+# One card per colon view (1.6). Section titles, subtitles, accessories and
+# action labels follow what lib/Views.js builds for each view's rows.
+- query: "ports:"
+  enter: Open URL
+  shift: Copy endpoint
+  sections:
+    - title: Listening ports
+      rows:
+        - { icon: network, title: hugo, meta: "127.0.0.1:1313 · PID 48211", kind: TCP, selected: true }
+        - { icon: network, title: sshd, meta: "0.0.0.0:22 · PID 812", kind: TCP }
+        - { icon: network, title: systemd-resolve, meta: "127.0.0.53:53 · PID 604", kind: UDP }
+- query: "ssh:"
+  enter: Connect
+  shift: Copy command
+  sections:
+    - title: SSH hosts
+      rows:
+        - { icon: key, title: homelab, meta: "Saved host · ssh homelab", kind: SSH, selected: true }
+        - { icon: key, title: prod-web, meta: "Saved host · ssh prod-web", kind: SSH }
+        - { icon: key, title: github.com, meta: "Known host · ssh github.com", kind: SSH }
+- query: "docker:"
+  enter: Follow logs
+  shift: Copy ID
+  sections:
+    - title: Docker containers
+      rows:
+        - { icon: box, title: postgres, meta: "postgres:17 · Up 3 hours · 5432/tcp", kind: running, selected: true }
+        - { icon: box, title: redis, meta: "redis:7-alpine · Up 3 hours", kind: running }
+        - { icon: box, title: api-dev, meta: "api:dev · Exited (0) 2 days ago", kind: exited }
+- query: "services:"
+  enter: Follow logs
+  shift: Copy unit name
+  sections:
+    - title: System and user services
+      rows:
+        - { icon: server, title: pipewire, meta: "active / running · PipeWire Multimedia Service", kind: user, selected: true }
+        - { icon: server, title: NetworkManager, meta: "active / running · Network Manager", kind: system }
+        - { icon: server, title: cups, meta: "failed / failed · CUPS Scheduler", kind: system }
+- query: "mounts:"
+  enter: Open mount
+  shift: Copy path
+  sections:
+    - title: Mounted filesystems
+      rows:
+        - { icon: disk, title: /, meta: /dev/nvme0n1p2, kind: btrfs, selected: true }
+        - { icon: disk, title: /boot, meta: /dev/nvme0n1p1, kind: vfat }
+        - { icon: disk, title: /mnt/nas, meta: //nas.local/media, kind: cifs }
+- query: "audio:"
+  enter: Set as default
+  sections:
+    - title: Audio outputs
+      rows:
+        - { icon: speaker, title: Speakers, meta: "Default · 45%", kind: Output }
+        - { icon: speaker, title: WH-1000XM5, meta: "Available · 60%", kind: Output, selected: true }
+    - title: Audio inputs
+      rows:
+        - { icon: mic, title: Built-in Microphone, meta: "Default · 80%", kind: Input }
+- query: "wifi:"
+  enter: Connect
+  sections:
+    - title: Wi-Fi networks
+      rows:
+        - { icon: wifi, title: home-5G, meta: "Connected · 86% signal · WPA2", kind: Connected }
+        - { icon: wifi, title: CoffeeShop, meta: "Available · 64% signal · Open", kind: Wi-Fi, selected: true }
+        - { icon: wifi, title: Manage Wi-Fi… }
+- query: "bluetooth:"
+  enter: Connect
+  sections:
+    - title: Paired Bluetooth devices
+      rows:
+        - { icon: bluetooth, title: WH-1000XM5, meta: Connected, kind: Bluetooth }
+        - { icon: bluetooth, title: MX Keys, meta: Paired, kind: Bluetooth, selected: true }
+        - { icon: bluetooth, title: Pair another device… }

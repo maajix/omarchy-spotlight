@@ -40,13 +40,22 @@
         - { icon: file, title: quarterly-report.pdf, meta: "~/Documents", kind: File, selected: true }
         - { icon: folder, title: reports, meta: "~/Documents", kind: Folder }
         - { icon: file, title: report-template.odt, meta: "~/Templates", kind: File }
-- query: bluetooth
+- query: "docker:"
+  enter: Follow logs
+  shift: Copy ID
+  sections:
+    - title: Docker containers
+      rows:
+        - { icon: box, title: postgres, meta: "postgres:17 · Up 3 hours · 5432/tcp", kind: running, selected: true }
+        - { icon: box, title: redis, meta: "redis:7-alpine · Up 3 hours", kind: running }
+        - { icon: box, title: api-dev, meta: "api:dev · Exited (0) 2 days ago", kind: exited }
+# A bare "bluetooth" selects the bluetooth: view since 1.6, so the toggle is typed by its full name.
+- query: toggle bluetooth
   enter: Flip the switch
   sections:
     - title: Commands
       rows:
         - { icon: bluetooth, title: Toggle Bluetooth, meta: Radio on or off, pill: "off", selected: true }
-        - { icon: bluetooth, title: Restart Bluetooth, meta: "Update › Hardware", kind: Action }
 - query: remind me in 20m to check the oven
   enter: Create reminder
   sections:

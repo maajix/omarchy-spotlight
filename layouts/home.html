@@ -40,6 +40,21 @@
   </div>
 </section>
 
+<section class="section" id="views">
+  <div class="wrap">
+    <div class="section-head" data-reveal>
+      <p class="eyebrow">New in 1.6</p>
+      <h2>Your system, one colon away.</h2>
+      <p>Type a view name and a colon. Spotlight lists what is on your machine <em>right away</em> and narrows it as you keep typing: <code>ports:22</code>, <code>ssh:prod</code>, <code>docker:postgres</code>. Enter acts on the row; Shift+Enter copies its endpoint, command, ID or path.</p>
+    </div>
+    <div class="views">
+      {{ range hugo.Data.views }}
+      <div data-reveal>{{ partial "demo.html" (dict "scenes" (slice .) "label" (printf "%s view" .query)) }}</div>
+      {{ end }}
+    </div>
+  </div>
+</section>
+
 <section class="section" id="features">
   <div class="wrap">
     <div class="section-head" data-reveal>

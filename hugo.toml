@@ -15,12 +15,12 @@ disableKinds = ['taxonomy', 'term', 'rss']
     path = '{/docs,/docs/**}'
 
 [params]
-  description = 'Fast, local-first command palette plugin for Omarchy Linux: apps, windows, files, clipboard, calculator, reminders, command help and web search from one input.'
+  description = 'Fast, local-first command palette plugin for Omarchy Linux: apps, windows, files, clipboard, calculator, reminders, command help, system views and web search from one input.'
   repo = 'https://github.com/maajix/omarchy-spotlight'
   marketplace = 'https://plugins.omarchy.org/plugin.html?id=io.github.maajix.spotlight'
   security = 'https://github.com/maajix/omarchy-spotlight/blob/main/SECURITY.md'
   pluginId = 'io.github.maajix.spotlight'
-  version = '1.5.0'
+  version = '1.6.0'
   author = 'Max Randhahn'
   authorUrl = 'https://maajix.github.io/'
   authorProfiles = ['https://github.com/maajix']

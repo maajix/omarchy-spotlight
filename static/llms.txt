@@ -1,8 +1,8 @@
 # Spotlight for Omarchy
 
-> Fast, local-first command palette plugin for Omarchy Linux: apps, windows, files, clipboard, calculator, reminders, command help and web search from one input.
+> Fast, local-first command palette plugin for Omarchy Linux: apps, windows, files, clipboard, calculator, reminders, command help, system views and web search from one input.
 
-Spotlight is an open-source plugin (MIT license) for Omarchy 4 by Max Randhahn. It runs inside omarchy-shell and opens with Alt+Space. One input searches applications, open windows, files, clipboard history and system commands, evaluates calculations and unit conversions, creates calendar events and reminders from natural language, flips live system toggles, runs web search bangs and shows tldr command help. Everything runs locally except web search and the first lookup of a tldr page.
+Spotlight is an open-source plugin (MIT license) for Omarchy 4 by Max Randhahn. It runs inside omarchy-shell and opens with Alt+Space. One input searches applications, open windows, files, clipboard history and system commands, evaluates calculations and unit conversions, creates calendar events and reminders from natural language, flips live system toggles, lists listening ports, SSH hosts, Docker containers, services, mounts, audio devices, Wi-Fi networks and Bluetooth devices through colon views such as ports: and ssh:, runs web search bangs and shows tldr command help. Everything runs locally except web search and the first lookup of a tldr page.
 
 ## Install
 

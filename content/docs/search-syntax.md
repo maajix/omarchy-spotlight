@@ -19,12 +19,22 @@ Use a filter when you want results from one provider only:
 | `cb:` or `clipboard:` | Clipboard history |
 | `web:`, `search:`, or `url:` | Web |
 | `calc:` | Calculator |
-| `unit:` or `convert:` | Unit converter |
+| `unit:` or `convert:` | Unit and currency converter |
 | `reminder:` | Reminders |
 | `calendar:` or `event:` | Calendar events |
 | `man:` or `tldr:` | Command help from tldr pages |
+| `ports:` | Local listening TCP and UDP ports |
+| `ssh:` | Saved SSH aliases and visible hosts from `~/.ssh/known_hosts` |
+| `docker:` | Running and stopped Docker containers |
+| `services:` | Loaded user and system services |
+| `mounts:` | Mounted real filesystems |
+| `audio:` | Audio outputs and inputs |
+| `wifi:` | Visible Wi-Fi networks |
+| `bluetooth:` | Paired Bluetooth devices |
 
-A filter without a query shows a hint instead of launching a broad search.
+A filter without a query shows a hint instead of launching a broad search. The views from `ports:` to `bluetooth:` are the exception: they list their entries immediately, and typing after the colon narrows the list, as in `ports:22` or `ssh:prod`. Each view holds up to 200 entries (100 for `audio:`, `wifi:` and `bluetooth:`); when there were more, the section title says "partial list".
+
+Typing the start of a view name shows the matching views above normal results, and Tab or Enter on a selected view fills in its colon filter (`moun` becomes `mounts:`). An app still gets the first Enter when its name is exactly what you typed, or when it starts with what you typed and only one view matches, so `port` selects Portal rather than `ports:`; press the down arrow to reach the view. A view's full name, such as `bluetooth`, selects the view unless an app has exactly that name.
 
 Short forms without the colon work for the common providers: `f invoice` searches files, `cb ssh` searches the clipboard, and `man ssh` or `tldr ssh` shows the tldr examples for a command. A path such as `~/Downloads/` searches within that folder.
 
