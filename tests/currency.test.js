@@ -172,7 +172,7 @@ function overlay() {
     NaturalTime: { parseReminder: () => null, parseEvent: () => null },
     Web: { detectUrl: () => "", hasEngine: () => true }, Fuzzy: { MATCH_EXACT: 100 } })
   for (const name of ["currencyQuery", "intentRows", "updateCurrency", "loadCurrency",
-    "loadSettings", "loadSuggestions", "activate"]) {
+    "loadSettings", "setupPending", "loadSuggestions", "activate"]) {
     const source = qml.match(new RegExp("  function " + name + "\\([^]*?\\n  }"))[0]
     vm.runInContext(source, context)
     root[name] = context[name]

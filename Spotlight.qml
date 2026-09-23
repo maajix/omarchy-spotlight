@@ -304,7 +304,7 @@ Item {
     root.updateCurrency()
     root.rebuild()
     pointerGate.reset()
-    if (root.settings.setupCompleted === false || (tour.started && !tour.singleStep)) root.resumeTour()
+    if (root.setupPending() || (tour.started && !tour.singleStep)) root.resumeTour()
     Qt.callLater(function() {
       if (root.tourActive) tour.focusStep()
       else input.forceActiveFocus()
@@ -461,6 +461,14 @@ Item {
     }
     if (root.opened) root.dismiss()
     else root.open("{}")
+  }
+
+  // The file still says first run until the tour's queued write lands; the
+  // queue already knows better.
+  function setupPending() {
+    return root.settings.setupCompleted === false
+      && root.settingsWrites.pending.setupCompleted !== true
+      && root.settingsWrites.active.setupCompleted !== true
   }
 
   // Re-raise an unfinished tour at the step the user left; fresh start otherwise.
@@ -700,10 +708,7 @@ Item {
     }
     // First run: the flag usually lands after open() has already drawn the
     // search card, so the tour is raised from here as well.
-    if (root.opened && !root.tourActive && !root.settingsActive
-        && root.settingsWrites.pending.setupCompleted !== true
-        && root.settingsWrites.active.setupCompleted !== true
-        && root.settings.setupCompleted === false)
+    if (root.opened && !root.tourActive && !root.settingsActive && root.setupPending())
       root.resumeTour()
     // resumeTour has just read the binding when the launcher is open; only
     // a closed launcher needs a read of its own.
