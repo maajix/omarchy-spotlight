@@ -2176,8 +2176,10 @@ Item {
           Util.execArgv(["omarchy", "launch", "editor", String(reply.path)])
         else if (maintenanceProc.action === "data" && reply.path)
           root.openPath(reply.path)
-        else if (maintenanceProc.action === "reset" && reply.reset === true)
+        else if (maintenanceProc.action === "reset" && reply.reset === true) {
           root.usage = Frecency.emptyStore()
+          settingsPanel.resetDone = true
+        }
       }
     }
   }

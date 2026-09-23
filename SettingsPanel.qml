@@ -30,6 +30,8 @@ FocusScope {
   property var draft: panel.settings
   // Reset requires two presses.
   property bool resetArmed: false
+  // Set by Spotlight.qml once the helper confirms the reset.
+  property bool resetDone: false
 
   // out
   signal changed(var patch)
@@ -50,6 +52,7 @@ FocusScope {
     panel.draft = Object.assign({}, panel.settings, panel.pendingSettings)
     currencyCodeField.revert()
     panel.resetArmed = false
+    panel.resetDone = false
     // After the layout has settled: the rows are still being sized when open()
     // runs, and a contentY set against the old height does not survive it.
     Qt.callLater(function() { flick.contentY = 0 })
@@ -421,10 +424,11 @@ FocusScope {
 
             Pill {
               chrome: panel.chrome
-              text: panel.resetArmed ? "Press again to reset" : "Reset learning data"
+              text: panel.resetArmed ? "Press again to reset"
+                : panel.resetDone ? "Learning data cleared" : "Reset learning data"
               selected: panel.resetArmed
               onClicked: {
-                if (!panel.resetArmed) { panel.resetArmed = true; return }
+                if (!panel.resetArmed) { panel.resetArmed = true; panel.resetDone = false; return }
                 panel.resetArmed = false
                 panel.action("reset")
               }
