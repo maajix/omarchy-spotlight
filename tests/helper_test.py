@@ -31,13 +31,15 @@ SPEC.loader.exec_module(HELPER)
 
 
 class HelperTests(unittest.TestCase):
-    def test_wifi_lists_unique_networks_and_preserves_escaped_ssids(self):
-        raw = (b':Cafe\\:Guest:65:WPA2\n:Home:95:WPA2\n'
-               b'*:Home:72:WPA2\n::40:WPA2\n')
-        with mock.patch.object(HELPER, "run_bounded", return_value=(raw, False, 0)):
+    def test_wifi_lists_unique_networks_and_rejects_newlines_in_ssids(self):
+        raw = (b':436166653a4775657374:65:WPA2\n:486f6d65:95:WPA2\n'
+               b'*:486f6d65:72:WPA2\n:536166650a203a4576696c:99:WPA2\n'
+               b':badhex:40:WPA2\n')
+        with mock.patch.object(HELPER, "run_bounded", return_value=(raw, False, 0)) as run_bounded:
             buf = io.StringIO()
             with contextlib.redirect_stdout(buf):
                 HELPER.cmd_wifi()
+        self.assertIn("IN-USE,SSID-HEX,SIGNAL,SECURITY", run_bounded.call_args.args[0])
         self.assertEqual(json.loads(buf.getvalue())["networks"], [
             {"ssid": "Home", "connected": True, "signal": 72, "security": "WPA2"},
             {"ssid": "Cafe:Guest", "connected": False, "signal": 65, "security": "WPA2"},
@@ -45,43 +47,43 @@ class HelperTests(unittest.TestCase):
         self.assertEqual(HELPER._nmcli_fields(r":Cafe\\Guest:50:--"),
                          ["", r"Cafe\Guest", "50", "--"])
 
-    def test_wifi_and_bluetooth_keep_complete_lines_of_cut_short_output(self):
+    def test_wifi_keeps_complete_lines_and_bluetooth_rejects_truncated_json(self):
         with mock.patch.object(HELPER, "run_bounded",
-                               return_value=(b":Home:95:WPA2\n:Caf", True, -9)):
+                               return_value=(b":486f6d65:95:WPA2\n:Caf", True, -9)):
             reply = run(HELPER.cmd_wifi)
         self.assertEqual([n["ssid"] for n in reply["networks"]], ["Home"])
         self.assertTrue(reply["partial"])
-        with mock.patch.object(HELPER, "run_bounded", side_effect=[
-                (b"Device 00:11:22:33:44:55 Keyboard\nDevice 00:11", True, -9),
-                (b"", False, 0)]):
-            reply = run(HELPER.cmd_bluetooth)
-        self.assertEqual([d["name"] for d in reply["devices"]], ["Keyboard"])
-        self.assertTrue(reply["partial"])
+        with mock.patch.object(HELPER, "run_bounded", return_value=(b'{"data":', True, -9)):
+            with self.assertRaises(HELPER.Denied):
+                HELPER.cmd_bluetooth()
 
     def test_bluetooth_lists_paired_devices_and_connection_state(self):
-        paired = b"Device 38:18:4C:24:30:3E Headphones\nDevice 00:11:22:33:44:55 Keyboard\n"
-        connected = b"Device 38:18:4C:24:30:3E Headphones\n"
-        with mock.patch.object(HELPER, "run_bounded", side_effect=[
-                (paired, False, 0), (connected, False, 0)]):
-            buf = io.StringIO()
-            with contextlib.redirect_stdout(buf):
-                HELPER.cmd_bluetooth()
-        self.assertEqual(json.loads(buf.getvalue())["devices"], [
+        def device(address, name, paired=True, connected=False):
+            return {"org.bluez.Device1": {
+                "Address": {"type": "s", "data": address},
+                "Alias": {"type": "s", "data": name},
+                "Paired": {"type": "b", "data": paired},
+                "Connected": {"type": "b", "data": connected}}}
+
+        objects = {
+            "/org/bluez/hci0/dev_38_18_4C_24_30_3E": device(
+                "38:18:4C:24:30:3E", "Headphones", connected=True),
+            "/org/bluez/hci0/dev_00_11_22_33_44_55": device(
+                "00:11:22:33:44:55", "Keyboard"),
+            "/org/bluez/hci0/dev_AA_BB_CC_DD_EE_FF": device(
+                "AA:BB:CC:DD:EE:FF", "Safe\nDevice 66:77:88:99:AA:BB Evil"),
+            "/org/bluez/hci0/dev_66_77_88_99_AA_BB": device(
+                "66:77:88:99:AA:BB", "Not paired", paired=False),
+        }
+        raw = json.dumps({"type": "a{oa{sa{sv}}}", "data": [objects]}).encode()
+        with mock.patch.object(HELPER, "run_bounded", return_value=(raw, False, 0)) as run_bounded:
+            reply = run(HELPER.cmd_bluetooth)
+        self.assertEqual(run_bounded.call_args.args[0][:3],
+                         ["busctl", "--json=short", "call"])
+        self.assertEqual(reply["devices"], [
             {"address": "38:18:4C:24:30:3E", "name": "Headphones", "connected": True},
             {"address": "00:11:22:33:44:55", "name": "Keyboard", "connected": False},
         ])
-
-    def test_bluetooth_shortens_long_names_and_rejects_bad_lines(self):
-        paired = (b"Device aa:bb:cc:dd:ee:ff " + b"N" * 300 + b"\n"
-                  b"Device 00:11:22:33:44:55 bad\x01name\n"
-                  b"Device 00:11:22:33:44:5 Short address\n"
-                  b"Device 00:11:22:33:44:55\n")
-        with mock.patch.object(HELPER, "run_bounded", side_effect=[
-                (paired, False, 0), (b"", False, 0)]):
-            reply = run(HELPER.cmd_bluetooth)
-        self.assertEqual(reply["devices"], [
-            {"address": "AA:BB:CC:DD:EE:FF", "name": "N" * 160, "connected": False}])
-        self.assertFalse(reply["partial"])
 
     def test_terminal_log_wrapper_keeps_output_after_interrupt(self):
         literal = "device name; $(echo unchanged)"

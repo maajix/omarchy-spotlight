@@ -51,8 +51,8 @@ From two characters onward, Spotlight searches enabled local providers together 
 | --- | --- |
 | `chrom` | Applications, open windows, files, and other local matches |
 | `screenshot` | Omarchy and system actions |
-| `bluetooth` | Show its live state; Enter flips the switch without closing Spotlight |
-| `wifi` | The same for Wi-Fi, night light, mute, Do Not Disturb, and other settings |
+| `bluetooth` or `wifi` | Open the matching device or network view |
+| `night light` or `mute` | Show live state; Enter flips the switch without closing Spotlight |
 | `12*7+3` | Calculate; Enter copies the result |
 | `20% of 250` | Calculate percentages |
 | `10 km to miles` | Convert units offline |
@@ -137,8 +137,9 @@ view unless an app has exactly that name.
 A filter without a query shows a hint instead of launching a broad search.
 The `ports:`, `ssh:`, `docker:`, `services:`, `mounts:`, `audio:`, `wifi:`, and `bluetooth:` views list their entries
 immediately. Each view holds up to 200 entries (100 for `audio:`, `wifi:`, and
-`bluetooth:`); type to narrow long lists. When there were more, or a command's
-output was cut short, the section title says "partial list".
+`bluetooth:`); type to narrow long lists. When there were more, the section
+title says "partial list". Some commands can also return a partial list when
+their output is cut short.
 In `ports:`, type a process name,
 abbreviation, endpoint, PID, or port number after the colon to narrow the list
 (for example, `ports:ssh` or `ports:22`). Enter opens a TCP listener as an HTTP
@@ -325,6 +326,9 @@ Spotlight has no telemetry, analytics, or background network service. Almost eve
 | `kagi.com/api/autosuggest` | While typing, only when `webSuggestions` is enabled and `searchEngine` is `kagi` |
 | `suggestqueries.google.com` | While typing, only when `webSuggestions` is enabled with any other search engine |
 | Your browser | After you activate a web search, URL, or calendar result |
+| `ssh` | After you connect to a host from `ssh:` |
+| `nmcli` | After you connect to a network from `wifi:` |
+| Docker daemon | When opening `docker:` or following container logs; the daemon may be remote in the active Docker context |
 | tldr-pages (GitHub) | First lookup of a command not yet in `~/.cache/tldr`, via the `tldr` client |
 
 Live web suggestions are disabled by default. Normal web searches do not send the query anywhere until you activate the result.

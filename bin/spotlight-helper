@@ -142,10 +142,10 @@ AUDIO_COUNT = 100
 WIFI_BYTES = 128 * 1024
 WIFI_DEADLINE = 3.0
 WIFI_COUNT = 100
-BLUETOOTH_BYTES = 64 * 1024
+BLUETOOTH_BYTES = 512 * 1024
 BLUETOOTH_DEADLINE = 2.0
 BLUETOOTH_COUNT = 100
-BLUETOOTH_DEVICE_RE = re.compile(r"Device ((?:[0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}) (.+)")
+BLUETOOTH_ADDRESS_RE = re.compile(r"(?:[0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}")
 
 SSH_CONFIG_BYTES = 64 * 1024
 SSH_KNOWN_BYTES = 256 * 1024
@@ -2199,7 +2199,7 @@ def _nmcli_fields(line):
 
 def cmd_wifi():
     raw, truncated = view_output(
-        ["nmcli", "-t", "--escape", "yes", "-f", "IN-USE,SSID,SIGNAL,SECURITY",
+        ["nmcli", "-t", "--escape", "yes", "-f", "IN-USE,SSID-HEX,SIGNAL,SECURITY",
          "device", "wifi", "list", "--rescan", "no"],
         WIFI_BYTES, WIFI_DEADLINE, "Wi-Fi unavailable", allow_partial=True)
     by_name = {}
@@ -2207,8 +2207,14 @@ def cmd_wifi():
         fields = _nmcli_fields(line)
         if len(fields) != 4:
             continue
-        active, ssid, strength, security = fields
-        if not ssid or len(ssid) > 128 or any(ord(ch) < 32 for ch in ssid):
+        active, ssid_hex, strength, security = fields
+        if not re.fullmatch(r"(?:[0-9A-Fa-f]{2}){1,32}", ssid_hex):
+            continue
+        try:
+            ssid = bytes.fromhex(ssid_hex).decode("utf-8")
+        except UnicodeDecodeError:
+            continue
+        if any(ord(ch) < 32 for ch in ssid):
             continue
         row = {"ssid": ssid, "connected": active == "*",
                "signal": int(strength) if strength.isdigit() and int(strength) <= 100 else 0,
@@ -2223,24 +2229,34 @@ def cmd_wifi():
 
 
 def cmd_bluetooth():
-    def devices(state):
-        raw, truncated = view_output(
-            ["bluetoothctl", "devices", state], BLUETOOTH_BYTES,
-            BLUETOOTH_DEADLINE, "Bluetooth unavailable", allow_partial=True)
-        rows = {}
-        for line in raw.decode("utf-8", "replace").splitlines():
-            match = BLUETOOTH_DEVICE_RE.fullmatch(line)
-            if match and not any(ord(ch) < 32 for ch in match.group(2)):
-                rows[match.group(1).upper()] = match.group(2)[:160]
-        return rows, truncated
-
-    paired, truncated = devices("Paired")
-    connected, _ = devices("Connected")
-    rows = [{"address": address, "name": name, "connected": address in connected}
-            for address, name in paired.items()]
+    raw, _ = view_output(
+        ["busctl", "--json=short", "call", "org.bluez", "/",
+         "org.freedesktop.DBus.ObjectManager", "GetManagedObjects"],
+        BLUETOOTH_BYTES, BLUETOOTH_DEADLINE, "Bluetooth unavailable")
+    try:
+        objects = json.loads(raw)["data"][0]
+        if not isinstance(objects, dict):
+            raise ValueError
+    except (ValueError, KeyError, IndexError, TypeError):
+        raise Denied("invalid Bluetooth device list")
+    rows = []
+    for interfaces in objects.values():
+        if not isinstance(interfaces, dict):
+            continue
+        device = interfaces.get("org.bluez.Device1")
+        if not isinstance(device, dict) or device.get("Paired", {}).get("data") is not True:
+            continue
+        address = device.get("Address", {}).get("data")
+        name = device.get("Alias", {}).get("data")
+        if not isinstance(address, str) or not BLUETOOTH_ADDRESS_RE.fullmatch(address) \
+                or not isinstance(name, str) or not name \
+                or any(ord(ch) < 32 for ch in name):
+            continue
+        rows.append({"address": address.upper(), "name": name[:160],
+                     "connected": device.get("Connected", {}).get("data") is True})
     rows.sort(key=lambda row: (not row["connected"], row["name"].lower()))
     emit({"devices": rows[:BLUETOOTH_COUNT],
-          "partial": truncated or len(rows) > BLUETOOTH_COUNT})
+          "partial": len(rows) > BLUETOOTH_COUNT})
 
 
 def cmd_ssh_hosts():
