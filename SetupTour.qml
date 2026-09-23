@@ -1,5 +1,4 @@
 import QtQuick
-import QtQuick.Controls
 import QtQuick.Layouts
 import qs.Commons
 import "lib/Chord.js" as Chord
@@ -39,7 +38,6 @@ FocusScope {
   // at the same step after a focus loss instead of restarting it.
   property bool started: false
   property var draft: ({})
-  property bool currencyInputValid: true
   property string selected: ""
 
   // out
@@ -70,7 +68,7 @@ FocusScope {
   readonly property string primaryText: step === 0 ? "Get started"
       : step === 1 ? (selected === "" ? (singleStep ? "Done" : "Continue") : occupied ? "Replace and set" : "Set shortcut")
       : step === 2 ? "Continue" : "Finish"
-  readonly property bool primaryEnabled: step === 2 ? currencyInputValid
+  readonly property bool primaryEnabled: step === 2 ? currencyCodeField.valid
       : step !== 1 || (!sameAsCurrent && bindingState !== "busy")
   readonly property string statusText: bindingState === "busy" ? "Saving..."
       : bindingState === "ok" ? "Shortcut set to " + currentBinding
@@ -109,7 +107,7 @@ FocusScope {
       learningEnabled: current.learningEnabled !== false
     }
     selected = ""
-    currencyInputValid = true
+    currencyCodeField.revert()
     singleStep = single
     step = at
     started = true
@@ -586,46 +584,16 @@ FocusScope {
           glyph: "󰑤"
           switchable: false
           title: "Default currency"
-          description: tour.currencyInputValid
+          description: currencyCodeField.valid
             ? "Type a 3-letter currency code, or leave blank. Explicit targets take priority."
             : "Enter a supported 3-letter currency code, or clear the field."
 
-          trailing: TextField {
+          trailing: CurrencyField {
             id: currencyCodeField
+            chrome: tour.chrome
             implicitWidth: Style.space(200)
-            implicitHeight: Style.space(30)
-            text: tour.draft.defaultCurrency || ""
-            placeholderText: "None or USD"
-            maximumLength: 3
-            font.family: tour.fontFamily
-            font.pixelSize: Style.font.body
-            color: tour.foreground
-            selectByMouse: true
-            Keys.onPressed: function(event) {
-              if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
-                event.accepted = true
-                if (tour.currencyInputValid) tour.primary()
-              } else if (event.key === Qt.Key_Escape) {
-                event.accepted = true
-                tour.currencyInputValid = true
-                tour.draft = Object.assign({}, tour.draft)
-                tour.forceActiveFocus()
-              } else if (event.key === Qt.Key_Left && cursorPosition === 0) {
-                event.accepted = true
-              }
-            }
-            background: Rectangle {
-              radius: tour.rowRadius
-              color: currencyCodeField.activeFocus ? tour.fillHot : tour.fill
-              border.width: tour.hairline
-              border.color: !tour.currencyInputValid ? Color.urgent
-                : currencyCodeField.activeFocus ? tour.lineFocus : tour.line
-            }
-            onTextEdited: {
-              var valid = text === "" || Currency.defaultCode(text) !== ""
-              tour.currencyInputValid = valid
-              if (valid) tour.set("defaultCurrency", Currency.defaultCode(text))
-            }
+            code: tour.draft.defaultCurrency || ""
+            onPicked: function(code) { tour.set("defaultCurrency", code) }
           }
         }
 

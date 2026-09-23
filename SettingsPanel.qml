@@ -42,7 +42,6 @@ FocusScope {
     maxSuggestions: 4
   })
   property var draft: panel.defaults
-  property bool currencyValid: true
   // Reset requires two presses.
   property bool resetArmed: false
 
@@ -79,7 +78,7 @@ FocusScope {
       maxApps: Util.clamp(s.maxApps === undefined ? panel.defaults.maxApps : s.maxApps, 3, 24),
       maxSuggestions: Util.clamp(s.maxSuggestions === undefined ? panel.defaults.maxSuggestions : s.maxSuggestions, 0, 8)
     }
-    panel.currencyValid = true
+    currencyCodeField.revert()
     panel.resetArmed = false
     // After the layout has settled: the rows are still being sized when open()
     // runs, and a contentY set against the old height does not survive it.
@@ -118,10 +117,7 @@ FocusScope {
   // the field at that point, and nothing was written for it, so the field is
   // put back on the stored value instead of leaving the two disagreeing.
   function finish() {
-    if (!panel.currencyValid) {
-      panel.currencyValid = true
-      panel.draft = Object.assign({}, panel.draft)
-    }
+    currencyCodeField.revert()
     panel.closed()
   }
 
@@ -348,49 +344,16 @@ FocusScope {
           glyph: "󰠓"
           switchable: false
           title: "Default currency"
-          description: panel.currencyValid
+          description: currencyCodeField.valid
             ? "Type a 3-letter currency code, or leave blank. Explicit targets take priority."
             : "Enter a supported 3-letter currency code, or clear the field."
 
-          trailing: TextField {
+          trailing: CurrencyField {
             id: currencyCodeField
+            chrome: panel.chrome
             implicitWidth: Style.space(160)
-            implicitHeight: Style.space(30)
-            text: panel.draft.defaultCurrency || ""
-            placeholderText: "None or USD"
-            maximumLength: 3
-            font.family: panel.fontFamily
-            font.pixelSize: Style.font.body
-            color: panel.foreground
-            selectByMouse: true
-            // Reassigning draft restores the text binding rather than writing
-            // `text` directly, which would detach the field from the draft.
-            Keys.onEscapePressed: function(event) {
-              event.accepted = true
-              panel.currencyValid = true
-              panel.draft = Object.assign({}, panel.draft)
-              panel.forceActiveFocus()
-            }
-            // Return commits the field by handing focus back, rather than
-            // leaving the caret in a control the panel no longer tracks.
-            Keys.onReturnPressed: function(event) {
-              event.accepted = true
-              panel.forceActiveFocus()
-            }
-            background: Rectangle {
-              radius: panel.rowRadius
-              color: currencyCodeField.activeFocus ? panel.chrome.fillHot : panel.chrome.fill
-              border.width: panel.hairline
-              border.color: !panel.currencyValid ? Color.urgent
-                : currencyCodeField.activeFocus ? panel.chrome.lineFocus : panel.chrome.line
-            }
-            // An unfinished code is never written: the field reports only what
-            // Currency accepts, so a half-typed "US" leaves the stored value alone.
-            onTextEdited: {
-              var valid = text === "" || Currency.defaultCode(text) !== ""
-              panel.currencyValid = valid
-              if (valid) panel.set("defaultCurrency", Currency.defaultCode(text))
-            }
+            code: panel.draft.defaultCurrency || ""
+            onPicked: function(code) { panel.set("defaultCurrency", code) }
             onActiveFocusChanged: if (activeFocus) panel.ensureVisible(currencyCodeRow)
           }
         }
