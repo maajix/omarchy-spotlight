@@ -136,12 +136,13 @@ FocusScope {
   }
 
   // The recorder takes the keyboard on the shortcut step; everywhere else
-  // the scope itself does, so Enter/Esc/Left work without a focused control.
+  // focusHome does, so Enter/Esc/Left work without a focused control. The
+  // scope itself would hand focus back to a control from an earlier step.
   function focusStep() {
     Qt.callLater(function() {
       if (!tour.visible) return
       if (tour.step === 1) recorder.forceActiveFocus()
-      else tour.forceActiveFocus()
+      else focusHome.forceActiveFocus()
     })
   }
 
@@ -198,6 +199,8 @@ FocusScope {
   Behavior on height {
     NumberAnimation { duration: 110; easing.type: Easing.OutCubic }
   }
+
+  Item { id: focusHome }
 
   Rectangle {
     anchors.fill: parent
