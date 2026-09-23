@@ -2,11 +2,43 @@
 
 > Fast, local-first command palette plugin for Omarchy Linux: apps, windows, files, clipboard, calculator, reminders, command help, system views and web search from one input.
 
-Spotlight is an open-source plugin (MIT license) for Omarchy 4 by Max Randhahn. It runs inside omarchy-shell and opens with Alt+Space. One input searches applications, open windows, files, clipboard history and system commands, evaluates calculations and unit conversions, creates calendar events and reminders from natural language, flips live system toggles, lists listening ports, SSH hosts, Docker containers, services, mounts, audio devices, Wi-Fi networks and Bluetooth devices through colon views such as ports: and ssh:, runs web search bangs and shows tldr command help. Everything runs locally except web search and the first lookup of a tldr page.
+Spotlight is an open-source plugin (MIT license) for Omarchy 4 (Quattro) by Max Randhahn; the current version is 1.6.1. It runs inside omarchy-shell and opens with Alt+Space. One input searches applications, open windows, files, clipboard history and system commands, evaluates calculations, unit and currency conversions, creates calendar events and reminders from natural language, flips live system toggles, lists listening ports, SSH hosts, Docker containers, services, mounts, audio devices, Wi-Fi networks and Bluetooth devices through system views such as ports: and ssh:, runs web search bangs and shows tldr command help. Settings are in the Spotlight Settings panel and in ~/.config/omarchy/spotlight.json. Everything runs locally: the network is used only for web suggestions (off by default), currency rates, the first lookup of a tldr page and results you open.
 
 ## Install
 
     omarchy plugin add https://github.com/maajix/omarchy-spotlight.git --enable
+
+## Docs: Get started
+
+- [Overview](https://maajix.github.io/omarchy-spotlight/docs/?p=overview): Spotlight is a command palette plugin for Omarchy 4 (Quattro): one field for apps, windows, files, clipboard, math, reminders, your system and the web.
+- [Installation](https://maajix.github.io/omarchy-spotlight/docs/?p=installation): Requirements, the install command, the Alt+Space shortcut, updating and removing.
+- [Quickstart](https://maajix.github.io/omarchy-spotlight/docs/?p=quickstart): Seven things to try in your first five minutes.
+- [How search works](https://maajix.github.io/omarchy-spotlight/docs/?p=how-search-works): How Spotlight reads a query, ranks the results and learns what you pick.
+- [Settings](https://maajix.github.io/omarchy-spotlight/docs/?p=settings): Change the shortcut, search sources and behavior from the settings panel or spotlight.json.
+
+## Docs: Features
+
+- [Apps, windows and files](https://maajix.github.io/omarchy-spotlight/docs/?p=apps-windows-files): Launch apps, jump to open windows and find files and folders.
+- [Clipboard history](https://maajix.github.io/omarchy-spotlight/docs/?p=clipboard): Search what you copied and paste an earlier entry.
+- [Calculator and conversions](https://maajix.github.io/omarchy-spotlight/docs/?p=calculator): Math, units and currency, answered as you type.
+- [Calendar and reminders](https://maajix.github.io/omarchy-spotlight/docs/?p=calendar-reminders): Write an event or a reminder as a sentence and Spotlight finds the time.
+- [Web search and bangs](https://maajix.github.io/omarchy-spotlight/docs/?p=web-search): Search the web, jump straight to a site with a bang and open URLs.
+- [Command help](https://maajix.github.io/omarchy-spotlight/docs/?p=command-help): Browse tldr examples for a command, then copy one or open it in a terminal.
+- [Live toggles](https://maajix.github.io/omarchy-spotlight/docs/?p=toggles): Switches that read the real system state and flip in place.
+- [System views](https://maajix.github.io/omarchy-spotlight/docs/?p=system-views): Type ports:, ssh:, docker: and more to list what is on your machine and act on it.
+
+## Docs: Reference
+
+- [Search syntax](https://maajix.github.io/omarchy-spotlight/docs/?p=search-syntax): Every prefix, filter and short form in one place.
+- [Keyboard shortcuts](https://maajix.github.io/omarchy-spotlight/docs/?p=keyboard-shortcuts): Every key Spotlight responds to, by context.
+- [Settings reference](https://maajix.github.io/omarchy-spotlight/docs/?p=settings-reference): Every key in spotlight.json with its type, default and effect.
+
+## Docs: Resources
+
+- [Troubleshooting](https://maajix.github.io/omarchy-spotlight/docs/?p=troubleshooting): Fixes for the shortcut, missing results, views and the settings file.
+- [Privacy and security](https://maajix.github.io/omarchy-spotlight/docs/?p=privacy-security): What Spotlight stores, what reaches the network and how to report a vulnerability.
+- [Changelog](https://maajix.github.io/omarchy-spotlight/docs/?p=changelog): What changed in each release.
+- [Development](https://maajix.github.io/omarchy-spotlight/docs/?p=development): Run Spotlight from a checkout, run the checks and contribute.
 
 ## Links
 

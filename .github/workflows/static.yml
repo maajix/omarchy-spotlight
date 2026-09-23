@@ -40,7 +40,7 @@ jobs:
           hugo version
 
       - name: Build
-        # The checkout includes the committed public/; clean it so pages removed from static/ do not ship.
+        # Clean public/ so pages removed from static/ do not ship.
         run: hugo --minify --cleanDestinationDir
 
       - name: Setup Pages

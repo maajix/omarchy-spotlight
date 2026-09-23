@@ -9,6 +9,7 @@ hugo --gc --minify   # build into public/
 
 - `static/index.html`: the landing page.
 - `static/docs/index.html`: all docs pages in one file. Each page is an `<article data-slug>`, shown at `docs/?p=<slug>`; the sidebar, table of contents and search index are built from the articles.
-- `static/404.html`, `static/robots.txt`, `static/sitemap.xml`, `static/llms.txt`: served as is.
+- `static/404.html`: served by GitHub Pages for any missing path, so its links are absolute (`/omarchy-spotlight/...`).
+- `static/robots.txt`, `static/sitemap.xml`, `static/llms.txt`: served as is.
 
-The plugin version appears in the landing page text and its JSON-LD (`softwareVersion`), and in the docs changelog.
+When a release ships, update the version in the landing page JSON-LD (`softwareVersion`), the docs header button, the docs changelog and `llms.txt`.
