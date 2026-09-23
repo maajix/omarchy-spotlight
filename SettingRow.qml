@@ -38,7 +38,10 @@ Rectangle {
     enabled: row.switchable
     hoverEnabled: true
     cursorShape: Qt.PointingHandCursor
-    onClicked: row.toggled()
+    // Extras own their clicks, even disabled ones that let the click through.
+    onClicked: function(mouse) {
+      if (!extraCol.contains(rowMouse.mapToItem(extraCol, mouse.x, mouse.y))) row.toggled()
+    }
   }
 
   ColumnLayout {
