@@ -298,7 +298,7 @@ FocusScope {
           chrome: panel.chrome
           glyph: "󰑤"
           title: "Currency rates"
-          description: "Fetch rates from Frankfurter for complete currency queries. On by default."
+          description: "Fetch rates from Frankfurter for complete currency queries."
           checked: panel.draft.currencyRates !== false
           onToggled: panel.toggle("currencyRates")
         }

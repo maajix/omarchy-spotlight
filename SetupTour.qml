@@ -557,7 +557,7 @@ FocusScope {
           chrome: tour.chrome
           glyph: "󰑤"
           title: "Currency rates"
-          description: "Fetch rates from Frankfurter for complete currency queries. On by default."
+          description: "Fetch rates from Frankfurter for complete currency queries."
           checked: tour.draft.currencyRates !== false
           onToggled: tour.set("currencyRates", !tour.draft.currencyRates)
         }
