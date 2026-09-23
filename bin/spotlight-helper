@@ -26,12 +26,15 @@ files owned by us, which is what keeps a planted symlink, FIFO or device out.
 
 import errno
 import fcntl
+import glob
 import hashlib
+import ipaddress
 import json
 import math
 import os
 import re
 import select
+import shlex
 import shutil
 import signal
 import socket
@@ -110,6 +113,46 @@ FILES_MAX_TERMS = 8
 # raising this constant without re-deriving that margin reintroduces the
 # empty-results bug this budget exists to prevent.
 FILES_JSON_BUDGET_CHARS = 200000
+
+PORTS_BYTES = 128 * 1024
+PORTS_DEADLINE = 2.0
+# ponytail: first 200 sockets only; add paging if hosts exceed this routinely.
+PORTS_COUNT = 200
+PORT_PROCESS_RE = re.compile(r'users:\(\("([^"\r\n]{1,128})",pid=(\d+)')
+
+DOCKER_BYTES = 512 * 1024
+DOCKER_DEADLINE = 3.0
+# ponytail: newest 200 containers only; add paging if this becomes limiting.
+DOCKER_COUNT = 200
+DOCKER_ID_RE = re.compile(r"^[0-9a-f]{12,64}$")
+
+SERVICES_BYTES = 512 * 1024
+SERVICES_DEADLINE = 2.0
+# ponytail: first 200 loaded services only; add paging if hosts exceed this.
+SERVICES_COUNT = 200
+
+MOUNTS_BYTES = 128 * 1024
+MOUNTS_DEADLINE = 2.0
+MOUNTS_COUNT = 200
+
+AUDIO_BYTES = 512 * 1024
+AUDIO_DEADLINE = 2.0
+AUDIO_COUNT = 100
+
+WIFI_BYTES = 128 * 1024
+WIFI_DEADLINE = 3.0
+WIFI_COUNT = 100
+BLUETOOTH_BYTES = 64 * 1024
+BLUETOOTH_DEADLINE = 2.0
+BLUETOOTH_COUNT = 100
+BLUETOOTH_DEVICE_RE = re.compile(r"Device ((?:[0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}) (.+)")
+
+SSH_CONFIG_BYTES = 64 * 1024
+SSH_KNOWN_BYTES = 256 * 1024
+SSH_FILES = 32
+SSH_HOSTS = 200
+SSH_ALIAS_RE = re.compile(r"^[A-Za-z0-9_][A-Za-z0-9_.-]{0,127}$")
+SSH_DIRECTIVE_RE = re.compile(r"^\s*(Host|Include)\s*(?:=\s*|\s+)(.*)$", re.I)
 
 REMINDER_BYTES = 256 * 1024
 REMINDER_DEADLINE = 3.0
@@ -1927,6 +1970,369 @@ def cmd_files(argv):
     emit({"files": rows})
 
 
+def view_output(argv, cap, deadline, message, allow_partial=False):
+    raw, truncated, status = run_bounded(argv, cap, deadline, want_status=True)
+    if (status != 0 and (not allow_partial or not truncated)) \
+            or (truncated and (not allow_partial or not raw)):
+        raise Denied(message)
+    return (raw.rpartition(b"\n")[0] if truncated else raw), truncated
+
+
+def cmd_ports():
+    raw, truncated = view_output(
+        ["ss", "-H", "-lntup"], PORTS_BYTES, PORTS_DEADLINE,
+        "cannot list listening ports", allow_partial=True)
+    lines = raw.decode("utf-8", "replace").splitlines()
+    rows = []
+    for line in lines:
+        parts = line.split(None, 6)
+        if len(parts) < 6 or parts[0] not in ("tcp", "udp"):
+            continue
+        try:
+            host, port_text = parts[4].rsplit(":", 1)
+            port = int(port_text)
+            if not 1 <= port <= 65535:
+                continue
+            # ss prints a scoped IPv6 listener as [fe80::1]%eno1.
+            host = host.replace("[", "").replace("]", "")
+            if host == "*":
+                endpoint, url_host = "*:" + port_text, "localhost"
+            else:
+                address_host = host.split("%", 1)[0]
+                address = ipaddress.ip_address(address_host)
+                endpoint_host = "[" + host + "]" if address.version == 6 else host
+                endpoint = endpoint_host + ":" + port_text
+                if address.is_unspecified:
+                    url_host = "localhost"
+                elif address.version == 6:
+                    url_host = endpoint_host.replace("%", "%25")
+                else:
+                    url_host = address_host
+        except (ValueError, IndexError):
+            continue
+        process = PORT_PROCESS_RE.search(line)
+        rows.append({
+            "protocol": parts[0].upper(), "port": port, "endpoint": endpoint,
+            "url": "http://%s:%d" % (url_host, port) if parts[0] == "tcp" else "",
+            "process": clamp_text(process.group(1), 128).strip() if process else "",
+            "pid": int(process.group(2)) if process else None,
+        })
+    rows.sort(key=lambda row: (row["port"], row["protocol"], row["endpoint"]))
+    unique = {}
+    for row in rows:
+        unique.setdefault((row["protocol"], row["endpoint"], row["pid"]), row)
+    rows = list(unique.values())
+    emit({"ports": rows[:PORTS_COUNT], "partial": truncated or len(rows) > PORTS_COUNT})
+
+
+def cmd_docker():
+    raw, truncated = view_output(
+        # One row past the cap shows whether the cap cut anything off.
+        ["docker", "container", "ls", "--all", "--last", str(DOCKER_COUNT + 1),
+         "--no-trunc", "--size=false", "--format", "{{json .}}"],
+        DOCKER_BYTES, DOCKER_DEADLINE, "Docker is unavailable", allow_partial=True)
+    rows = []
+    for line in raw.decode("utf-8", "replace").splitlines():
+        try:
+            item = json.loads(line)
+        except ValueError:
+            raise Denied("invalid Docker output")
+        if not isinstance(item, dict):
+            raise Denied("invalid Docker output")
+        container_id = str(item.get("ID") or item.get("Id") or "")
+        if not DOCKER_ID_RE.fullmatch(container_id):
+            continue
+        names = item.get("Names", "")
+        if isinstance(names, list):
+            names = names[0] if names else ""
+        ports = item.get("Ports", "")
+        if isinstance(ports, list):
+            ports = ", ".join(str(port) for port in ports if isinstance(port, str))
+        rows.append({
+            "id": container_id,
+            "name": clamp_text(names, 128),
+            "image": clamp_text(item.get("Image"), 160),
+            "state": clamp_text(item.get("State"), 32).lower(),
+            "status": clamp_text(item.get("Status"), 100),
+            "ports": clamp_text(ports, 160),
+        })
+    rows.sort(key=lambda row: (row["state"] != "running", row["name"].lower()))
+    emit({"containers": rows[:DOCKER_COUNT],
+          "partial": truncated or len(rows) > DOCKER_COUNT})
+
+
+def cmd_services():
+    rows = []
+    answered = False
+    partial = False
+    for scope in ("user", "system"):
+        argv = ["systemctl", "--" + scope, "list-units", "--all",
+                "--type=service", "--full", "--plain", "--no-legend", "--no-pager"]
+        try:
+            raw, truncated = view_output(
+                argv, SERVICES_BYTES, SERVICES_DEADLINE,
+                "services unavailable", allow_partial=True)
+        except Denied:
+            partial = True
+            continue
+        answered = True
+        partial = partial or truncated
+        for line in raw.decode("utf-8", "replace").splitlines():
+            parts = line.split(None, 5)
+            if len(parts) > 1 and parts[1].endswith(".service"):
+                parts = parts[1:]
+            if len(parts) < 4 or not parts[0].endswith(".service"):
+                continue
+            name, _load, active, sub = parts[:4]
+            if len(name) > 180 or any(ord(ch) < 33 for ch in name):
+                continue
+            rows.append({
+                "name": name, "scope": scope,
+                "active": clamp_text(active, 32),
+                "sub": clamp_text(sub, 32),
+                "description": clamp_text(" ".join(parts[4:]), 160),
+            })
+    if not answered:
+        raise Denied("services unavailable")
+    rows.sort(key=lambda row: (
+        0 if row["active"] == "failed" else 1 if row["active"] == "active" else 2,
+        row["scope"] != "user", row["name"].lower()))
+    emit({"services": rows[:SERVICES_COUNT],
+          "partial": partial or len(rows) > SERVICES_COUNT})
+
+
+def cmd_mounts():
+    raw, _ = view_output(
+        ["findmnt", "--json", "--list", "--real", "--nocanonicalize",
+         "--output", "TARGET,SOURCE,FSTYPE"],
+        MOUNTS_BYTES, MOUNTS_DEADLINE, "mounts unavailable")
+    try:
+        filesystems = json.loads(raw).get("filesystems", [])
+        if not isinstance(filesystems, list):
+            raise ValueError
+    except (ValueError, AttributeError):
+        raise Denied("invalid mount list")
+    by_target = {}
+    for entry in filesystems:
+        if not isinstance(entry, dict):
+            continue
+        target = entry.get("target")
+        if not isinstance(target, str) or not target.startswith("/") or len(target) > 1024 \
+                or any(ord(ch) < 32 for ch in target):
+            continue
+        # findmnt lists mounts in mount order, so the last one on a target is
+        # the one visible there. --real hides a pseudo filesystem mounted on
+        # top, which leaves the real one underneath listed instead.
+        by_target[target] = {
+            "target": target,
+            "source": clamp_text(entry.get("source"), 256),
+            "fstype": clamp_text(entry.get("fstype"), 64),
+        }
+    rows = list(by_target.values())
+    emit({"mounts": rows[:MOUNTS_COUNT], "partial": len(rows) > MOUNTS_COUNT})
+
+
+def cmd_audio():
+    def read(argv, cap=AUDIO_BYTES):
+        raw, _ = view_output(argv, cap, AUDIO_DEADLINE, "audio unavailable")
+        try:
+            return json.loads(raw)
+        except ValueError:
+            raise Denied("invalid audio device list")
+
+    info = read(["pactl", "-f", "json", "info"], 8192)
+    if not isinstance(info, dict):
+        raise Denied("invalid audio device list")
+    rows = []
+    for kind, resource, default_key in (
+            ("output", "sinks", "default_sink_name"),
+            ("input", "sources", "default_source_name")):
+        devices = read(["pactl", "-f", "json", "list", resource])
+        if not isinstance(devices, list):
+            raise Denied("invalid audio device list")
+        for device in devices:
+            if not isinstance(device, dict):
+                continue
+            name = device.get("name")
+            if not isinstance(name, str) or not name or name.startswith("-") \
+                    or len(name) > 256 or any(ord(ch) < 32 for ch in name):
+                continue
+            props = device.get("properties") or {}
+            if kind == "input" and (name.endswith(".monitor")
+                    or isinstance(props, dict) and props.get("device.class") == "monitor"):
+                continue
+            volume = device.get("volume") or {}
+            channel = next(iter(volume.values()), {}) if isinstance(volume, dict) else {}
+            percentage = channel.get("value_percent", "") if isinstance(channel, dict) else ""
+            node = props.get("object.id") if isinstance(props, dict) else None
+            rows.append({
+                "kind": kind,
+                "name": name,
+                "id": node if isinstance(node, str) and re.fullmatch(r"\d{1,10}", node) else "",
+                "description": clamp_text(device.get("description"), 160).replace("\n", " "),
+                "default": name == info.get(default_key),
+                "volume": percentage if isinstance(percentage, str)
+                    and re.fullmatch(r"\d{1,3}%", percentage) else "",
+                "muted": device.get("mute") is True,
+            })
+    rows.sort(key=lambda row: (row["kind"] != "output", not row["default"],
+                               row["description"].lower()))
+    emit({"devices": rows[:AUDIO_COUNT], "partial": len(rows) > AUDIO_COUNT})
+
+
+def _nmcli_fields(line):
+    fields, field, escaped = [], [], False
+    for char in line:
+        if escaped:
+            field.append(char)
+            escaped = False
+        elif char == "\\":
+            escaped = True
+        elif char == ":":
+            fields.append("".join(field))
+            field = []
+        else:
+            field.append(char)
+    fields.append("".join(field))
+    return fields
+
+
+def cmd_wifi():
+    raw, truncated = view_output(
+        ["nmcli", "-t", "--escape", "yes", "-f", "IN-USE,SSID,SIGNAL,SECURITY",
+         "device", "wifi", "list", "--rescan", "no"],
+        WIFI_BYTES, WIFI_DEADLINE, "Wi-Fi unavailable", allow_partial=True)
+    by_name = {}
+    for line in raw.decode("utf-8", "replace").splitlines():
+        fields = _nmcli_fields(line)
+        if len(fields) != 4:
+            continue
+        active, ssid, strength, security = fields
+        if not ssid or len(ssid) > 128 or any(ord(ch) < 32 for ch in ssid):
+            continue
+        row = {"ssid": ssid, "connected": active == "*",
+               "signal": int(strength) if strength.isdigit() and int(strength) <= 100 else 0,
+               "security": clamp_text(security, 64)}
+        previous = by_name.get(ssid)
+        if previous is None or (row["connected"], row["signal"]) > \
+                (previous["connected"], previous["signal"]):
+            by_name[ssid] = row
+    rows = sorted(by_name.values(), key=lambda row: (
+        not row["connected"], -row["signal"], row["ssid"].lower()))
+    emit({"networks": rows[:WIFI_COUNT], "partial": truncated or len(rows) > WIFI_COUNT})
+
+
+def cmd_bluetooth():
+    def devices(state):
+        raw, truncated = view_output(
+            ["bluetoothctl", "devices", state], BLUETOOTH_BYTES,
+            BLUETOOTH_DEADLINE, "Bluetooth unavailable", allow_partial=True)
+        rows = {}
+        for line in raw.decode("utf-8", "replace").splitlines():
+            match = BLUETOOTH_DEVICE_RE.fullmatch(line)
+            if match and not any(ord(ch) < 32 for ch in match.group(2)):
+                rows[match.group(1).upper()] = match.group(2)[:160]
+        return rows, truncated
+
+    paired, truncated = devices("Paired")
+    connected, _ = devices("Connected")
+    rows = [{"address": address, "name": name, "connected": address in connected}
+            for address, name in paired.items()]
+    rows.sort(key=lambda row: (not row["connected"], row["name"].lower()))
+    emit({"devices": rows[:BLUETOOTH_COUNT],
+          "partial": truncated or len(rows) > BLUETOOTH_COUNT})
+
+
+def cmd_ssh_hosts():
+    home = os.environ.get("HOME", "")
+    root = os.path.join(home, ".ssh")
+    hosts = []
+    seen_hosts = set()
+    seen_files = set()
+    partial = False
+
+    def scan(path, depth=0):
+        nonlocal partial
+        if depth > 4 or len(seen_files) >= SSH_FILES:
+            partial = True
+            return
+        path = os.path.abspath(path)
+        if os.path.commonpath((root, path)) != root or path in seen_files:
+            return
+        seen_files.add(path)
+        parts = os.path.relpath(path, root).split(os.sep)
+        try:
+            fd = walk((".ssh", *parts[:-1]))
+            try:
+                raw = read_file(fd, parts[-1], SSH_CONFIG_BYTES)
+            finally:
+                os.close(fd)
+        except FileNotFoundError:
+            return
+        except (OSError, Denied):
+            partial = True
+            return
+        if raw is None:
+            return
+        global_scope = True
+        for line in raw.decode("utf-8", "replace").splitlines():
+            if len(hosts) > SSH_HOSTS:
+                break
+            if re.match(r"^\s*Match(?:\s|=)", line, re.I):
+                global_scope = False
+                continue
+            directive = SSH_DIRECTIVE_RE.match(line)
+            if not directive:
+                continue
+            try:
+                values = shlex.split(directive.group(2), comments=True)
+            except ValueError:
+                continue
+            if directive.group(1).lower() == "host":
+                global_scope = values == ["*"]
+                for alias in values:
+                    if SSH_ALIAS_RE.fullmatch(alias) and alias not in seen_hosts:
+                        seen_hosts.add(alias)
+                        hosts.append({"name": alias, "source": "config"})
+            elif global_scope:
+                for pattern in values:
+                    if pattern.startswith("~/"):
+                        pattern = os.path.join(home, pattern[2:])
+                    elif not os.path.isabs(pattern):
+                        pattern = os.path.join(root, pattern)
+                    if os.path.commonpath((root, os.path.abspath(pattern))) != root:
+                        continue
+                    for included in sorted(glob.glob(pattern))[:SSH_FILES]:
+                        scan(included, depth + 1)
+
+    scan(os.path.join(root, "config"))
+    try:
+        fd = walk((".ssh",))
+        try:
+            known = read_file(fd, "known_hosts", SSH_KNOWN_BYTES)
+        finally:
+            os.close(fd)
+    except FileNotFoundError:
+        known = None
+    except (OSError, Denied):
+        known = None
+        partial = True
+    if known:
+        for line in known.decode("utf-8", "replace").splitlines():
+            if len(hosts) > SSH_HOSTS:
+                break
+            fields = line.split(None, 2)
+            if len(fields) < 3 or fields[0].startswith(("#", "@")):
+                continue
+            for alias in fields[0].split(","):
+                if SSH_ALIAS_RE.fullmatch(alias) and alias not in seen_hosts:
+                    seen_hosts.add(alias)
+                    hosts.append({"name": alias, "source": "known_hosts"})
+                    if len(hosts) >= SSH_HOSTS:
+                        break
+    emit({"hosts": hosts[:SSH_HOSTS], "partial": partial or len(hosts) > SSH_HOSTS})
+
+
 def cmd_tldr(argv):
     if len(argv) != 1:
         raise Denied("tldr takes one page name")
@@ -2438,6 +2844,14 @@ COMMANDS = {
     "suggest": (cmd_suggest, True),
     "currency-rate": (cmd_currency_rate, True),
     "files": (cmd_files, True),
+    "ports": (cmd_ports, False),
+    "docker": (cmd_docker, False),
+    "services": (cmd_services, False),
+    "mounts": (cmd_mounts, False),
+    "audio": (cmd_audio, False),
+    "wifi": (cmd_wifi, False),
+    "bluetooth": (cmd_bluetooth, False),
+    "ssh-hosts": (cmd_ssh_hosts, False),
     "tldr": (cmd_tldr, True),
     "write-ics": (cmd_write_ics, True),
     "write-settings": (cmd_write_settings, False),

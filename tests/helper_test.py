@@ -5,7 +5,9 @@ import io
 import json
 import os
 from pathlib import Path
+import select
 import shutil
+import signal
 import stat
 import subprocess
 import sys
@@ -29,6 +31,406 @@ SPEC.loader.exec_module(HELPER)
 
 
 class HelperTests(unittest.TestCase):
+    def test_wifi_lists_unique_networks_and_preserves_escaped_ssids(self):
+        raw = (b':Cafe\\:Guest:65:WPA2\n:Home:95:WPA2\n'
+               b'*:Home:72:WPA2\n::40:WPA2\n')
+        with mock.patch.object(HELPER, "run_bounded", return_value=(raw, False, 0)):
+            buf = io.StringIO()
+            with contextlib.redirect_stdout(buf):
+                HELPER.cmd_wifi()
+        self.assertEqual(json.loads(buf.getvalue())["networks"], [
+            {"ssid": "Home", "connected": True, "signal": 72, "security": "WPA2"},
+            {"ssid": "Cafe:Guest", "connected": False, "signal": 65, "security": "WPA2"},
+        ])
+        self.assertEqual(HELPER._nmcli_fields(r":Cafe\\Guest:50:--"),
+                         ["", r"Cafe\Guest", "50", "--"])
+
+    def test_wifi_and_bluetooth_keep_complete_lines_of_cut_short_output(self):
+        with mock.patch.object(HELPER, "run_bounded",
+                               return_value=(b":Home:95:WPA2\n:Caf", True, -9)):
+            reply = run(HELPER.cmd_wifi)
+        self.assertEqual([n["ssid"] for n in reply["networks"]], ["Home"])
+        self.assertTrue(reply["partial"])
+        with mock.patch.object(HELPER, "run_bounded", side_effect=[
+                (b"Device 00:11:22:33:44:55 Keyboard\nDevice 00:11", True, -9),
+                (b"", False, 0)]):
+            reply = run(HELPER.cmd_bluetooth)
+        self.assertEqual([d["name"] for d in reply["devices"]], ["Keyboard"])
+        self.assertTrue(reply["partial"])
+
+    def test_bluetooth_lists_paired_devices_and_connection_state(self):
+        paired = b"Device 38:18:4C:24:30:3E Headphones\nDevice 00:11:22:33:44:55 Keyboard\n"
+        connected = b"Device 38:18:4C:24:30:3E Headphones\n"
+        with mock.patch.object(HELPER, "run_bounded", side_effect=[
+                (paired, False, 0), (connected, False, 0)]):
+            buf = io.StringIO()
+            with contextlib.redirect_stdout(buf):
+                HELPER.cmd_bluetooth()
+        self.assertEqual(json.loads(buf.getvalue())["devices"], [
+            {"address": "38:18:4C:24:30:3E", "name": "Headphones", "connected": True},
+            {"address": "00:11:22:33:44:55", "name": "Keyboard", "connected": False},
+        ])
+
+    def test_bluetooth_shortens_long_names_and_rejects_bad_lines(self):
+        paired = (b"Device aa:bb:cc:dd:ee:ff " + b"N" * 300 + b"\n"
+                  b"Device 00:11:22:33:44:55 bad\x01name\n"
+                  b"Device 00:11:22:33:44:5 Short address\n"
+                  b"Device 00:11:22:33:44:55\n")
+        with mock.patch.object(HELPER, "run_bounded", side_effect=[
+                (paired, False, 0), (b"", False, 0)]):
+            reply = run(HELPER.cmd_bluetooth)
+        self.assertEqual(reply["devices"], [
+            {"address": "AA:BB:CC:DD:EE:FF", "name": "N" * 160, "connected": False}])
+        self.assertFalse(reply["partial"])
+
+    def test_terminal_log_wrapper_keeps_output_after_interrupt(self):
+        literal = "device name; $(echo unchanged)"
+        child = 'printf "%s\\n" "$1"; exec sleep 30'
+        proc = subprocess.Popen(
+            ["bash", str(ROOT / "bin" / "spotlight-hold.bash"),
+             "bash", "-c", child, "child", literal],
+            stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+            bufsize=0, start_new_session=True,
+            # A terminal starts the wrapper with SIGINT at its default; a
+            # background test runner may have it ignored, which bash keeps.
+            preexec_fn=lambda: signal.signal(signal.SIGINT, signal.SIG_DFL))
+        try:
+            # The wrapper sets its trap before starting the child, so once the
+            # child has printed, the interrupt can only reach the child.
+            read_until(proc, literal.encode())
+            os.killpg(proc.pid, signal.SIGINT)
+            read_until(proc, b"Process exited (130). Press Enter to close.")
+            # The prompt is followed by a blocking read on stdin.
+            self.assertIsNone(proc.poll())
+            proc.stdin.write(b"\n")
+            _, errors = proc.communicate(timeout=3)
+            self.assertEqual(proc.returncode, 130)
+            self.assertEqual(errors, b"")
+        finally:
+            if proc.poll() is None:
+                os.killpg(proc.pid, signal.SIGKILL)
+                proc.wait(timeout=3)
+
+    def test_terminal_wrapper_hold_if_holds_only_on_that_status(self):
+        wrapper = str(ROOT / "bin" / "spotlight-hold.bash")
+
+        def wrap(status, stdin=b""):
+            return subprocess.run(
+                ["bash", wrapper, "--hold-if", "255", "bash", "-c", "exit %d" % status],
+                input=stdin, capture_output=True, timeout=5)
+
+        # No input is available, so a wrongly held prompt would show in stdout.
+        for status in (0, 3):
+            done = wrap(status)
+            self.assertEqual((done.returncode, done.stdout), (status, b""))
+        held = wrap(255, b"\n")
+        self.assertEqual(held.returncode, 255)
+        self.assertIn(b"Process exited (255). Press Enter to close.", held.stdout)
+        # A missing ssh (127) must not flash the terminal shut either.
+        missing = subprocess.run(
+            ["bash", wrapper, "--hold-if", "255", "spotlight-no-such-command"],
+            input=b"\n", capture_output=True, timeout=5)
+        self.assertEqual(missing.returncode, 127)
+        self.assertIn(b"Process exited (127). Press Enter to close.", missing.stdout)
+
+    def test_audio_lists_defaults_and_excludes_monitor_sources(self):
+        info = {"default_sink_name": "speaker", "default_source_name": "mic"}
+        sinks = [{"name": "speaker", "description": "USB Headphones", "mute": False,
+                  "volume": {"left": {"value_percent": "40%"}},
+                  "properties": {"object.id": "59"}}]
+        sources = [
+            {"name": "speaker.monitor", "description": "Monitor of USB Headphones"},
+            {"name": "mic", "description": "USB Microphone", "mute": True,
+             "volume": {"mono": {"value_percent": "75%"}},
+             "properties": {"object.id": "5 --x"}},
+        ]
+        replies = [(json.dumps(item).encode(), False, 0) for item in (info, sinks, sources)]
+        with mock.patch.object(HELPER, "run_bounded", side_effect=replies) as run:
+            buf = io.StringIO()
+            with contextlib.redirect_stdout(buf):
+                HELPER.cmd_audio()
+        self.assertEqual(run.call_count, 3)
+        devices = json.loads(buf.getvalue())["devices"]
+        self.assertEqual([(d["kind"], d["name"], d["default"]) for d in devices],
+                         [("output", "speaker", True), ("input", "mic", True)])
+        self.assertEqual(devices[0]["volume"], "40%")
+        self.assertTrue(devices[1]["muted"])
+        self.assertEqual([d["id"] for d in devices], ["59", ""])
+        with mock.patch.object(HELPER, "run_bounded", return_value=(b"", False, 1)):
+            with self.assertRaises(HELPER.Denied):
+                HELPER.cmd_audio()
+
+    def test_audio_caps_after_sorting_so_the_default_survives(self):
+        info = {"default_sink_name": "default-sink", "default_source_name": ""}
+        sinks = [{"name": "sink-%03d" % i, "description": "Sink %03d" % i}
+                 for i in range(HELPER.AUDIO_COUNT)]
+        sinks.append({"name": "default-sink", "description": "Zulu speakers"})
+        replies = [(json.dumps(item).encode(), False, 0) for item in (info, sinks, [])]
+        with mock.patch.object(HELPER, "run_bounded", side_effect=replies):
+            reply = run(HELPER.cmd_audio)
+        self.assertEqual(len(reply["devices"]), HELPER.AUDIO_COUNT)
+        self.assertEqual(reply["devices"][0]["name"], "default-sink")
+        self.assertTrue(reply["partial"])
+
+    def test_mounts_keep_the_visible_mount_per_target_and_flag_the_cap(self):
+        stacked = json.dumps({"filesystems": [
+            {"target": "/mnt/x", "source": "/dev/sda1", "fstype": "ext4"},
+            {"target": "/mnt/x", "source": "/dev/sdb1", "fstype": "xfs"},
+        ]}).encode()
+        with mock.patch.object(HELPER, "run_bounded", return_value=(stacked, False, 0)):
+            reply = run(HELPER.cmd_mounts)
+        self.assertEqual(reply["mounts"],
+                         [{"target": "/mnt/x", "source": "/dev/sdb1", "fstype": "xfs"}])
+        self.assertFalse(reply["partial"])
+        many = json.dumps({"filesystems": [
+            {"target": "/mnt/%d" % i, "source": "/dev/x", "fstype": "ext4"}
+            for i in range(HELPER.MOUNTS_COUNT + 1)]}).encode()
+        with mock.patch.object(HELPER, "run_bounded", return_value=(many, False, 0)):
+            reply = run(HELPER.cmd_mounts)
+        self.assertEqual(len(reply["mounts"]), HELPER.MOUNTS_COUNT)
+        self.assertTrue(reply["partial"])
+
+    def test_mounts_project_real_filesystems_and_handle_failure(self):
+        raw = json.dumps({"filesystems": [
+            {"target": "/mnt/games", "source": "/dev/sdb1", "fstype": "ext4", "use%": "7%"},
+            {"target": "relative", "source": "/dev/sdc1", "fstype": "xfs"},
+        ]}).encode()
+        with mock.patch.object(HELPER, "run_bounded", return_value=(raw, False, 0)) as run:
+            buf = io.StringIO()
+            with contextlib.redirect_stdout(buf):
+                HELPER.cmd_mounts()
+        run.assert_called_once_with(
+            ["findmnt", "--json", "--list", "--real", "--nocanonicalize",
+             "--output", "TARGET,SOURCE,FSTYPE"],
+            HELPER.MOUNTS_BYTES, HELPER.MOUNTS_DEADLINE, want_status=True)
+        self.assertEqual(json.loads(buf.getvalue())["mounts"], [
+            {"target": "/mnt/games", "source": "/dev/sdb1", "fstype": "ext4"}])
+        with mock.patch.object(HELPER, "run_bounded", return_value=(b"", False, 1)):
+            with self.assertRaises(HELPER.Denied):
+                HELPER.cmd_mounts()
+
+    def test_services_project_user_and_system_units(self):
+        user = b'app.service loaded active running User app service\n'
+        system = ('\u00d7 failed.service loaded failed failed A failed service\n'
+                  'sshd.service loaded active running OpenSSH server\n').encode()
+        with mock.patch.object(HELPER, "run_bounded", side_effect=[
+                (user, False, 0), (system, False, 0)]) as run:
+            buf = io.StringIO()
+            with contextlib.redirect_stdout(buf):
+                HELPER.cmd_services()
+        self.assertEqual(run.call_count, 2)
+        rows = json.loads(buf.getvalue())["services"]
+        self.assertEqual([(r["scope"], r["name"], r["active"]) for r in rows], [
+            ("system", "failed.service", "failed"),
+            ("user", "app.service", "active"),
+            ("system", "sshd.service", "active"),
+        ])
+        self.assertEqual(rows[0]["description"], "A failed service")
+        self.assertFalse(json.loads(buf.getvalue())["partial"])
+        with mock.patch.object(HELPER, "run_bounded", return_value=(b"", False, 1)):
+            with self.assertRaises(HELPER.Denied):
+                HELPER.cmd_services()
+
+    def test_services_sort_before_cap_and_show_partial_output(self):
+        user = (b'app.service loaded active running App\n' * 220)
+        system = b'failed.service loaded failed failed Broken\ncut-off.service loaded'
+        with mock.patch.object(HELPER, "run_bounded", side_effect=[
+                (user, False, 0), (system, True, -15)]):
+            buf = io.StringIO()
+            with contextlib.redirect_stdout(buf):
+                HELPER.cmd_services()
+        reply = json.loads(buf.getvalue())
+        self.assertEqual(len(reply["services"]), HELPER.SERVICES_COUNT)
+        self.assertEqual(reply["services"][0]["name"], "failed.service")
+        self.assertTrue(reply["partial"])
+        # Complete output with more units than the cap is partial too.
+        with mock.patch.object(HELPER, "run_bounded", side_effect=[
+                (user, False, 0), (b"", False, 0)]):
+            reply = run(HELPER.cmd_services)
+        self.assertEqual(len(reply["services"]), HELPER.SERVICES_COUNT)
+        self.assertTrue(reply["partial"])
+
+    def test_docker_projects_containers_and_handles_daemon_failure(self):
+        running = {"ID": "a" * 64, "Names": "api", "Image": "node:22",
+                   "State": "running", "Status": "Up 2 hours", "Ports": "127.0.0.1:3000->3000/tcp"}
+        stopped = {"ID": "b" * 64, "Names": "db", "Image": "postgres:17",
+                   "State": "exited", "Status": "Exited (0) 1 hour ago", "Ports": ""}
+        raw = (json.dumps(stopped) + "\n" + json.dumps(running) + "\n").encode()
+        with mock.patch.object(HELPER, "run_bounded", return_value=(raw, False, 0)) as run:
+            buf = io.StringIO()
+            with contextlib.redirect_stdout(buf):
+                HELPER.cmd_docker()
+        run.assert_called_once_with(
+            ["docker", "container", "ls", "--all", "--last", str(HELPER.DOCKER_COUNT + 1),
+             "--no-trunc", "--size=false", "--format", "{{json .}}"],
+            HELPER.DOCKER_BYTES, HELPER.DOCKER_DEADLINE, want_status=True)
+        containers = json.loads(buf.getvalue())["containers"]
+        self.assertEqual([c["name"] for c in containers], ["api", "db"])
+        self.assertEqual(containers[0]["ports"], "127.0.0.1:3000->3000/tcp")
+        with mock.patch.object(HELPER, "run_bounded", return_value=(b"", False, 1)):
+            with self.assertRaises(HELPER.Denied):
+                HELPER.cmd_docker()
+
+    def test_docker_keeps_complete_rows_at_byte_cap_and_reads_podman_fields(self):
+        podman = {"Id": "c" * 64, "Names": ["worker"], "Image": "busybox",
+                  "State": "running", "Status": "Up", "Ports": []}
+        raw = (json.dumps(podman) + "\n{" + '"Id":"partial"').encode()
+        with mock.patch.object(HELPER, "run_bounded", return_value=(raw, True, -15)):
+            buf = io.StringIO()
+            with contextlib.redirect_stdout(buf):
+                HELPER.cmd_docker()
+        reply = json.loads(buf.getvalue())
+        self.assertEqual(reply["containers"][0]["name"], "worker")
+        self.assertTrue(reply["partial"])
+
+    def test_docker_caps_after_sorting_and_flags_the_extra_container(self):
+        stopped = [{"ID": "%064x" % i, "Names": "c%03d" % i, "Image": "img",
+                    "State": "exited", "Status": "Exited", "Ports": ""}
+                   for i in range(HELPER.DOCKER_COUNT)]
+        running = {"ID": "f" * 64, "Names": "zz-running", "Image": "img",
+                   "State": "running", "Status": "Up", "Ports": ""}
+        raw = "".join(json.dumps(row) + "\n" for row in stopped + [running]).encode()
+        with mock.patch.object(HELPER, "run_bounded", return_value=(raw, False, 0)):
+            reply = run(HELPER.cmd_docker)
+        self.assertEqual(len(reply["containers"]), HELPER.DOCKER_COUNT)
+        self.assertEqual(reply["containers"][0]["name"], "zz-running")
+        self.assertTrue(reply["partial"])
+
+    def test_ssh_hosts_from_config_and_includes(self):
+        with tempfile.TemporaryDirectory() as home:
+            ssh = Path(home) / ".ssh"
+            (ssh / "config.d").mkdir(parents=True)
+            (ssh / "extra").mkdir()
+            (ssh / "config").write_text(
+                'Include config.d/*.conf\nHost work prod *.internal !blocked\n'
+                'Host=work\nMatch all\nInclude ignored.conf\nHost after-match\n'
+                'Host *\nInclude extra/always.conf\n'
+            )
+            (ssh / "config.d" / "hosts.conf").write_text('Host "lab" staging # comment\n')
+            (ssh / "extra" / "always.conf").write_text('Host universal\n')
+            (ssh / "ignored.conf").write_text('Host ignored\n')
+            (ssh / "known_hosts").write_text(
+                'work,legacy ssh-ed25519 AAAA\n'
+                '|1|hashed|host ssh-ed25519 AAAA\n'
+                '@cert-authority *.example.com ssh-ed25519 AAAA\n'
+            )
+            with mock.patch.dict(os.environ, {"HOME": home}):
+                buf = io.StringIO()
+                with contextlib.redirect_stdout(buf):
+                    HELPER.cmd_ssh_hosts()
+        self.assertEqual(json.loads(buf.getvalue())["hosts"], [
+            {"name": host, "source": "config"}
+            for host in ("lab", "staging", "work", "prod", "after-match", "universal")
+        ] + [{"name": "legacy", "source": "known_hosts"}])
+        self.assertFalse(json.loads(buf.getvalue())["partial"])
+
+    def test_ssh_flags_a_refused_known_hosts_and_the_host_cap(self):
+        with tempfile.TemporaryDirectory() as home:
+            ssh = Path(home) / ".ssh"
+            ssh.mkdir()
+            (ssh / "config").write_text("Host saved\n")
+            (ssh / "known_hosts").write_bytes(b"x" * (HELPER.SSH_KNOWN_BYTES + 1))
+            with mock.patch.dict(os.environ, {"HOME": home}):
+                reply = run(HELPER.cmd_ssh_hosts)
+            self.assertEqual(reply["hosts"], [{"name": "saved", "source": "config"}])
+            self.assertTrue(reply["partial"])
+            (ssh / "known_hosts").write_text("".join(
+                "h%03d ssh-ed25519 AAAA\n" % i for i in range(HELPER.SSH_HOSTS)))
+            with mock.patch.dict(os.environ, {"HOME": home}):
+                reply = run(HELPER.cmd_ssh_hosts)
+        self.assertEqual(len(reply["hosts"]), HELPER.SSH_HOSTS)
+        self.assertEqual(reply["hosts"][0]["name"], "saved")
+        self.assertTrue(reply["partial"])
+
+    def test_ssh_include_globs_scan_a_sorted_bounded_set(self):
+        with tempfile.TemporaryDirectory() as home:
+            ssh = Path(home) / ".ssh"
+            (ssh / "config.d").mkdir(parents=True)
+            (ssh / "config").write_text("Include config.d/*.conf\n")
+            # Created in reverse so directory order is unlikely to be sorted.
+            for i in reversed(range(40)):
+                (ssh / "config.d" / ("h%02d.conf" % i)).write_text("Host h%02d\n" % i)
+            with mock.patch.dict(os.environ, {"HOME": home}):
+                reply = run(HELPER.cmd_ssh_hosts)
+        # The main config counts toward SSH_FILES, leaving room for 31 includes.
+        self.assertEqual([h["name"] for h in reply["hosts"]],
+                         ["h%02d" % i for i in range(HELPER.SSH_FILES - 1)])
+        self.assertTrue(reply["partial"])
+
+    def test_ssh_known_hosts_without_config_or_agent(self):
+        with tempfile.TemporaryDirectory() as home:
+            ssh = Path(home) / ".ssh"
+            ssh.mkdir()
+            (ssh / "known_hosts").write_text('example.org ssh-ed25519 AAAA\n')
+            with mock.patch.dict(os.environ, {"HOME": home}, clear=True):
+                buf = io.StringIO()
+                with contextlib.redirect_stdout(buf):
+                    HELPER.cmd_ssh_hosts()
+        self.assertEqual(json.loads(buf.getvalue()),
+                         {"ok": True, "partial": False,
+                          "hosts": [{"name": "example.org", "source": "known_hosts"}]})
+
+    def test_ssh_without_an_ssh_directory_is_empty_not_partial(self):
+        with tempfile.TemporaryDirectory() as home:
+            with mock.patch.dict(os.environ, {"HOME": home}):
+                reply = run(HELPER.cmd_ssh_hosts)
+        self.assertEqual(reply, {"ok": True, "partial": False, "hosts": []})
+
+    def test_ports_parse_listeners_and_bound_output(self):
+        lines = (b'tcp LISTEN 0 4096 127.0.0.1:5173 0.0.0.0:* users:(("node",pid=18472,fd=22))\n'
+                 b'tcp LISTEN 0 128 0.0.0.0:22 0.0.0.0:* users:(("sshd",pid=842,fd=3))\n'
+                 b'tcp LISTEN 0 128 [::1]:631 [::]:* users:(("cupsd",pid=1104,fd=4))\n'
+                 b'tcp LISTEN 0 128 127.0.0.53%lo:53 0.0.0.0:*\n'
+                 b'udp UNCONN 0 0 [fe80::1c2]%wlan0:546 [::]:*\n'
+                 b'tcp LISTEN 0 128 [fe80::5]%eno1:8080 [::]:*\n'
+                 b'udp UNCONN 0 0 [::]:5353 [::]:*\n'
+                 b'udp UNCONN 0 0 [::]:5353 [::]:*\n'
+                 b'broken line\n')
+        with mock.patch.object(HELPER, "run_bounded", return_value=(lines, False, 0)) as run:
+            buf = io.StringIO()
+            with contextlib.redirect_stdout(buf):
+                HELPER.cmd_ports()
+        run.assert_called_once_with(["ss", "-H", "-lntup"], HELPER.PORTS_BYTES,
+                                    HELPER.PORTS_DEADLINE, want_status=True)
+        ports = json.loads(buf.getvalue())["ports"]
+        self.assertEqual([p["port"] for p in ports], [22, 53, 546, 631, 5173, 5353, 8080])
+        self.assertEqual(ports[0]["url"], "http://localhost:22")
+        self.assertEqual(ports[1]["endpoint"], "127.0.0.53%lo:53")
+        self.assertEqual(ports[1]["url"], "http://127.0.0.53:53")
+        self.assertEqual((ports[2]["endpoint"], ports[2]["url"]), ("[fe80::1c2%wlan0]:546", ""))
+        self.assertEqual(ports[3]["url"], "http://[::1]:631")
+        self.assertEqual(ports[4]["process"], "node")
+        self.assertEqual(ports[5]["endpoint"], "[::]:5353")
+        self.assertEqual(ports[5]["url"], "")
+        self.assertIsNone(ports[5]["pid"])
+        self.assertEqual(ports[6]["url"], "http://[fe80::5%25eno1]:8080")
+
+    def test_ports_limit_and_probe_failure(self):
+        lines = b"".join(
+            f'tcp LISTEN 0 128 127.0.0.1:{port} 0.0.0.0:*\n'.encode()
+            for port in range(3000, 3300))
+        lines += b'tcp LISTEN 0 128 0.0.0.0:22 0.0.0.0:*\n'
+        with mock.patch.object(HELPER, "run_bounded",
+                               return_value=(lines, False, 0)):
+            buf = io.StringIO()
+            with contextlib.redirect_stdout(buf):
+                HELPER.cmd_ports()
+            result = json.loads(buf.getvalue())
+            self.assertEqual(len(result["ports"]), HELPER.PORTS_COUNT)
+            self.assertEqual(result["ports"][0]["port"], 22)
+            self.assertTrue(result["partial"])
+        with mock.patch.object(HELPER, "run_bounded",
+                               return_value=(b'tcp LISTEN 0 128 127.0.0.1:53 0.0.0.0:*\npartial', True, -15)):
+            buf = io.StringIO()
+            with contextlib.redirect_stdout(buf):
+                HELPER.cmd_ports()
+            result = json.loads(buf.getvalue())
+            self.assertEqual(result["ports"][0]["port"], 53)
+            self.assertTrue(result["partial"])
+        with mock.patch.object(HELPER, "run_bounded", return_value=(b"", False, 1)):
+            with self.assertRaises(HELPER.Denied):
+                HELPER.cmd_ports()
+
     def test_settings_are_private_by_default_and_bounded(self):
         defaults = HELPER.normalize_settings({})
         self.assertFalse(defaults["webSuggestions"])
@@ -443,6 +845,23 @@ def run(handler, argv=None, stdin=b""):
         with contextlib.redirect_stdout(buf):
             handler(argv) if argv is not None else handler()
     return json.loads(buf.getvalue())
+
+
+def read_until(proc, marker, timeout=5):
+    """Read an unbuffered stdout pipe until `marker` arrives; no fixed sleeps."""
+    data = b""
+    fd = proc.stdout.fileno()
+    end = time.monotonic() + timeout
+    while marker not in data:
+        remaining = end - time.monotonic()
+        if remaining <= 0:
+            raise AssertionError("timed out waiting for %r; got %r" % (marker, data))
+        if select.select([fd], [], [], remaining)[0]:
+            chunk = os.read(fd, 4096)
+            if not chunk:
+                raise AssertionError("output ended before %r; got %r" % (marker, data))
+            data += chunk
+    return data
 
 
 PRINT_FIXTURE = (

@@ -16,6 +16,7 @@ import "lib/Commands.js" as Commands
 import "lib/Apps.js" as Apps
 import "lib/FileRank.js" as FileRank
 import "lib/Query.js" as Query
+import "lib/Views.js" as Views
 import "lib/Ranking.js" as Ranking
 import "lib/Chord.js" as Chord
 
@@ -103,6 +104,12 @@ Item {
   property var clipboardRows: []
   property string clipboardFor: ""
   property var tldrPage: null
+  property var viewRows: []
+  property string viewState: "idle"
+  property string viewName: ""
+  property int viewGeneration: 0
+  property var viewProcess: null
+  property bool viewPartial: false
   property var currencySession: Currency.createSession()
   property var currencyProcess: null
   property var pendingCurrency: null
@@ -155,6 +162,9 @@ Item {
   readonly property int fileMaxTerms: 8
   readonly property int maxClipboardRows: 50
   readonly property int maxReminderRows: 50
+  // The helper returns at most 200 entries; lib/Views.js adds at most one
+  // extra row (direct connect, manage, or a note).
+  readonly property int maxViewEntries: 200
   readonly property int maxQueryChars: 512
   readonly property int maxPayloadChars: 4096
   readonly property int maxHelperPayloadChars: 524288
@@ -270,6 +280,8 @@ Item {
     root.pendingCurrency = null
     root.rows = []
     root.pinnedKey = ""
+    // A re-summon reloads the view instead of reusing the last list.
+    root.resetView("")
     input.text = initial
     input.cursorPosition = input.text.length
     root.selectedIndex = 0
@@ -293,6 +305,7 @@ Item {
     root.refreshSettings()
     root.refreshReminders()
     root.refreshToggleStates()
+    root.syncView(Query.parse(root.query).filter)
     root.updateCurrency()
     root.rebuild()
     pointerGate.reset()
@@ -305,6 +318,9 @@ Item {
   }
 
   function close() {
+    // dismiss() closes before asking the shell to hide, and the shell calls
+    // close() again; the second call has nothing left to stop.
+    if (!root.opened) return
     root.opened = false
     root.armedKey = ""
     root.stopQueryWork()
@@ -326,6 +342,7 @@ Item {
     fileProc.running = false
     clipboardProc.running = false
     tldrProc.running = false
+    root.resetView("")
     root.clipboardRows = []
     root.clipboardFor = ""
     root.tldrPage = null
@@ -436,9 +453,7 @@ Item {
   // openPanelIds stays in step — otherwise the next toggle would try to hide
   // an overlay that is already gone.
   function dismiss() {
-    root.opened = false
-    root.armedKey = ""
-    root.pendingCurrency = null
+    root.close()
     if (root.shell && typeof root.shell.hide === "function") root.shell.hide(root.pluginId)
   }
 
@@ -987,6 +1002,15 @@ Item {
     return out
   }
 
+  // lib/Views.js builds and ranks the rows; this only fills in row defaults.
+  function viewResultRows(name, q) {
+    var specs = Views.rows(name, Query.viewDetails(name),
+      { state: root.viewState, entries: root.viewRows, partial: root.viewPartial }, q, Fuzzy.match)
+    var out = []
+    for (var i = 0; i < specs.length; i++) out.push(root.row(specs[i]))
+    return out
+  }
+
   function clipboardSearchTarget(q) {
     if (!root.settings.clipboardSearch) return null
     var parsed = Query.parse(q)
@@ -1179,6 +1203,26 @@ Item {
     })
   }
 
+  function viewCompletionRows(q) {
+    var views = Query.viewCompletions(q)
+    var out = []
+    for (var i = 0; i < views.length; i++) {
+      var name = views[i]
+      var details = Query.viewDetails(name)
+      out.push(root.row({ key: "view:" + name, kind: "view",
+        title: name + ":", subtitle: details.title,
+        section: "Views", accessory: "View", icon: details.icon,
+        primaryLabel: "Open view", textMatch: Fuzzy.MATCH_EXACT, tieRank: i,
+        resultType: "view", payload: { query: name + ":" } }))
+    }
+    return out
+  }
+
+  function completeView(row) {
+    input.text = String(row.payload.query)
+    input.cursorPosition = input.text.length
+  }
+
   function globallyRank(list, q) {
     var now = Date.now()
     var context = Query.contextKey(Query.parse(root.query))
@@ -1223,7 +1267,10 @@ Item {
     var next = []
     function push(list) { for (var i = 0; i < list.length; i++) next.push(list[i]) }
 
-    if (parsed.empty) {
+    var view = Query.isView(parsed.filter)
+    if (view) {
+      push(root.viewResultRows(parsed.filter, parsed.text))
+    } else if (parsed.empty) {
       next.push(root.filterHintRow(parsed))
     } else if (parsed.filter) {
       var searchable = parsed.text.length >= 2
@@ -1245,10 +1292,11 @@ Item {
     } else if (!q) {
       push(root.idleRows())
     } else {
+      push(root.viewCompletionRows(q))
       push(root.intentRows(q, ""))
       push(root.reminderListRows(q))
+      push(root.appRows(q))
       if (q.length >= 2) {
-        push(root.appRows(q))
         push(root.windowRows(q))
         push(root.commandRows(q, false))
         push(root.fileResultRows(q))
@@ -1259,7 +1307,8 @@ Item {
       push(root.webFallbackRows(q))
     }
 
-    next = root.globallyRank(next, parsed.text)
+    // A view's rows arrive ranked and bounded by lib/Views.js.
+    if (!view) next = root.globallyRank(next, parsed.text)
     root.rows = next
 
     displayModel.clear()
@@ -1305,8 +1354,7 @@ Item {
   }
 
   function firstSelectableIndex() {
-    for (var i = 0; i < root.rows.length; i++) if (root.rows[i].kind !== "noop") return i
-    return 0
+    return Query.firstSelectableIndex(root.rows, root.query)
   }
 
   function selectedRow() {
@@ -1368,6 +1416,24 @@ Item {
     Util.execArgv(["omarchy-launch-browser", String(url)])
   }
 
+  // With holdIf, the terminal stays open only after that exit status.
+  function openHeldTerminal(argv, holdIf) {
+    var hold = holdIf === undefined ? [] : ["--hold-if", String(holdIf)]
+    Util.execArgv(["omarchy-launch-terminal", "bash",
+      root.pluginFolder + "/bin/spotlight-hold.bash"].concat(hold, argv))
+  }
+
+  // Runs the step lib/Views.js chose for a view row; null leaves the panel open.
+  function runViewAction(step) {
+    if (!step) return
+    root.dismiss()
+    if (step.copy !== undefined) Util.execArgv(["wl-copy", "--", step.copy])
+    else if (step.url) root.openUrl(step.url)
+    else if (step.path) root.openPath(step.path)
+    else if (step.terminal) root.openHeldTerminal(step.terminal, step.holdIf)
+    else if (step.argv) Util.execArgv(step.argv)
+  }
+
   function openPath(path) {
     var target = String(path || "")
     if (!target) {
@@ -1403,8 +1469,13 @@ Item {
     Util.execArgv(["wl-copy", "--", path])
   }
 
+  // The row Enter and Tab act on: the deliberate cursor, else the best row.
+  function targetIndex() {
+    return root.pinnedKey ? root.selectedIndex : root.firstSelectableIndex()
+  }
+
   function activateSelection(secondary) {
-    root.activate(root.pinnedKey ? root.selectedIndex : root.firstSelectableIndex(), secondary)
+    root.activate(root.targetIndex(), secondary)
   }
 
   // The switch moves immediately and the probe confirms it after the detached
@@ -1431,15 +1502,25 @@ Item {
       return
     }
 
-    // One confirmation for the rows that end the session.
-    if (r.confirm && !secondary && root.armedKey !== r.key) {
+    // Rows marked confirm take a second Enter. None of them has a secondary
+    // action, so Shift+Enter has to confirm as well.
+    if (r.confirm && root.armedKey !== r.key) {
       root.armedKey = r.key
       return
     }
     root.armedKey = ""
     if (!secondary && r.kind !== "spotlight-reset") root.bumpUsage(r)
 
+    if (Query.isView(r.kind)) {
+      root.runViewAction(Views.action(r.kind, r.payload, secondary))
+      return
+    }
+
     switch (r.kind) {
+    case "view":
+      root.completeView(r)
+      break
+
     case "app":
       root.dismiss()
       root.launchApp(r.payload.appId, r.payload.name)
@@ -1716,6 +1797,51 @@ Item {
     if (root.opened) root.rebuild()
   }
 
+  function syncView(filter) {
+    var name = root.opened && Query.isView(filter) ? filter : ""
+    if (name !== root.viewName) root.resetView(name)
+  }
+
+  // Every view change goes through here. Each run carries its own view and
+  // generation, so a cancelled run that still finishes is ignored and the next
+  // run never waits for it.
+  function resetView(name) {
+    var proc = root.viewProcess
+    root.viewProcess = null
+    if (proc) proc.running = false
+    root.viewName = name
+    root.viewGeneration++
+    root.viewRows = []
+    root.viewPartial = false
+    root.viewState = name ? "loading" : "idle"
+    if (!name || !root.opened) return
+    proc = viewProcessComponent.createObject(root, {
+      forView: name, forGeneration: root.viewGeneration,
+      command: root.helperArgv([Query.viewDetails(name).command || name])
+    })
+    if (!proc) {
+      root.finishView("", name, root.viewGeneration)
+      return
+    }
+    root.viewProcess = proc
+    proc.running = true
+  }
+
+  function finishView(raw, name, generation) {
+    if (!root.opened || root.viewName !== name || root.viewGeneration !== generation) return
+    var field = Query.viewDetails(name).field
+    var reply = root.helperReply(raw)
+    if (!reply || !Array.isArray(reply[field])) {
+      root.viewRows = []
+      root.viewState = "error"
+    } else {
+      root.viewRows = reply[field].slice(0, root.maxViewEntries)
+      root.viewState = "ready"
+      root.viewPartial = reply.partial === true
+    }
+    root.rebuild()
+  }
+
   function stopCurrencyProcess() {
     var proc = root.currencyProcess
     root.currencyProcess = null
@@ -1758,6 +1884,8 @@ Item {
     var q = String(root.query || "").trim()
     var parsed = Query.parse(q)
     root.updateCurrency()
+
+    root.syncView(parsed.filter)
 
     // The clipboard list is fetched while a clipboard query is on screen and
     // dropped the moment it is not, so the titles are resident for the length
@@ -1973,6 +2101,36 @@ Item {
     stdout: StdioCollector {
       waitForEnd: true
       onStreamFinished: root.loadTldr(text, tldrProc.forQuery)
+    }
+  }
+
+  // One process per view run, the same shape as the currency lookup: a
+  // cancelled run may still finish collecting stdout, and its own token keeps
+  // that from landing on a newer view.
+  Component {
+    id: viewProcessComponent
+    Process {
+      id: viewRun
+      required property string forView
+      required property int forGeneration
+      property bool delivered: false
+      stdout: StdioCollector {
+        waitForEnd: true
+        onStreamFinished: {
+          viewRun.delivered = true
+          root.finishView(text, viewRun.forView, viewRun.forGeneration)
+        }
+      }
+      // ponytail: nothing retries a run that never starts or never exits; its
+      // view stays on "Loading…" until the filter changes. Every helper call
+      // needs python3, so a missing interpreter is not handled here alone.
+      onExited: {
+        Qt.callLater(function() {
+          if (!viewRun.delivered) root.finishView("", viewRun.forView, viewRun.forGeneration)
+          if (root.viewProcess === viewRun) root.viewProcess = null
+          viewRun.destroy()
+        })
+      }
     }
   }
 
@@ -2367,10 +2525,12 @@ Item {
               root.copySelectedPath()
               event.accepted = true
             } else if (event.key === Qt.Key_Tab) {
-              // Tab completes the query with the selected row's title, the way
-              // a shell completes a path — handy for narrowing an app search.
-              var sel = root.selectedRow()
-              if (sel && sel.kind === "app") input.text = sel.title
+              // Tab completes the row Enter would act on.
+              var completion = Query.completionText(root.rows[root.targetIndex()])
+              if (completion) {
+                input.text = completion
+                input.cursorPosition = input.text.length
+              }
               event.accepted = true
             }
           }
