@@ -51,8 +51,8 @@ From two characters onward, Spotlight searches enabled local providers together 
 | --- | --- |
 | `chrom` | Applications, open windows, files, and other local matches |
 | `screenshot` | Omarchy and system actions |
-| `bluetooth` | Show its live state; Enter flips the switch without closing Spotlight |
-| `wifi` | The same for Wi-Fi, night light, mute, Do Not Disturb, and other settings |
+| `bluetooth` or `wifi` | Open the matching device or network view |
+| `night light` or `mute` | Show live state; Enter flips the switch without closing Spotlight |
 | `12*7+3` | Calculate; Enter copies the result |
 | `20% of 250` | Calculate percentages |
 | `10 km to miles` | Convert units offline |
@@ -82,7 +82,7 @@ Spotlight runs inside the existing `omarchy-shell` process, so there is no separ
 - Keyboard-first navigation with a stable selection as results arrive
 - Optional local learning based on recency, frequency, and query context
 - Theme-aware UI with an optional frosted-glass effect
-- Confirmation before logout, restart, or shutdown
+- Confirmation before logout, restart, or shutdown, including with Shift+Enter
 - No telemetry or analytics
 
 ## Keyboard shortcuts
@@ -93,7 +93,7 @@ Spotlight runs inside the existing `omarchy-shell` process, so there is no separ
 | `PageUp` `PageDown` | Move one screen |
 | `Enter` | Run the primary action shown in the footer |
 | `Shift+Enter` or `Ctrl+Enter` | Run the secondary action, when available |
-| `Tab` | Complete the query with the selected app name |
+| `Tab` | Complete the query from the selected row: a view's colon filter or an app name |
 | `Esc` | Clear the query; close Spotlight when already empty |
 
 The search field is a normal text input, so selection, caret movement, and shortcuts such as `Ctrl+V` work as expected.
@@ -102,7 +102,15 @@ Settings that are on or off show their live state instead of a generic action la
 
 ## Search syntax
 
-Most of the time, just type. Use a filter when you want results from one provider only:
+Most of the time, just type. Applications are listed from the first character. Use a filter when you want results from one provider only:
+
+Typing the start of `ports`, `ssh`, `docker`, `services`, `mounts`, `audio`, `wifi`, or `bluetooth` shows matching views
+above normal results. When a view is the selected row, Tab or Enter fills in its
+colon filter (for example, `moun` becomes `mounts:`). An app still gets the first
+Enter when its name is exactly what you typed, or when it starts with what you
+typed and only one view matches (`port` selects Portal, not `ports:`); press `↓`
+to reach the view. Typing a view's full name, such as `bluetooth`, selects the
+view unless an app has exactly that name.
 
 | Filter | Provider |
 | --- | --- |
@@ -117,8 +125,79 @@ Most of the time, just type. Use a filter when you want results from one provide
 | `reminder:` | Reminders |
 | `calendar:` or `event:` | Calendar events |
 | `man:` or `tldr:` | Command help from tldr pages |
+| `ports:` | Local listening TCP and UDP ports |
+| `ssh:` | Saved SSH aliases and visible hosts from `~/.ssh/known_hosts` |
+| `docker:` | Running and stopped Docker containers |
+| `services:` | Loaded user and system services |
+| `mounts:` | Mounted real filesystems |
+| `audio:` | Audio outputs and inputs |
+| `wifi:` | Visible Wi-Fi networks |
+| `bluetooth:` | Paired Bluetooth devices |
 
 A filter without a query shows a hint instead of launching a broad search.
+The `ports:`, `ssh:`, `docker:`, `services:`, `mounts:`, `audio:`, `wifi:`, and `bluetooth:` views list their entries
+immediately. Each view holds up to 200 entries (100 for `audio:`, `wifi:`, and
+`bluetooth:`); type to narrow long lists. When there were more, the section
+title says "partial list". Some commands can also return a partial list when
+their output is cut short.
+In `ports:`, type a process name,
+abbreviation, endpoint, PID, or port number after the colon to narrow the list
+(for example, `ports:ssh` or `ports:22`). Enter opens a TCP listener as an HTTP
+URL, even if the service is not a web server. For UDP, Enter copies the endpoint.
+Shift+Enter always copies the endpoint. The list refreshes when you next enter
+the ports filter.
+
+`ssh:` lists named `Host` entries from `~/.ssh/config` and its local, unconditional
+`Include` files, plus visible hostnames in `~/.ssh/known_hosts`. Type after the
+colon to filter hosts (for example, `ssh:prod`).
+Enter opens `ssh <alias>` in a terminal. The terminal stays open when ssh itself
+fails or cannot start, for example on a refused connection or a rejected key, and
+closes on a normal logout. Shift+Enter copies the command. Unless the typed name is
+itself a saved host, `ssh:<hostname>` or `ssh:<user@hostname>` also offers a direct
+connection below the matching hosts.
+Wildcard and hashed hostnames, conditional includes, and active SSH sessions are
+not listed. A file Spotlight will not read, such as a symlink or one over its size
+limit, marks the list partial. Spotlight never queries an SSH agent; `ssh` uses the user's normal
+authentication setup when connecting.
+
+`docker:` lists up to 200 recent containers, including stopped ones. Type a
+container name, image, status, port, or ID after the colon to filter the list.
+Enter opens the last 100 log lines and follows new output in a terminal; Shift+Enter copies the
+container ID. The list refreshes when you next enter the Docker filter. If
+Docker is missing or the daemon is inaccessible, Spotlight shows an unavailable
+row instead of prompting for elevated access. After logs end or you interrupt
+them, press Enter to close the terminal.
+
+`services:` lists loaded user and system services, including inactive and failed
+ones. Type a unit name, description, state, or `user`/`system` after the colon
+to filter. Enter follows the selected service's last 100 journal lines in a
+terminal; Shift+Enter copies its full unit name. Logs are shown with the
+permissions already available to your user account. After logs end or you
+interrupt them, press Enter to close the terminal.
+
+`mounts:` lists mounted real filesystems. Type a mountpoint, source, or filesystem
+type after the colon to filter. Enter opens the mountpoint
+in your file manager; Shift+Enter copies its path. A mountpoint with several
+filesystems stacked on it is listed once, with the one visible there.
+
+`audio:` lists playback and recording devices, with the current default in each
+section marked. Type a device name, `speaker`, `headphones`, or `mic` after the
+colon to filter. Enter sets the selected output or input as the default device and
+moves the streams already playing to it, as Omarchy's audio panel does.
+Monitor sources are hidden because they record an output rather than a microphone.
+
+`wifi:` lists visible Wi-Fi networks from NetworkManager's latest scan. Type an
+SSID or security type to filter. Enter on an available network opens a terminal
+and connects with `nmcli --ask`, which prompts for a password when needed. Enter
+on the connected network, or on one whose name starts with `-`, opens Omarchy's
+Network panel. The Manage Wi-Fi row
+opens that panel for scans and other settings.
+
+`bluetooth:` lists paired devices and marks connected ones. Type a device name
+or address to filter. Enter connects or disconnects through Omarchy's Bluetooth
+device command. Disconnecting a device requires a second Enter, with or without
+Shift. The Pair another
+device row opens Omarchy's Bluetooth panel for discovery and pairing.
 
 Currency conversions accept explicit pairs such as `100 USD to EUR`, `$100 to euros`,
 `100 euros in pounds`, or `convert: 100 CAD to JPY`. Codes ignore case. The supported
@@ -249,6 +328,9 @@ Spotlight has no telemetry, analytics, or background network service. Almost eve
 | `kagi.com/api/autosuggest` | While typing, only when `webSuggestions` is enabled and `searchEngine` is `kagi` |
 | `suggestqueries.google.com` | While typing, only when `webSuggestions` is enabled with any other search engine |
 | Your browser | After you activate a web search, URL, or calendar result |
+| `ssh` | After you connect to a host from `ssh:` |
+| `nmcli` | After you connect to a network from `wifi:` |
+| Docker daemon | When opening `docker:` or following container logs; the daemon may be remote in the active Docker context |
 | tldr-pages (GitHub) | First lookup of a command not yet in `~/.cache/tldr`, via the `tldr` client |
 
 Live web suggestions are disabled by default. Normal web searches do not send the query anywhere until you activate the result.
