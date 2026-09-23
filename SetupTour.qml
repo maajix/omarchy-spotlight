@@ -562,6 +562,7 @@ FocusScope {
           description: "Where the web search result opens when you press Enter, and which provider answers search suggestions."
 
           trailing: ChoiceMenu {
+            chrome: tour.chrome
             value: tour.draft.searchEngine || "g"
             options: Web.engineOptions()
             onChanged: function(v) { tour.set("searchEngine", v) }
