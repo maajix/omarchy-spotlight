@@ -45,6 +45,14 @@ test("provider priority keeps actions ahead of a flood of file results", () => {
   assert.equal(Ranking.rank(rows, 20)[0].key, "shutdown")
 })
 
+test("view completion appears before apps, actions and files", () => {
+  const view = { key: "view:docker", title: "docker:", resultType: "view", textMatch: Fuzzy.MATCH_EXACT }
+  const app = { key: "app:lazydocker", title: "lazydocker", resultType: "app", textMatch: Fuzzy.MATCH_WORD }
+  const action = { key: "action:docker", title: "Docker setup", resultType: "action", textMatch: Fuzzy.MATCH_WORD }
+  const file = { key: "file:docker", title: "Dockerfile", resultType: "file", textMatch: Fuzzy.MATCH_EXACT }
+  assert.deepEqual(Ranking.rank([file, view, action, app], 4).map(row => row.key), [view.key, app.key, action.key, file.key])
+})
+
 test("mixed results order apps, actions, files, then web", () => {
   const rows = [
     { key: "web", title: "Search", resultType: "web", textMatch: Fuzzy.MATCH_EXACT },
