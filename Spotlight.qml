@@ -1055,6 +1055,7 @@ Item {
         accessory: isWeb ? "Web" : "Action",
         icon: c.icon,
         primaryLabel: isWeb ? "Open in browser" : "Run",
+        secondaryLabel: c.secondaryLabel,
         confirm: c.confirm === true,
         keywords: c.keywords,
         resultType: isWeb ? "web" : "action",
