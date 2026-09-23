@@ -67,7 +67,7 @@ test("spotlight settings finds all four local maintenance actions", () => {
   const rows = Fuzzy.rank(Commands.commands(), "spotlight settings", 20)
     .filter(row => row.key.startsWith("spotlight."))
   assert.deepEqual(rows.map(row => row.title).sort(), [
-    "Edit Spotlight Settings",
+    "Spotlight Settings",
     "Open Spotlight Data Folder",
     "Open Spotlight Plugin Folder",
     "Reset Spotlight Learning"

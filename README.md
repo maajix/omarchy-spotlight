@@ -178,7 +178,9 @@ o.bind("ALT + SHIFT + SPACE", "Spotlight reminder",
 
 ## Settings
 
-Spotlight works without a configuration file. Optional settings live at `~/.config/omarchy/spotlight.json` and are re-read every time Spotlight opens:
+Search for `spotlight settings` and press Enter to open the settings panel: switches for the search sources, the web engine, currency, the result limits, the shortcut, and buttons for the setup tour, the data folder and resetting what Spotlight has learned. Changes save as you make them.
+
+Everything the panel writes lives at `~/.config/omarchy/spotlight.json`, which Spotlight re-reads every time it opens. `Ctrl + Enter` on the same result opens that file in an editor instead, and hand edits are picked up on the next open:
 
 ```json
 {
@@ -198,7 +200,7 @@ Spotlight works without a configuration file. Optional settings live at `~/.conf
 }
 ```
 
-Search for `spotlight settings` to create or edit the file, open Spotlight's data directory, reset learning, rerun the setup tour, or change the shortcut. Creating the settings file never overwrites an existing one.
+Opening the file creates it with the defaults above when it does not exist yet, and never overwrites one that does. `Open Spotlight Data Folder`, `Reset Spotlight Learning`, `Run Setup Tour` and `Change Spotlight Shortcut` remain searchable as their own results.
 
 `searchEngine` accepts any supported bang key. The numeric limits are validated before use:
 

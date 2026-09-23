@@ -202,6 +202,16 @@ Item {
   readonly property string defaultChord: "ALT + SPACE"
   property bool autoBindDone: false
 
+  // ------------------------------------------------------- settings panel
+  // The settings GUI replaces the search card the same way the tour does, and
+  // keeps the same split: SettingsPanel.qml paints, this file writes.
+  property bool settingsActive: false
+  // Keys the panel has changed but not yet written. A switch writes as it
+  // slides, so the patch is coalesced and the write debounced: a run of clicks
+  // ends in one helper call instead of one per switch, and the helper keeps
+  // its single-writer invariant.
+  property var pendingSettings: ({})
+
   // ------------------------------------------------------------- theme
   // Shares the [menu] surface tokens, so any theme that styles the Omarchy
   // menu styles this too. The card is deliberately translucent: the frost is
@@ -266,6 +276,7 @@ Item {
 
     root.opened = true
     root.tourActive = false
+    root.settingsActive = false
     root.armedKey = ""
     root.pendingCurrency = null
     root.rows = []
@@ -307,6 +318,7 @@ Item {
   function close() {
     root.opened = false
     root.armedKey = ""
+    root.leaveSettingsPanel()
     root.stopQueryWork()
   }
 
@@ -439,6 +451,7 @@ Item {
     root.opened = false
     root.armedKey = ""
     root.pendingCurrency = null
+    root.leaveSettingsPanel()
     if (root.shell && typeof root.shell.hide === "function") root.shell.hide(root.pluginId)
   }
 
@@ -462,6 +475,87 @@ Item {
     } else root.showTour(0, false)
   }
 
+  // ------------------------------------------------------- maintenance
+  function editSettingsFile() {
+    root.dismiss()
+    maintenanceProc.running = false
+    maintenanceProc.action = "settings"
+    maintenanceProc.command = root.helperArgv(["ensure-settings"])
+    maintenanceProc.running = true
+  }
+
+  function openDataFolder() {
+    maintenanceProc.running = false
+    maintenanceProc.action = "data"
+    maintenanceProc.command = root.helperArgv(["ensure-data"])
+    maintenanceProc.running = true
+  }
+
+  function resetLearning() {
+    root.pendingUsage = ""
+    usageReadProc.running = false
+    usageWriteProc.running = false
+    maintenanceProc.running = false
+    maintenanceProc.action = "reset"
+    maintenanceProc.command = root.helperArgv(["reset-usage"])
+    maintenanceProc.running = true
+  }
+
+  // ------------------------------------------------------- settings panel
+  function showSettingsPanel() {
+    input.text = ""
+    root.armedKey = ""
+    root.tourActive = false
+    root.settingsActive = true
+    // The shortcut row shows the live binding, and the panel can hand the
+    // shortcut step of the tour whatever it reads.
+    root.readBinding()
+    settingsPanel.open()
+  }
+
+  // Leaving the panel by any route - Done, Esc, the overlay closing under it -
+  // must not drop an edit that is still sitting in the debounce.
+  function leaveSettingsPanel() {
+    if (!root.settingsActive) return
+    root.settingsActive = false
+    root.flushSettings()
+  }
+
+  function closeSettingsPanel() {
+    root.leaveSettingsPanel()
+    if (root.opened) Qt.callLater(function() { input.forceActiveFocus() })
+  }
+
+  function queueSetting(key, value) {
+    var next = Object.assign({}, root.pendingSettings)
+    next[key] = value
+    root.pendingSettings = next
+    settingsWriteDebounce.restart()
+  }
+
+  function flushSettings() {
+    settingsWriteDebounce.stop()
+    var patch = root.pendingSettings
+    if (Object.keys(patch).length === 0) return
+    // One writer at a time: the helper merges without a lock because this file
+    // guarantees it. A write still in flight simply pushes the next one back.
+    if (settingsWriteProc.running) {
+      settingsWriteDebounce.restart()
+      return
+    }
+    root.pendingSettings = ({})
+    root.writeSettings(patch)
+  }
+
+  function writeSettings(patch) {
+    settingsWriteProc.running = false
+    settingsWriteProc.stdinEnabled = true
+    settingsWriteProc.command = root.helperArgv(["write-settings"])
+    settingsWriteProc.running = true
+    settingsWriteProc.write(JSON.stringify(patch))
+    settingsWriteProc.stdinEnabled = false
+  }
+
   // ------------------------------------------------------------- tour
   function showTour(step, single) {
     input.text = ""
@@ -476,14 +570,7 @@ Item {
   // looked at (single-step Done, or Esc on the shortcut chooser).
   function finishTour(patch) {
     root.tourActive = false
-    if (Object.keys(patch || {}).length > 0) {
-      settingsWriteProc.running = false
-      settingsWriteProc.stdinEnabled = true
-      settingsWriteProc.command = root.helperArgv(["write-settings"])
-      settingsWriteProc.running = true
-      settingsWriteProc.write(JSON.stringify(patch))
-      settingsWriteProc.stdinEnabled = false
-    }
+    if (Object.keys(patch || {}).length > 0) root.writeSettings(patch)
     Qt.callLater(function() { input.forceActiveFocus() })
   }
 
@@ -614,7 +701,8 @@ Item {
     }
     // First run: the flag usually lands after open() has already drawn the
     // search card, so the tour is raised from here as well.
-    if (root.opened && !root.tourActive && root.settings.setupCompleted === false)
+    if (root.opened && !root.tourActive && !root.settingsActive
+        && root.settings.setupCompleted === false)
       root.resumeTour()
     // resumeTour has just read the binding when the launcher is open; only
     // a closed launcher needs a read of its own.
@@ -1523,11 +1611,10 @@ Item {
       break
 
     case "spotlight-settings":
-      root.dismiss()
-      maintenanceProc.running = false
-      maintenanceProc.action = "settings"
-      maintenanceProc.command = root.helperArgv(["ensure-settings"])
-      maintenanceProc.running = true
+      // The GUI is the settings surface; the file stays one keystroke away for
+      // whatever it does not cover.
+      if (secondary) root.editSettingsFile()
+      else root.showSettingsPanel()
       break
 
     case "spotlight-plugin":
@@ -1545,21 +1632,12 @@ Item {
 
     case "spotlight-data":
       root.dismiss()
-      maintenanceProc.running = false
-      maintenanceProc.action = "data"
-      maintenanceProc.command = root.helperArgv(["ensure-data"])
-      maintenanceProc.running = true
+      root.openDataFolder()
       break
 
     case "spotlight-reset":
       root.dismiss()
-      root.pendingUsage = ""
-      usageReadProc.running = false
-      usageWriteProc.running = false
-      maintenanceProc.running = false
-      maintenanceProc.action = "reset"
-      maintenanceProc.command = root.helperArgv(["reset-usage"])
-      maintenanceProc.running = true
+      root.resetLearning()
       break
     }
   }
@@ -2111,6 +2189,15 @@ Item {
     }
   }
 
+  // Coalesces a run of switch flips into one write. Short enough that closing
+  // the panel right after a click still lands inside it; leaveSettingsPanel
+  // flushes whatever it is still holding either way.
+  Timer {
+    id: settingsWriteDebounce
+    interval: 300
+    onTriggered: root.flushSettings()
+  }
+
   Process {
     id: settingsWriteProc
     stdout: StdioCollector {
@@ -2141,6 +2228,7 @@ Item {
     maintenanceProc.running = false
     bindingProc.running = false
     bindingReloadProc.running = false
+    settingsWriteDebounce.stop()
     settingsWriteProc.running = false
   }
 
@@ -2244,8 +2332,8 @@ Item {
     Rectangle {
       id: card
       // Hidden items cannot hold focus, which is what keeps keystrokes away
-      // from the search input while the tour is up.
-      visible: !root.tourActive
+      // from the search input while the tour or the settings panel is up.
+      visible: !root.tourActive && !root.settingsActive
 
       readonly property int listHeight: Math.min(root.maxListHeight, root.contentHeight)
       readonly property bool hasResults: displayModel.count > 0
@@ -2680,6 +2768,56 @@ Item {
       onBindingRequested: function(chord) { root.writeBinding(chord) }
       onRevertRequested: root.revertBinding()
       onFinished: function(patch) { root.finishTour(patch) }
+    }
+
+    SettingsPanel {
+      id: settingsPanel
+      visible: root.settingsActive
+      anchors.centerIn: parent
+      foreground: root.foreground
+      accent: root.accent
+      fontFamily: root.fontFamily
+      surface: root.glassBackground
+      surfaceBorder: root.glassBorder
+      sheen: root.glassSheen
+      hairline: root.hairline
+      surfaceRadius: root.cardRadius
+      rowRadius: root.rowRadius
+      settings: root.settings
+      currentBinding: root.tourBinding.current
+      // Half the screen, floored so a short display still shows a few rows.
+      // A settings list that runs edge to edge reads as a document; capping it
+      // keeps it a panel, and the rest scrolls.
+      availableHeight: Math.min(panel.height - Style.space(96),
+                                Math.max(Style.space(420), panel.height * 0.5))
+      onChanged: function(key, value) { root.queueSetting(key, value) }
+      onClosed: root.closeSettingsPanel()
+      onAction: function(name) {
+        switch (name) {
+        case "edit":
+          root.leaveSettingsPanel()
+          root.editSettingsFile()
+          break
+        case "shortcut":
+          root.leaveSettingsPanel()
+          root.showTour(1, true)
+          break
+        case "tour":
+          root.leaveSettingsPanel()
+          root.showTour(0, false)
+          break
+        case "data":
+          root.leaveSettingsPanel()
+          root.dismiss()
+          root.openDataFolder()
+          break
+        case "reset":
+          // Stays on the panel: the button has already asked twice, and the
+          // only thing left to show is that the data is gone.
+          root.resetLearning()
+          break
+        }
+      }
     }
   }
 

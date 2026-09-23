@@ -523,6 +523,14 @@ class SettingsWriteTests(unittest.TestCase):
             self.assertTrue(on_disk["setupCompleted"])
             self.assertEqual(stat.S_IMODE((cfg / "spotlight.json").stat().st_mode), 0o600)
 
+    def test_write_settings_clamps_every_numeric_limit(self):
+        with fake_home():
+            reply = run(HELPER.cmd_write_settings,
+                        stdin=b'{"maxResults": 1, "maxApps": 99, "maxSuggestions": -4}')
+            self.assertEqual(reply["settings"]["maxResults"], 8)
+            self.assertEqual(reply["settings"]["maxApps"], 24)
+            self.assertEqual(reply["settings"]["maxSuggestions"], 0)
+
     def test_write_settings_creates_file(self):
         with fake_home() as home:
             reply = run(HELPER.cmd_write_settings, stdin=b'{"webSuggestions": true}')
