@@ -70,7 +70,7 @@ FocusScope {
 
   function focusPanel() {
     Qt.callLater(function() {
-      if (panel.visible) panel.forceActiveFocus()
+      if (panel.visible) focusHome.forceActiveFocus()
     })
   }
 
@@ -121,6 +121,10 @@ FocusScope {
   // ------------------------------------------------------------- surface
   width: Math.min(Style.space(620), (parent ? parent.width : Style.space(800)) - Style.space(48))
   height: Math.min(panel.availableHeight, column.implicitHeight + Style.space(48))
+
+  // Where focus goes on open. The scope itself would hand it back to the
+  // control focused last time, scroll to it and let a stray Space press it.
+  Item { id: focusHome }
 
   Rectangle {
     anchors.fill: parent
