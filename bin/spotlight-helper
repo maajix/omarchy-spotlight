@@ -42,6 +42,7 @@ import stat
 import subprocess
 import sys
 import time
+import unicodedata
 from datetime import date, datetime, timezone
 
 EUID = os.geteuid()
@@ -2214,7 +2215,7 @@ def cmd_wifi():
             ssid = bytes.fromhex(ssid_hex).decode("utf-8")
         except UnicodeDecodeError:
             continue
-        if any(ord(ch) < 32 for ch in ssid):
+        if any(unicodedata.category(ch) in ("Cc", "Cf") for ch in ssid):
             continue
         row = {"ssid": ssid, "connected": active == "*",
                "signal": int(strength) if strength.isdigit() and int(strength) <= 100 else 0,
@@ -2250,7 +2251,7 @@ def cmd_bluetooth():
         name = device.get("Alias", {}).get("data")
         if not isinstance(address, str) or not BLUETOOTH_ADDRESS_RE.fullmatch(address) \
                 or not isinstance(name, str) or not name \
-                or any(ord(ch) < 32 for ch in name):
+                or any(unicodedata.category(ch) in ("Cc", "Cf") for ch in name):
             continue
         rows.append({"address": address.upper(), "name": name[:160],
                      "connected": device.get("Connected", {}).get("data") is True})

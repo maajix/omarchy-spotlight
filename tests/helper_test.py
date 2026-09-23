@@ -35,6 +35,10 @@ class HelperTests(unittest.TestCase):
         raw = (b':436166653a4775657374:65:WPA2\n:486f6d65:95:WPA2\n'
                b'*:486f6d65:72:WPA2\n:536166650a203a4576696c:99:WPA2\n'
                b':badhex:40:WPA2\n')
+        for char in "\x7f\u0085\u009b\u202e\u200b":
+            raw += b":" + ("Safe" + char + "Evil").encode().hex().encode() + b":99:WPA2\n"
+        safe_name = "Café 中😀\ue000"
+        raw += b":" + safe_name.encode().hex().encode() + b":60:WPA2\n"
         with mock.patch.object(HELPER, "run_bounded", return_value=(raw, False, 0)) as run_bounded:
             buf = io.StringIO()
             with contextlib.redirect_stdout(buf):
@@ -43,6 +47,7 @@ class HelperTests(unittest.TestCase):
         self.assertEqual(json.loads(buf.getvalue())["networks"], [
             {"ssid": "Home", "connected": True, "signal": 72, "security": "WPA2"},
             {"ssid": "Cafe:Guest", "connected": False, "signal": 65, "security": "WPA2"},
+            {"ssid": safe_name, "connected": False, "signal": 60, "security": "WPA2"},
         ])
         self.assertEqual(HELPER._nmcli_fields(r":Cafe\\Guest:50:--"),
                          ["", r"Cafe\Guest", "50", "--"])
@@ -74,7 +79,13 @@ class HelperTests(unittest.TestCase):
                 "AA:BB:CC:DD:EE:FF", "Safe\nDevice 66:77:88:99:AA:BB Evil"),
             "/org/bluez/hci0/dev_66_77_88_99_AA_BB": device(
                 "66:77:88:99:AA:BB", "Not paired", paired=False),
+            "/org/bluez/hci0/dev_11_22_33_44_55_66": device(
+                "11:22:33:44:55:66", "Zébra 中😀\ue000"),
         }
+        for index, char in enumerate("\x7f\u0085\u009b\u202e\u200b"):
+            address = "AA:BB:CC:DD:EE:%02X" % index
+            objects["/org/bluez/hci0/dev_" + address.replace(":", "_")] = device(
+                address, "Safe" + char + "Evil")
         raw = json.dumps({"type": "a{oa{sa{sv}}}", "data": [objects]}).encode()
         with mock.patch.object(HELPER, "run_bounded", return_value=(raw, False, 0)) as run_bounded:
             reply = run(HELPER.cmd_bluetooth)
@@ -83,6 +94,7 @@ class HelperTests(unittest.TestCase):
         self.assertEqual(reply["devices"], [
             {"address": "38:18:4C:24:30:3E", "name": "Headphones", "connected": True},
             {"address": "00:11:22:33:44:55", "name": "Keyboard", "connected": False},
+            {"address": "11:22:33:44:55:66", "name": "Zébra 中😀\ue000", "connected": False},
         ])
 
     def test_terminal_log_wrapper_keeps_output_after_interrupt(self):
