@@ -75,6 +75,14 @@ test("engineOptions lists every engine once, first key wins", () => {
   for (const o of options) assert.ok(Web.hasEngine(o.value))
 })
 
+test("canonicalEngine maps an alias to the key the settings menu lists", () => {
+  assert.equal(Web.canonicalEngine("google"), "g")
+  assert.equal(Web.canonicalEngine("gg"), "g")
+  assert.equal(Web.canonicalEngine("ddg"), "ddg")
+  assert.equal(Web.canonicalEngine("nope"), "g")
+  assert.equal(Web.canonicalEngine(undefined), "g")
+})
+
 test("Kagi builds a search URL", () => {
   assert.equal(Web.searchUrl("linux desktop", "kagi"), "https://kagi.com/search?q=linux%20desktop")
 })

@@ -711,7 +711,7 @@ Item {
     root.settings = {
       webSuggestions: parsed.webSuggestions === true,
       currencyRates: parsed.currencyRates !== false,
-      searchEngine: Web.hasEngine(parsed.searchEngine) ? parsed.searchEngine : "g",
+      searchEngine: Web.canonicalEngine(parsed.searchEngine),
       defaultCurrency: Currency.defaultCode(parsed.defaultCurrency),
       fileSearch: parsed.fileSearch !== false,
       fileSearchAlways: parsed.fileSearchAlways !== false,
