@@ -21,6 +21,7 @@ FocusScope {
   property var settings: ({})
   property var pendingSettings: ({})
   property bool saveFailed: false
+  property string saveError: ""
   property string currentBinding: ""
   property real availableHeight: Style.space(720)
 
@@ -176,7 +177,11 @@ FocusScope {
 
         Text {
           Layout.fillWidth: true
-          text: panel.saveFailed ? "Settings not saved. Check the file, then retry." : "Changes save as you make them."
+          text: panel.saveFailed
+            ? "Settings not saved: " + (panel.saveError || "Check the file") + ". Retry after fixing it."
+            : "Changes save as you make them."
+          textFormat: Text.PlainText
+          elide: Text.ElideRight
           color: panel.saveFailed ? Color.urgent : panel.dim
           font.family: panel.fontFamily
           font.pixelSize: Style.font.caption

@@ -578,6 +578,17 @@ class SettingsWriteTests(unittest.TestCase):
                 run(HELPER.cmd_write_settings, stdin=b'{"setupCompleted": true}')
             self.assertEqual((cfg / "spotlight.json").read_bytes(), b"{broken")
 
+    def test_write_settings_reports_symlink_without_touching_target(self):
+        with fake_home() as home:
+            cfg = home / ".config" / "omarchy"
+            cfg.mkdir(parents=True)
+            target = cfg / "target.json"
+            target.write_text('{"maxResults": 12}')
+            (cfg / "spotlight.json").symlink_to(target)
+            reply = run(HELPER.main, ["write-settings"], b'{"maxResults": 30}')
+            self.assertEqual(reply, {"ok": False, "error": "spotlight.json is a symlink"})
+            self.assertEqual(target.read_text(), '{"maxResults": 12}')
+
     def test_read_settings_treats_a_corrupt_file_as_set_up(self):
         with fake_home() as home:
             cfg = home / ".config" / "omarchy"

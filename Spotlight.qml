@@ -83,6 +83,17 @@ Item {
     return null
   }
 
+  function helperError(raw) {
+    try {
+      var text = String(raw || "")
+      if (text.length > root.maxHelperPayloadChars) return ""
+      var parsed = JSON.parse(text)
+      if (parsed && typeof parsed.error === "string") return parsed.error.slice(0, 120)
+    } catch (e) {
+    }
+    return ""
+  }
+
   // ------------------------------------------------------------- state
   property bool opened: false
   property string query: ""
@@ -212,6 +223,7 @@ Item {
   // Set by a saved write: a read started before it must not undo it.
   property bool settingsReadStale: false
   readonly property bool settingsSaveFailed: settingsWrites.failed
+  property string settingsSaveError: ""
   // spotlight.json was asked for while a write was queued; open it once saved.
   property bool editAfterSave: false
 
@@ -568,8 +580,14 @@ Item {
   function completeSettingsWrite(raw) {
     var reply = root.helperReply(raw)
     if (reply) {
+      root.settingsSaveError = ""
       root.settingsReadStale = true
       root.loadSettings(raw)
+    } else {
+      root.settingsSaveError = root.helperError(raw)
+      if (!root.settingsActive) Util.execArgv(["notify-send", "-u", "critical",
+        "Spotlight settings not saved",
+        (root.settingsSaveError || "Check the file") + ". Reopen Spotlight Settings to retry."])
     }
     root.settingsWrites = SettingsQueue.settle(root.settingsWrites, !!reply)
     if (reply) root.flushSettings()
@@ -2220,8 +2238,7 @@ Item {
     id: settingsWriteProc
     // A helper that never started sends no reply, so nothing else settles it.
     onRunningChanged: if (!running && Object.keys(root.settingsWrites.active).length) {
-      root.settingsWrites = SettingsQueue.settle(root.settingsWrites, false)
-      root.openEditorWhenSaved()
+      root.completeSettingsWrite("")
     }
     stdout: StdioCollector {
       waitForEnd: true
@@ -2809,6 +2826,7 @@ Item {
       settings: root.settings
       pendingSettings: Object.assign({}, root.settingsWrites.active, root.settingsWrites.pending)
       saveFailed: root.settingsSaveFailed
+      saveError: root.settingsSaveError
       currentBinding: root.tourBinding.current
       // Cap the panel height; the remaining rows scroll.
       availableHeight: Math.min(panel.height - Style.space(96),
