@@ -622,7 +622,7 @@ FocusScope {
         }
 
         GridLayout {
-          Layout.fillWidth: true
+          Layout.alignment: Qt.AlignHCenter
           Layout.topMargin: Style.space(6)
           columns: 2
           columnSpacing: Style.space(12)
@@ -634,7 +634,7 @@ FocusScope {
             // Two cells per example: the query as a keycap, then what it does.
             Item {
               required property var modelData
-              Layout.fillWidth: true
+              implicitWidth: cell.implicitWidth
               implicitHeight: cell.implicitHeight
 
               RowLayout {
