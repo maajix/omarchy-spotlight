@@ -126,8 +126,8 @@ FocusScope {
   }
 
   // Esc is the only key that closes the panel. Return belongs to whatever holds
-  // focus - a row toggles on it - and a panel that closed on a stray Enter from
-  // a stepper or a menu would swallow the edit the user was in the middle of.
+  // focus, and a panel that closed on a stray Enter from a stepper or a menu
+  // would swallow the edit the user was in the middle of.
   Keys.onPressed: function(event) {
     if (event.key === Qt.Key_Escape) { panel.finish(); event.accepted = true }
   }

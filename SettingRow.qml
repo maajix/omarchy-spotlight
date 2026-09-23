@@ -29,8 +29,6 @@ Rectangle {
   border.color: row.activeFocus ? row.chrome.lineFocus
     : row.hot ? row.chrome.lineHot : row.chrome.line
   Keys.onSpacePressed: row.toggled()
-  Keys.onReturnPressed: row.toggled()
-  Keys.onEnterPressed: row.toggled()
 
   Behavior on color { ColorAnimation { duration: 100 } }
 

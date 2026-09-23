@@ -16,8 +16,6 @@ Item {
   implicitHeight: subRow.implicitHeight
   activeFocusOnTab: enabled
   Keys.onSpacePressed: sub.toggled()
-  Keys.onReturnPressed: sub.toggled()
-  Keys.onEnterPressed: sub.toggled()
 
   RowLayout {
     id: subRow
