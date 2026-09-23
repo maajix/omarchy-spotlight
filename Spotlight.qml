@@ -202,6 +202,8 @@ Item {
   // tour is ever opened. The tour can still change it.
   readonly property string defaultChord: "ALT + SPACE"
   property bool autoBindDone: false
+  // A tour started from the settings panel hands back to it.
+  property bool tourFromSettings: false
 
   // ------------------------------------------------------- settings panel
   // The panel paints settings; this file writes them.
@@ -278,6 +280,7 @@ Item {
     root.opened = true
     root.tourActive = false
     root.settingsActive = false
+    root.tourFromSettings = false
     root.armedKey = ""
     root.pendingCurrency = null
     root.rows = []
@@ -592,7 +595,10 @@ Item {
       root.queueSettings(patch)
       root.flushSettings()
     }
-    Qt.callLater(function() { input.forceActiveFocus() })
+    if (root.tourFromSettings) {
+      root.tourFromSettings = false
+      root.showSettingsPanel()
+    } else Qt.callLater(function() { input.forceActiveFocus() })
   }
 
   function readBinding() {
@@ -2823,10 +2829,12 @@ Item {
           break
         case "shortcut":
           root.leaveSettingsPanel()
+          root.tourFromSettings = true
           root.showTour(1, true)
           break
         case "tour":
           root.leaveSettingsPanel()
+          root.tourFromSettings = true
           root.showTour(0, false)
           break
         case "data":
