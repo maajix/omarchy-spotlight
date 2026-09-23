@@ -1,4 +1,4 @@
-# {{ site.Title }} - {{ site.Home.Permalink }}
+# Spotlight for Omarchy - https://maajix.github.io/omarchy-spotlight/
 
 User-agent: *
 Allow: /
@@ -40,5 +40,5 @@ User-agent: cohere-ai
 User-agent: CCBot
 Allow: /
 
-Sitemap: {{ "sitemap.xml" | absURL }}
-# Plain-text summary for LLMs: {{ "llms.txt" | absURL }}
+Sitemap: https://maajix.github.io/omarchy-spotlight/sitemap.xml
+# Plain-text summary for LLMs: https://maajix.github.io/omarchy-spotlight/llms.txt

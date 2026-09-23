@@ -1,38 +1,6 @@
 baseURL = 'https://maajix.github.io/omarchy-spotlight/'
-locale = 'en-us'
 title = 'Spotlight for Omarchy'
-enableRobotsTXT = true
-disableKinds = ['taxonomy', 'term', 'rss']
 
-# The docs are hidden until they are ready (see the nav partial): keep them out
-# of the sitemap and out of search indexes. Drop this block when they go live.
-[[cascade]]
-  [cascade.params]
-    robots = 'noindex'
-  [cascade.sitemap]
-    disable = true
-  [cascade.target]
-    path = '{/docs,/docs/**}'
-
-[params]
-  description = 'Fast, local-first command palette plugin for Omarchy Linux: apps, windows, files, clipboard, calculator, reminders, command help, system views and web search from one input.'
-  repo = 'https://github.com/maajix/omarchy-spotlight'
-  marketplace = 'https://plugins.omarchy.org/plugin.html?id=io.github.maajix.spotlight'
-  security = 'https://github.com/maajix/omarchy-spotlight/blob/main/SECURITY.md'
-  pluginId = 'io.github.maajix.spotlight'
-  version = '1.6.0'
-  author = 'Max Randhahn'
-  authorUrl = 'https://maajix.github.io/'
-  authorProfiles = ['https://github.com/maajix']
-  installCommand = 'omarchy plugin add https://github.com/maajix/omarchy-spotlight.git --enable'
-
-[markup]
-  [markup.goldmark.renderer]
-    unsafe = false
-  [markup.highlight]
-    noClasses = false
-    lineNos = false
-    guessSyntax = false
-  [markup.tableOfContents]
-    startLevel = 2
-    endLevel = 3
+# The site is the hand-written static/ tree: the landing page, the docs page,
+# the 404 page and the crawler files. Hugo only copies it into public/.
+disableKinds = ['page', 'section', 'taxonomy', 'term', 'rss', 'sitemap', 'robotstxt', '404']

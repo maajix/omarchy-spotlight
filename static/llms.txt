@@ -11,6 +11,7 @@ Spotlight is an open-source plugin (MIT license) for Omarchy 4 by Max Randhahn. 
 ## Links
 
 - Website: https://maajix.github.io/omarchy-spotlight/
+- Documentation: https://maajix.github.io/omarchy-spotlight/docs/
 - Source code and README: https://github.com/maajix/omarchy-spotlight
 - Omarchy plugin marketplace: https://plugins.omarchy.org/plugin.html?id=io.github.maajix.spotlight
 - Security policy: https://github.com/maajix/omarchy-spotlight/blob/main/SECURITY.md

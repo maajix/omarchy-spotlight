@@ -1,0 +1,791 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Spotlight for Omarchy: launcher and command palette plugin</title>
+<meta name="description" content="Fast, local-first command palette plugin for Omarchy Linux: apps, windows, files, clipboard, calculator, reminders, command help, system views and web search from one input.">
+<meta name="author" content="Max Randhahn">
+<meta name="theme-color" content="#08090a">
+<link rel="canonical" href="https://maajix.github.io/omarchy-spotlight/">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="preload" href="fonts/inter-latin.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="fonts/jetbrains-mono-latin.woff2" as="font" type="font/woff2" crossorigin>
+<meta property="og:type" content="website">
+<meta property="og:locale" content="en_US">
+<meta property="og:site_name" content="Spotlight for Omarchy">
+<meta property="og:title" content="Spotlight for Omarchy: launcher and command palette plugin">
+<meta property="og:description" content="Fast, local-first command palette plugin for Omarchy Linux: apps, windows, files, clipboard, calculator, reminders, command help, system views and web search from one input.">
+<meta property="og:url" content="https://maajix.github.io/omarchy-spotlight/">
+<meta property="og:image" content="https://maajix.github.io/omarchy-spotlight/og.jpg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Spotlight open on an Omarchy desktop">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Spotlight for Omarchy: launcher and command palette plugin">
+<meta name="twitter:description" content="Fast, local-first command palette plugin for Omarchy Linux: apps, windows, files, clipboard, calculator, reminders, command help, system views and web search from one input.">
+<meta name="twitter:image" content="https://maajix.github.io/omarchy-spotlight/og.jpg">
+<script type="application/ld+json">{"@context":"https://schema.org","@graph":[{"@id":"https://maajix.github.io/omarchy-spotlight/#app","@type":"SoftwareApplication","alternateName":"omarchy-spotlight","applicationCategory":"UtilitiesApplication","author":{"@id":"https://maajix.github.io/#person"},"description":"Fast, local-first command palette plugin for Omarchy Linux: apps, windows, files, clipboard, calculator, reminders, command help, system views and web search from one input.","downloadUrl":"https://github.com/maajix/omarchy-spotlight","featureList":["Application launcher","Window switcher","File and folder search","Clipboard history","Calculator","Natural-language calendar events and reminders","Live system toggles","System views for ports, SSH hosts, Docker containers, services, mounts, audio, Wi-Fi and Bluetooth","Web search bangs","Command help from tldr pages"],"image":"https://maajix.github.io/omarchy-spotlight/og.jpg","inLanguage":"en","installUrl":"https://plugins.omarchy.org/plugin.html?id=io.github.maajix.spotlight","isAccessibleForFree":true,"license":"https://github.com/maajix/omarchy-spotlight/blob/main/LICENSE","name":"Spotlight","offers":{"@type":"Offer","price":"0","priceCurrency":"EUR"},"operatingSystem":"Linux (Omarchy 4)","softwareRequirements":"Omarchy 4 with omarchy-shell","softwareVersion":"1.6.1","url":"https://maajix.github.io/omarchy-spotlight/"},{"@id":"https://maajix.github.io/omarchy-spotlight/#website","@type":"WebSite","about":{"@id":"https://maajix.github.io/omarchy-spotlight/#app"},"author":{"@id":"https://maajix.github.io/#person"},"description":"Fast, local-first command palette plugin for Omarchy Linux: apps, windows, files, clipboard, calculator, reminders, command help, system views and web search from one input.","inLanguage":"en","name":"Spotlight for Omarchy","publisher":{"@id":"https://maajix.github.io/#person"},"url":"https://maajix.github.io/omarchy-spotlight/"},{"@id":"https://maajix.github.io/#person","@type":"Person","name":"Max Randhahn","sameAs":["https://github.com/maajix"],"url":"https://maajix.github.io/"}]}</script>
+<script
+  src="https://cdn.databuddy.cc/databuddy.js"
+  data-client-id="1DL7tse_ZTnMsjrVbv_Bp"
+  data-track-hash-changes="true"
+  data-track-attributes="true"
+  data-track-outgoing-links="true"
+  data-track-interactions="true"
+  data-track-web-vitals="true"
+  data-track-errors="true"
+  crossorigin="anonymous"
+  async
+></script>
+<style>
+@font-face{font-family:"Inter";font-style:normal;font-weight:400 600;font-display:swap;src:url(fonts/inter-latin.woff2) format("woff2")}
+@font-face{font-family:"JetBrains Mono";font-style:normal;font-weight:400;font-display:swap;src:url(fonts/jetbrains-mono-latin.woff2) format("woff2")}
+:root{
+  --void:#08090a;--carbon:#0f1011;--obsidian:#161718;--graphite:#23252a;--smoke:#383b3f;
+  --ash:#62666d;--fog:#8a8f98;--mist:#d0d6e0;--bone:#e5e5e6;--paper:#fff;
+  --lime:#e4f222;--green:#27a644;--coral:#eb5757;--teal:#02b8cc;--iris:#6366f1;
+  --sans:"Inter",ui-sans-serif,system-ui,sans-serif;--mono:"JetBrains Mono",ui-monospace,monospace;
+  --wrap:1200px;--gutter:24px;--hair:inset 0 0 0 1px var(--graphite);
+}
+@media (max-width:640px){:root{--gutter:16px}}
+*,*::before,*::after{box-sizing:border-box}
+html{scroll-behavior:smooth;scroll-padding-top:80px;-webkit-text-size-adjust:100%}
+body{margin:0;overflow-x:clip;background:radial-gradient(rgba(255,255,255,.09) 1px,transparent 1.5px) 50% 0/24px 24px,var(--void);color:var(--mist);font:400 16px/1.5 var(--sans);font-feature-settings:"cv01","ss03","zero";-webkit-font-smoothing:antialiased}
+h1,h2,h3{margin:0;font-weight:510;color:var(--paper);text-wrap:balance}
+p{margin:0}
+a{color:inherit;text-decoration:none}
+button{font:inherit;color:inherit}
+code,kbd{font-family:var(--mono)}
+svg{display:block}
+.wrap{width:min(var(--wrap),100% - 2*var(--gutter));margin-inline:auto}
+
+/* Nav */
+.nav{position:fixed;inset:0 0 auto;z-index:20;transition:background .25s,box-shadow .25s}
+.nav.stuck{background:rgba(8,9,10,.72);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);box-shadow:inset 0 -1px 0 var(--graphite)}
+.nav .wrap{display:flex;align-items:center;gap:32px;width:auto;height:64px;padding-inline:var(--gutter)}
+.brand{display:inline-flex;align-items:center;gap:10px;font-weight:510;font-size:15px;color:var(--paper)}
+.brand .mk{width:22px;height:22px;border-radius:6px;display:grid;place-items:center;background:var(--paper);color:var(--void)}
+.brand .mk svg{width:14px;height:14px}
+.links{display:flex;gap:4px;margin-right:auto}
+.links a{padding:8px 12px;font-size:13px;color:var(--fog);transition:color .15s}
+.links a:hover{color:var(--paper)}
+.gh{display:inline-flex;align-items:center;gap:8px;height:32px;padding:0 14px;border-radius:999px;font-size:13px;font-weight:510;background:var(--paper);color:var(--void)}
+.gh svg{width:15px;height:15px}
+.gh .n{padding-left:8px;box-shadow:inset 1px 0 0 rgba(8,9,10,.15);font-variant-numeric:tabular-nums}
+@media (max-width:760px){.links{display:none}.nav .wrap{justify-content:space-between}}
+
+/* Buttons */
+.btn{display:inline-flex;align-items:center;gap:8px;height:40px;padding:0 16px;border:0;border-radius:6px;cursor:pointer;font-size:14px;font-weight:510;letter-spacing:-.011em;transition:background .15s,color .15s,transform .15s}
+.btn svg{width:16px;height:16px}
+.btn:active{transform:translateY(1px)}
+.btn-lime{background:var(--lime);color:var(--void);box-shadow:0 5px 2px rgba(0,0,0,.01),0 3px 2px rgba(0,0,0,.04),0 1px 1px rgba(0,0,0,.07),0 0 0 1px rgba(0,0,0,.08)}
+.btn-lime:hover{background:#eef75a}
+.btn-ghost{background:var(--void);color:var(--mist);box-shadow:var(--hair)}
+.btn-ghost:hover{background:#121314;color:var(--paper)}
+kbd{display:inline-grid;place-items:center;min-width:20px;height:20px;padding:0 5px;border-radius:4px;font-size:11px;line-height:1;color:var(--mist);background:rgba(255,255,255,.06);box-shadow:inset 0 0 0 1px var(--graphite),inset 0 -1px 0 rgba(0,0,0,.5)}
+
+/* Hero */
+.hero{position:relative;padding-top:112px}
+/* Spotlight beam: a cone of light from above that brightens the page grid where it falls. */
+.beam{position:absolute;inset:0 0 auto;height:var(--bh,1080px);z-index:-1;pointer-events:none;
+  --cone:conic-gradient(from 150deg at 50% -24%,transparent,#000 24deg 36deg,transparent 60deg);
+  -webkit-mask:var(--cone),linear-gradient(#000 35%,transparent);-webkit-mask-composite:source-in;
+  mask:var(--cone),linear-gradient(#000 35%,transparent);mask-composite:intersect;
+  /* A fixed-width cone keeps its shape on phones instead of flooding the whole hero. */
+  -webkit-mask-size:1440px 100%,100% 100%;mask-size:1440px 100%,100% 100%;-webkit-mask-position:50% 0;mask-position:50% 0;-webkit-mask-repeat:no-repeat;mask-repeat:no-repeat;
+  background:radial-gradient(40% 70% at 50% 0,rgba(208,214,224,.16),rgba(208,214,224,.04) 60%,transparent)}
+.beam::after{content:"";position:absolute;inset:0}
+@media (max-width:640px){.beam{-webkit-mask-size:760px 100%,100% 100%;mask-size:760px 100%,100% 100%}}
+.beam::after{background:radial-gradient(rgba(255,255,255,.22) 1px,transparent 1.5px) 50% 0/24px 24px;
+  -webkit-mask:radial-gradient(45% 80% at 50% 10%,#000,transparent);mask:radial-gradient(45% 80% at 50% 10%,#000,transparent)}
+.badge{display:inline-flex;align-items:center;gap:10px;max-width:100%;height:30px;white-space:nowrap;padding:0 12px 0 10px;border-radius:999px;font-size:13px;color:var(--mist);background:#121314;box-shadow:var(--hair);transition:background .15s}
+.badge:hover{background:#191a1b}
+.badge .dot{position:relative;flex:none;width:6px;height:6px;border-radius:50%;background:var(--lime)}
+.badge .dot::after{content:"";position:absolute;inset:0;border-radius:inherit;background:inherit;animation:ping 2s linear infinite}
+@keyframes ping{from{transform:scale(1);opacity:.5}to{transform:scale(3);opacity:0}}
+.badge b{font-weight:510;color:var(--paper)}
+.badge .txt{overflow:hidden;text-overflow:ellipsis}
+.badge .bar{width:1px;height:12px;background:var(--smoke)}
+.badge svg{width:14px;height:14px;color:var(--fog);transition:transform .2s}
+.badge:hover svg{transform:translateX(2px)}
+.hero-top{max-width:1000px;margin:0 auto;text-align:center}
+.hero h1{font-size:clamp(40px,4.4vw + 8px,64px);text-wrap:balance;line-height:1;letter-spacing:-.024em}
+.hero h1 em{font-style:normal;color:var(--lime)}
+.hero h1 .w{display:inline-block;opacity:0;filter:blur(8px);transform:translateY(12px);animation:rise .8s cubic-bezier(.2,.7,.2,1) forwards;animation-delay:calc(var(--i) * 70ms + 80ms)}
+@keyframes rise{to{opacity:1;filter:none;transform:none}}
+.hero-side{margin-top:24px}
+.hero-side p{max-width:640px;margin-inline:auto;font-size:17px;line-height:1.55;color:var(--fog)}
+.hero-side p em{font-style:normal;color:var(--mist)}
+.cta{display:flex;flex-wrap:wrap;gap:10px;margin-top:24px}
+/* Install field: the command itself with Copy inside, echoing the palette field. Reuses the closing .term. */
+.get{display:flex;justify-content:center;gap:10px;margin-top:40px}
+.get .term{flex:0 1 auto;min-width:0;margin:0}
+.get .btn-ghost{flex:none;height:52px;padding:0 18px}
+@media (max-width:560px){.get .btn-ghost{display:none}}
+.fade-in{opacity:0;animation:fadein .9s ease forwards;animation-delay:.55s}
+@keyframes fadein{to{opacity:1}}
+@media (max-width:900px){.hero{padding-top:104px}}
+
+/* Desktop stage: a mocked Omarchy desktop that Spotlight opens over. */
+.stage-wrap{position:relative;margin-top:40px}
+.stage-wrap>.badge{display:flex;width:fit-content;margin:0 auto 20px}
+@media (max-width:560px){.badge .more{display:none}}
+.stage-wrap::after{content:"";position:absolute;left:5%;right:5%;bottom:-120px;height:260px;z-index:-1;pointer-events:none;background:radial-gradient(50% 50% at 50% 50%,rgba(208,214,224,.09),transparent 70%)}
+.stage{position:relative;height:600px;overflow:hidden;border-radius:12px;background:#0b0c0e;box-shadow:var(--hair),0 30px 80px -20px rgba(0,0,0,.8)}
+.stage::before{content:"";position:absolute;inset:0;z-index:5;pointer-events:none;border-radius:inherit;padding:1px;
+  background:conic-gradient(from var(--a),transparent 0 84%,rgba(228,242,34,.55) 92%,transparent 100%);animation:sweep 9s linear infinite;
+  -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);mask-composite:exclude}
+@property --a{syntax:"<angle>";inherits:false;initial-value:0deg}
+@keyframes sweep{to{--a:360deg}}
+.desk{position:absolute;inset:0;display:grid;grid-template-rows:28px 1fr;transition:filter .6s ease,transform .6s ease}
+.stage.open .desk{filter:brightness(.42) saturate(.6) blur(1.5px);transform:scale(.995)}
+.wbar{display:flex;align-items:center;gap:12px;padding:0 12px;font:11px/1 var(--mono);color:var(--fog);box-shadow:inset 0 -1px 0 rgba(255,255,255,.03)}
+.wbar .ws{display:flex;gap:6px}
+.wbar .ws i{width:14px;height:14px;border-radius:3px;display:grid;place-items:center;font-style:normal;font-size:9px;color:var(--ash)}
+.wbar .ws i.on{color:var(--void);background:var(--mist)}
+.wbar .clock{margin-inline:auto}
+.wbar .sys{display:flex;gap:10px}
+.wbar .sys svg{width:12px;height:12px}
+.tiles{display:grid;grid-template-columns:1.25fr 1fr;grid-template-rows:1fr 1fr;gap:8px;padding:8px}
+.win{position:relative;overflow:hidden;border-radius:8px;background:#101113;box-shadow:inset 0 0 0 1px rgba(255,255,255,.05)}
+.win.big{grid-row:span 2}
+.win pre{margin:0;padding:14px 16px;font:12px/1.75 var(--mono);color:var(--ash);white-space:pre}
+.win pre b{font-weight:400;color:var(--mist)}
+.win pre i{font-style:normal;color:var(--green)}
+.win pre u{text-decoration:none;color:var(--iris)}
+.skel{display:grid;gap:9px;padding:16px}
+.skel span{height:7px;border-radius:4px;background:rgba(255,255,255,.06)}
+.meters{display:flex;align-items:flex-end;gap:5px;height:100%;padding:18px 16px}
+.meters span{flex:1;border-radius:3px 3px 0 0;background:linear-gradient(180deg,rgba(2,184,204,.4),rgba(2,184,204,.05));animation:meter 2.2s ease-in-out infinite alternate;animation-delay:calc(var(--i) * -.37s)}
+@keyframes meter{from{height:18%}to{height:86%}}
+
+/* The shortcut overlay that "opens" Spotlight. */
+.keys{position:absolute;left:50%;bottom:36px;z-index:4;display:flex;gap:8px;transform:translateX(-50%);opacity:0;transition:opacity .3s}
+.keys.show{opacity:1}
+.cap{display:grid;place-items:center;height:44px;min-width:56px;padding:0 16px;border-radius:8px;font:500 14px/1 var(--sans);color:var(--mist);background:linear-gradient(180deg,#1d1f23,#141518);box-shadow:inset 0 0 0 1px var(--smoke),inset 0 1px 0 rgba(255,255,255,.08),0 4px 0 #050506,0 6px 14px rgba(0,0,0,.5);transition:transform .08s,box-shadow .08s,color .08s}
+.cap.wide{min-width:180px}
+.cap.down{transform:translateY(3px);color:var(--lime);box-shadow:inset 0 0 0 1px rgba(228,242,34,.4),inset 0 1px 0 rgba(255,255,255,.06),0 1px 0 #050506,0 2px 6px rgba(0,0,0,.5)}
+
+/* Palette */
+.spot{position:relative;display:flex;flex-direction:column;text-align:left;border-radius:12px;background:rgba(15,16,17,.92);-webkit-backdrop-filter:blur(20px) saturate(140%);backdrop-filter:blur(20px) saturate(140%);
+  box-shadow:inset 0 0 0 1px var(--smoke),inset 0 1px 0 rgba(255,255,255,.06),0 24px 64px -12px rgba(0,0,0,.8)}
+.stage .spot{position:absolute;left:50%;top:72px;z-index:3;width:min(660px,100% - 24px);transform:translate(-50%,8px) scale(.97);opacity:0;pointer-events:none;transition:opacity .22s ease,transform .32s cubic-bezier(.2,.8,.2,1)}
+.stage.open .spot{opacity:1;transform:translate(-50%,0);pointer-events:auto}
+.sp-in{display:flex;align-items:center;gap:12px;height:56px;padding:0 18px;font:15px/1 var(--mono);color:var(--paper);box-shadow:inset 0 -1px 0 var(--graphite)}
+.sp-in>svg{width:18px;height:18px;flex:none;color:var(--fog)}
+.sp-q{min-width:0;overflow:hidden;white-space:pre;display:flex;justify-content:flex-end}
+.sp-q:empty::before{content:"Search for apps and commands\2026";color:var(--ash)}
+/* Empty field: the caret sits where text starts, before the placeholder, like the real palette. */
+.sp-q:empty,.field b:empty{order:1;margin-left:-12px}
+.sp-q:empty+.caret,.field b:empty+.caret{margin-left:0}
+.caret{flex:none;width:2px;height:18px;margin-left:-10px;background:var(--lime);animation:blink 1.05s steps(1) infinite}
+@keyframes blink{50%{opacity:0}}
+.sp-body{position:relative;height:var(--h,316px);overflow:hidden;padding:8px}
+/* The hero palette grows to its rows like the real one, capped at a row boundary (header + 9 rows). */
+.stage .sp-body{max-height:364px;transition:height .22s cubic-bezier(.2,.8,.2,1)}
+.sp-body .rows{transition:opacity .14s}
+.sp-body.out .rows{opacity:0}
+.sec{height:24px;padding:6px 10px 0;font-size:12px;line-height:16px;color:var(--ash)}
+.row{display:flex;align-items:center;gap:12px;height:36px;padding:0 10px;border-radius:6px;font-size:14px;color:var(--mist);animation:row .3s cubic-bezier(.2,.7,.2,1) both;animation-delay:calc(var(--i) * 28ms)}
+@keyframes row{from{opacity:0;transform:translateY(4px)}}
+.row.sel{background:rgba(255,255,255,.055);box-shadow:inset 0 0 0 1px rgba(255,255,255,.04)}
+.row.pressed{background:rgba(228,242,34,.1)}
+.row .ic{flex:none;width:18px;height:18px;color:var(--fog)}
+.row.sel .ic{color:var(--paper)}
+.row .t{flex:none;max-width:60%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:510;color:var(--bone)}
+.row .t.big{font-size:22px;letter-spacing:-.02em;color:var(--paper)}
+.row .m{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px;color:var(--ash)}
+.row .k{flex:none;margin-left:auto;font-size:12px;color:var(--ash)}
+.row .tag{flex:none;margin-left:auto;padding:1px 6px;border-radius:4px;font-size:11px;color:var(--fog);background:rgba(255,255,255,.05)}
+.row .tag.ok{color:#5fd07a;background:rgba(39,166,68,.12)}
+.row .tag.bad{color:#f08a8a;background:rgba(235,87,87,.12)}
+.pill{flex:none;position:relative;width:30px;height:18px;margin-left:auto;border-radius:999px;background:var(--smoke);transition:background .25s}
+.pill::after{content:"";position:absolute;top:2px;left:2px;width:14px;height:14px;border-radius:50%;background:var(--mist);transition:left .25s cubic-bezier(.2,.7,.2,1),background .25s}
+.pill.on{background:var(--lime)}
+.pill.on::after{left:14px;background:var(--void)}
+.sp-foot{display:flex;align-items:center;gap:16px;height:36px;padding:0 14px;font-size:12px;color:var(--fog);box-shadow:inset 0 1px 0 var(--graphite)}
+.sp-foot .lg{display:inline-flex;align-items:center;gap:8px;margin-right:auto;color:var(--ash)}
+.sp-foot .lg .mk{width:16px;height:16px;border-radius:4px;display:grid;place-items:center;background:var(--graphite);color:var(--mist)}
+.sp-foot .lg .mk svg{width:10px;height:10px}
+.sp-foot kbd{margin-right:6px;transition:color .1s,background .1s,transform .1s}
+.sp-foot .down kbd{transform:translateY(1px);color:var(--void);background:var(--lime)}
+@media (max-width:640px){.stage{height:540px}.tiles{grid-template-columns:1fr}.tiles .win:not(.big){display:none}.row .k,.row .tag{display:none}.sp-foot .sh{display:none}.stage .spot{top:52px}.sp-in{font-size:14px}}
+
+/* Try chips */
+.try{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:8px;margin-top:28px;font-size:13px;color:var(--ash)}
+.try button{height:30px;padding:0 12px;border:0;border-radius:999px;cursor:pointer;font:12px/1 var(--mono);color:var(--mist);background:#121314;box-shadow:var(--hair);transition:background .15s,color .15s,box-shadow .15s}
+.try button:hover,.try button.on{color:var(--paper);background:#1c1d1e;box-shadow:inset 0 0 0 1px var(--smoke)}
+
+/* Proof strip with counters */
+.proof{display:grid;grid-template-columns:repeat(4,1fr);margin-top:112px;border-radius:12px;background:var(--carbon);box-shadow:var(--hair)}
+.proof div{padding:28px 24px;box-shadow:inset -1px 0 0 var(--graphite)}
+.proof div:last-child{box-shadow:none}
+.proof b{display:block;font-size:40px;line-height:1;font-weight:510;letter-spacing:-.03em;color:var(--paper);font-variant-numeric:tabular-nums}
+.proof span{display:block;margin-top:10px;font-size:13px;color:var(--fog)}
+@media (max-width:760px){.proof{grid-template-columns:repeat(2,1fr)}.proof div:nth-child(2){box-shadow:none}.proof div:nth-child(-n+2){box-shadow:inset 0 -1px 0 var(--graphite),inset -1px 0 0 var(--graphite)}.proof div:nth-child(2){box-shadow:inset 0 -1px 0 var(--graphite)}}
+
+/* Sections */
+.section{padding-top:144px}
+.label{display:inline-flex;align-items:center;gap:8px;font-size:13px;color:var(--fog)}
+.label i{width:6px;height:6px;border-radius:2px;background:var(--lime)}
+.label.plain i{background:var(--smoke)}
+.head{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,.8fr);gap:20px 64px;align-items:end}
+.head h2{margin-top:16px;font-size:clamp(34px,3vw + 10px,52px);line-height:1.04;letter-spacing:-.022em}
+.head p{font-size:16px;color:var(--fog)}
+.head p code{font-size:13px;color:var(--mist)}
+@media (max-width:900px){.head{grid-template-columns:minmax(0,1fr)}}
+
+/* Views widget: tabs with a timer bar drive the palette. */
+.views{display:grid;grid-template-columns:340px minmax(0,1fr);gap:24px;margin-top:56px;padding:24px;border-radius:12px;background:var(--carbon);box-shadow:var(--hair)}
+.tabs{display:grid;gap:2px;margin:0;padding:0;list-style:none}
+.tab{position:relative;display:grid;grid-template-columns:18px auto 1fr;align-items:center;gap:12px;width:100%;height:46px;padding:0 12px;border:0;border-radius:6px;cursor:pointer;text-align:left;background:none;overflow:hidden;transition:background .15s}
+.tab:hover{background:rgba(255,255,255,.03)}
+.tab svg{width:16px;height:16px;color:var(--ash);transition:color .15s}
+.tab b{font-size:14px;font-weight:510;color:var(--fog);transition:color .15s}
+.tab span{justify-self:end;font-size:12px;color:var(--ash)}
+.tab.on{background:rgba(255,255,255,.05)}
+.tab.on svg,.tab.on b{color:var(--paper)}
+.tab.on::before,.tab.on::after{content:"";position:absolute;left:0;right:0;bottom:0;height:2px;background:rgba(255,255,255,.06)}
+.tab.on::after{background:var(--lime);transform-origin:left;animation:timer 6.4s linear forwards}
+.views.idle .tab.on::after{animation-play-state:paused}
+@media (hover:hover){.views:hover .tab.on::after{animation-play-state:paused}}
+@keyframes timer{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+.views .spot{--h:232px;height:100%;background:var(--void);-webkit-backdrop-filter:none;backdrop-filter:none}
+.views .sp-body{flex:1}
+@media (max-width:900px){.views{grid-template-columns:minmax(0,1fr);padding:12px}.tabs{grid-template-columns:repeat(4,minmax(0,1fr))}.tab{grid-template-columns:1fr;justify-items:center;align-content:center;gap:6px;height:66px;padding:0 4px}.tab span{display:none}}
+@media (max-width:480px){.tabs{grid-template-columns:repeat(2,minmax(0,1fr))}.tab{grid-template-columns:16px auto;justify-content:center;height:44px}}
+
+/* Bento */
+.bento{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:12px;margin-top:56px}
+.card{position:relative;display:flex;flex-direction:column;overflow:hidden;padding:28px;border-radius:12px;background:var(--carbon);box-shadow:var(--hair);isolation:isolate}
+/* Cursor light: a soft radial glow that follows the pointer, plus a brighter edge where it meets the border. */
+.card::before,.card::after{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;opacity:0;transition:opacity .3s}
+.card::before{z-index:-1;background:radial-gradient(420px circle at var(--x,50%) var(--y,50%),rgba(255,255,255,.055),transparent 45%)}
+.card::after{padding:1px;background:radial-gradient(300px circle at var(--x,50%) var(--y,50%),rgba(228,242,34,.45),transparent 45%);
+  -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);mask-composite:exclude}
+.card:hover::before,.card:hover::after{opacity:1}
+.c4{grid-column:span 4}.c2{grid-column:span 2}.c3{grid-column:span 3}
+.card h3{font-size:20px;line-height:1.3;letter-spacing:-.012em}
+.card p{max-width:46ch;margin-top:8px;font-size:15px;line-height:1.55;color:var(--fog)}
+.card p code{font-size:13px;color:var(--mist)}
+.card .vis{position:relative;margin-top:auto;padding-top:28px}
+@media (max-width:980px){.c4{grid-column:span 6}.c2,.c3{grid-column:span 3}}
+@media (max-width:640px){.c2,.c3{grid-column:span 6}}
+@media (max-width:480px){.board div:nth-child(n+7){display:none}}
+
+.board{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}
+.board div{display:flex;align-items:center;justify-content:space-between;gap:10px;height:44px;padding:0 12px;border-radius:6px;font-size:13px;color:var(--mist);background:rgba(255,255,255,.025);box-shadow:var(--hair)}
+.board .pill{margin:0}
+
+.calc{display:grid;gap:6px;font-family:var(--mono)}
+.calc .q{font-size:13px;color:var(--fog);height:20px}
+.calc .r{height:52px;overflow:hidden;font:510 44px/52px var(--sans);letter-spacing:-.03em;color:var(--paper)}
+.calc .r span{display:inline-block;animation:roll .5s cubic-bezier(.2,.7,.2,1) both;animation-delay:calc(var(--i) * 24ms)}
+@keyframes roll{from{opacity:0;transform:translateY(60%)}}
+.calc .s{font-size:12px;color:var(--ash)}
+
+.wall{display:grid;gap:8px;-webkit-mask-image:linear-gradient(90deg,transparent,#000 12%,#000 88%,transparent);mask-image:linear-gradient(90deg,transparent,#000 12%,#000 88%,transparent)}
+.wall .r{display:flex;width:max-content;gap:8px;animation:marquee var(--t,30s) linear infinite}
+.wall .r:nth-child(2){--t:38s;animation-direction:reverse}
+.wall .r:nth-child(3){--t:34s}
+@keyframes marquee{to{transform:translateX(calc(-50% - 4px))}}
+.wall span{display:inline-flex;align-items:center;gap:8px;height:32px;padding:0 12px 0 4px;border-radius:999px;font-size:13px;color:var(--fog);background:rgba(255,255,255,.03);box-shadow:var(--hair);white-space:nowrap}
+.wall code{display:grid;place-items:center;height:24px;padding:0 8px;border-radius:999px;font-size:12px;color:var(--void);background:var(--mist)}
+
+.nl{font:15px/1.9 var(--mono);color:var(--fog);min-height:60px}
+.nl mark{padding:2px 0;border-radius:3px;background:none;color:inherit;transition:background .3s,color .3s,box-shadow .3s}
+.nl mark.lit{color:var(--paper);background:rgba(99,102,241,.22);box-shadow:0 0 0 3px rgba(99,102,241,.22)}
+.nl mark.lit.t{background:rgba(2,184,204,.18);box-shadow:0 0 0 3px rgba(2,184,204,.18)}
+.nl mark.lit.d{background:rgba(228,242,34,.14);box-shadow:0 0 0 3px rgba(228,242,34,.14)}
+.nl .cursor{display:inline-block;width:2px;height:16px;margin-left:1px;vertical-align:-2px;background:var(--lime);animation:blink 1.05s steps(1) infinite}
+.legend{display:flex;flex-wrap:wrap;gap:14px;margin-top:10px;font-size:12px;color:var(--ash)}
+.legend i{display:inline-block;width:8px;height:8px;margin-right:6px;border-radius:2px}
+.event{display:flex;align-items:center;gap:12px;margin-top:18px;padding:12px 14px;border-radius:8px;background:var(--void);box-shadow:inset 0 0 0 1px var(--smoke);opacity:0;transform:translateY(6px);transition:opacity .35s,transform .35s}
+.event.show{opacity:1;transform:none}
+.event svg{width:18px;height:18px;color:var(--paper)}
+.event b{font-weight:510;color:var(--bone)}
+.event span{font-size:13px;color:var(--ash)}
+.event kbd{margin-left:auto}
+
+/* Closing */
+.closing{padding-bottom:144px}
+.closing .wrap{display:grid;grid-template-columns:minmax(0,.64fr) minmax(0,1.36fr);gap:48px 64px;align-items:start}
+.closing h2{font-size:clamp(34px,2vw + 16px,42px);line-height:1.04;letter-spacing:-.022em}
+.closing .lede{margin-top:20px;max-width:420px;font-size:16px;color:var(--fog)}
+.closing .cta{margin-top:28px}
+/* Install steps: a real sequence, so numbered and stacked in order. */
+.steps{margin:0;padding:0;list-style:none;border-radius:12px;background:var(--carbon);box-shadow:var(--hair)}
+.steps li{padding:28px 28px 28px 62px}
+.steps li+li{box-shadow:inset 0 1px 0 var(--graphite)}
+.steps h3{display:flex;align-items:center;gap:12px;margin-left:-34px;font-size:17px;letter-spacing:-.011em}
+.steps .n{display:grid;place-items:center;width:22px;height:22px;border-radius:6px;font:12px/1 var(--mono);color:var(--mist);background:var(--graphite)}
+.steps p{margin-top:10px;font-size:15px;color:var(--mist)}
+.steps p code{font-size:13px;color:var(--paper)}
+.steps .term{width:100%;margin:20px 0 0}
+.steps .caps{display:flex;gap:8px;margin-top:20px}
+.field{display:flex;align-items:center;gap:12px;height:44px;margin-top:20px;padding:0 14px;border-radius:8px;font:14px/1 var(--mono);color:var(--paper);background:var(--void);box-shadow:inset 0 0 0 1px var(--smoke)}
+.field>svg{width:16px;height:16px;flex:none;color:var(--fog)}
+.field .caret{height:16px;margin-left:-11px}
+.field b{font-weight:400}
+.field b:empty::before{content:"Search for apps and commands\2026";color:var(--ash)}
+@media (max-width:1260px){.closing .wrap{grid-template-columns:1fr}}
+.term{display:flex;align-items:center;gap:12px;width:min(780px,100%);margin:36px auto 0;padding:6px 6px 6px 18px;border-radius:8px;background:var(--carbon);box-shadow:inset 0 0 0 1px var(--smoke);text-align:left}
+.term code{flex:1;min-width:0;overflow-wrap:anywhere;font-size:13px;color:var(--mist)}
+.term code::before{content:"$ ";color:var(--lime)}
+.copy{flex:none;display:grid;place-items:center;width:40px;height:40px;border:0;border-radius:6px;cursor:pointer;color:var(--fog);background:transparent;transition:background .15s,color .15s}
+.copy:hover{color:var(--paper);background:rgba(255,255,255,.06)}
+.copy svg{width:16px;height:16px}
+.copy.ok{color:var(--lime)}
+.term .u{white-space:nowrap}
+@media (max-width:560px){.term code{font-size:12px}.term .u{white-space:normal}}
+
+.foot{padding:28px 0;font-size:13px;color:var(--ash);background:var(--void);box-shadow:inset 0 1px 0 var(--graphite)}
+.foot .wrap{display:flex;flex-wrap:wrap;justify-content:space-between;gap:12px 32px}
+.foot a:hover{color:var(--mist)}
+.foot nav{display:flex;flex-wrap:wrap;gap:8px 24px}
+
+/* Scroll reveal */
+.rv{opacity:0;transform:translateY(24px);filter:blur(4px);transition:opacity .8s ease,transform .8s cubic-bezier(.2,.7,.2,1),filter .8s ease}
+.rv.in{opacity:1;transform:none;filter:none}
+
+
+@media (max-width:640px){
+  .hero{padding-top:92px}.stage-wrap{margin-top:40px}.section{padding-top:96px}.closing{padding-bottom:96px}.steps li{padding:22px 16px}.steps h3{margin-left:0}
+  .proof{margin-top:64px}.proof div{padding:22px 16px}.proof b{font-size:32px}
+}
+@media (pointer:coarse){.try button{height:36px;padding:0 14px}}
+
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:.001ms!important;animation-iteration-count:1!important;transition-duration:.001ms!important}
+  .rv{opacity:1;transform:none;filter:none}
+  .wall .r{flex-wrap:wrap;width:auto}
+}
+</style>
+</head>
+<body>
+
+<header class="nav" id="nav">
+  <div class="wrap">
+    <a class="brand" href="#"><span class="mk"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><circle cx="10.5" cy="10.5" r="6"/><path d="m15 15 5 5"/></svg></span>Spotlight</a>
+    <nav class="links" aria-label="Main">
+      <a href="#views">Views</a><a href="#features">Features</a><a href="#install">Install</a><a href="docs/">Docs</a>
+    </nav>
+    <a class="gh" href="https://github.com/maajix/omarchy-spotlight" rel="noopener"><svg data-i="github"></svg>GitHub<span class="n" id="stars" hidden></span></a>
+  </div>
+</header>
+
+<main>
+<section class="hero">
+  <div class="beam fade-in" aria-hidden="true"></div>
+  <div class="wrap">
+    <div class="hero-top">
+      <h1 id="h1"><em>One field</em> for your whole desktop.</h1>
+      <div class="hero-side fade-in">
+        <p>Spotlight is a command palette plugin for Omarchy 4 (Quattro). Apps, windows, files, clipboard, math, reminders and the web in <em>one ranked list</em>, a keystroke away. No background process, nothing to configure.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="wrap stage-wrap fade-in">
+    <a class="badge" href="#views"><span class="dot"></span><b>New in 1.6</b><span class="bar"></span><span class="txt">System views<span class="more"> for ports, SSH, Docker and more</span></span><svg data-i="arrow"></svg></a>
+    <div class="stage" id="stage">
+      <div class="desk" aria-hidden="true">
+        <div class="wbar">
+          <div class="ws"><i class="on">1</i><i>2</i><i>3</i><i>4</i><i>5</i></div>
+          <span class="clock" id="clock">Wed 14:32</span>
+          <div class="sys"><svg data-i="wifi"></svg><svg data-i="bluetooth"></svg><svg data-i="speaker"></svg></div>
+        </div>
+        <div class="tiles">
+          <div class="win big"><pre><i>~/Work/spotlight</i> <b>git log --oneline -4</b>
+<u>f1fdf1c</u> FIX: select the view when the query is a view's full name
+<u>ce0f103</u> CHORE: bump version to 1.6.0
+<u>586d90f</u> FEAT: add colon views for ports, ssh, docker ...
+<u>6ce906e</u> Merge pull request #39 from feat/currency-exchange
+
+<i>~/Work/spotlight</i> <b>docker ps --format '{{.Names}}'</b>
+postgres
+redis
+
+<i>~/Work/spotlight</i> <b>_</b></pre></div>
+          <div class="win"><div class="skel"><span style="width:38%"></span><span style="width:72%"></span><span style="width:64%"></span><span style="width:81%"></span><span style="width:45%"></span><span style="width:58%"></span></div></div>
+          <div class="win"><div class="meters">
+            <span style="--i:0"></span><span style="--i:1"></span><span style="--i:2"></span><span style="--i:3"></span><span style="--i:4"></span><span style="--i:5"></span><span style="--i:6"></span><span style="--i:7"></span><span style="--i:8"></span><span style="--i:9"></span><span style="--i:10"></span><span style="--i:11"></span>
+          </div></div>
+        </div>
+      </div>
+      <div class="keys" id="keys" aria-hidden="true"><span class="cap">Alt</span><span class="cap wide">Space</span></div>
+      <div class="spot" id="hero-spot" aria-label="Spotlight demo"></div>
+    </div>
+  </div>
+
+  <div class="wrap try fade-in" id="try">
+    <span>Try it:</span>
+  </div>
+
+  <div class="wrap get fade-in">
+    <div class="term"><code>omarchy plugin add <span class="u">https://github.com/maajix/omarchy-spotlight.git</span> <span class="u">--enable</span></code><button class="copy" type="button" data-copy aria-label="Copy install command" title="Copy"><svg data-i="copy"></svg></button></div>
+    <a class="btn btn-ghost" href="https://github.com/maajix/omarchy-spotlight" rel="noopener" aria-label="Star on GitHub"><svg data-i="star"></svg>Star</a>
+  </div>
+
+  <div class="wrap proof rv">
+    <div><b data-count="8">8</b><span>system views, new in 1.6</span></div>
+    <div><b data-count="19">19</b><span>live switches with real state</span></div>
+    <div><b data-count="20">20</b><span>search bangs built in</span></div>
+    <div><b>1</b><span>command to install</span></div>
+  </div>
+</section>
+
+<section class="section" id="views">
+  <div class="wrap">
+    <div class="head">
+      <div><span class="label"><i></i>New in 1.6</span><h2>Your system,<br>one colon away.</h2></div>
+      <p>Type a view name and a colon. Spotlight lists what is on your machine right away and narrows it as you type, like <code>ports:22</code> or <code>ssh:prod</code>. Enter acts on the row; Shift+Enter copies its endpoint, command, ID or path.</p>
+    </div>
+    <div class="views rv idle" id="views-w">
+      <ul class="tabs" id="tabs"></ul>
+      <div class="spot" id="views-spot" aria-label="System views demo"></div>
+    </div>
+  </div>
+</section>
+
+<section class="section" id="features">
+  <div class="wrap">
+    <div class="head">
+      <div><span class="label plain"><i></i>Everything else</span><h2>Type it.<br>Spotlight handles the rest.</h2></div>
+      <p>Every source searches as you type and lands in one ranked list. Late file and web results never move the row you already picked.</p>
+    </div>
+    <div class="bento">
+      <article class="card c4 rv">
+        <h3>Switches that show the real state.</h3>
+        <p>Settings appear with their state read live. Enter flips the switch while Spotlight stays open.</p>
+        <div class="vis"><div class="board" id="board"></div></div>
+      </article>
+      <article class="card c2 rv">
+        <h3>Numbers, units and money.</h3>
+        <p>Math, conversions and currency, answered before you finish typing.</p>
+        <div class="vis"><div class="calc" id="calc"><div class="q"></div><div class="r"></div><div class="s"></div></div></div>
+      </article>
+      <article class="card c2 rv">
+        <h3>The web, one keyword away.</h3>
+        <p>Start with a bang: <code>gh</code>, <code>aw</code>, <code>yt</code>. Bare URLs open directly.</p>
+        <div class="vis"><div class="wall" id="wall"></div></div>
+      </article>
+      <article class="card c4 rv">
+        <h3>Time, in your own words.</h3>
+        <p>Say it the way you would say it. Enter adds it to Google Calendar, Shift+Enter writes an .ics file.</p>
+        <div class="vis">
+          <div class="nl" id="nl"></div>
+          <div class="legend"><span><i style="background:rgba(99,102,241,.6)"></i>date</span><span><i style="background:rgba(2,184,204,.6)"></i>time</span><span><i style="background:rgba(228,242,34,.6)"></i>duration</span><span><i style="background:var(--smoke)"></i>title</span></div>
+          <div class="event" id="event"><svg data-i="calendar"></svg><div><b></b><br><span></span></div><kbd>↵</kbd></div>
+        </div>
+      </article>
+    </div>
+  </div>
+</section>
+
+<section class="section closing" id="install">
+  <div class="wrap">
+    <div>
+      <h2>Add Spotlight<br>to your Omarchy.</h2>
+      <p class="lede">Runs on Omarchy 4 with the tools it already ships. Free and open source under the MIT license.</p>
+      <div class="cta"><a class="btn btn-ghost" href="https://github.com/maajix/omarchy-spotlight" rel="noopener"><svg data-i="github"></svg>View source</a><a class="btn btn-ghost" href="https://plugins.omarchy.org/plugin.html?id=io.github.maajix.spotlight" rel="noopener">Omarchy plugin page</a></div>
+    </div>
+    <ol class="steps rv">
+      <li><h3><span class="n">1</span>Add the plugin</h3><p>Omarchy clones it, checks the manifest and turns it on.</p>
+        <div class="term"><code>omarchy plugin add <span class="u">https://github.com/maajix/omarchy-spotlight.git</span> <span class="u">--enable</span></code><button class="copy" type="button" data-copy aria-label="Copy install command" title="Copy"><svg data-i="copy"></svg></button></div></li>
+      <li><h3><span class="n">2</span>Press Alt+Space</h3><p>The shortcut works right after install. Change it any time in Spotlight Settings.</p>
+        <div class="caps" id="caps" aria-hidden="true"><span class="cap">Alt</span><span class="cap wide">Space</span></div></li>
+      <li><h3><span class="n">3</span>Start typing</h3><p>Nothing to set up first. An app, a file, a sum or a view like <code>ports:</code> all answer here.</p>
+        <div class="field" aria-hidden="true"><svg data-i="search"></svg><b id="field-q">chrom</b><span class="caret"></span></div></li>
+    </ol>
+  </div>
+</section>
+</main>
+
+<footer class="foot"><div class="wrap"><span>Spotlight for Omarchy · MIT</span><nav><a href="https://plugins.omarchy.org/plugin.html?id=io.github.maajix.spotlight" rel="noopener">Plugin marketplace</a><a href="docs/?p=privacy-security">Security policy</a><a href="https://github.com/maajix/omarchy-spotlight/issues" rel="noopener">Report an issue</a></nav></div></footer>
+
+<script>
+const I = {
+  search:'<circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/>',
+  app:'<rect x="4" y="4" width="6" height="6" rx="1.5"/><rect x="14" y="4" width="6" height="6" rx="1.5"/><rect x="4" y="14" width="6" height="6" rx="1.5"/><rect x="14" y="14" width="6" height="6" rx="1.5"/>',
+  window:'<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 9h18"/>',
+  file:'<path d="M6 3h8l5 5v13H6z"/><path d="M14 3v5h5"/>',
+  folder:'<path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>',
+  calc:'<rect x="5" y="3" width="14" height="18" rx="2"/><path d="M8 7h8M8 12h3M13 12h3M8 16h3M13 16h3"/>',
+  globe:'<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/>',
+  bluetooth:'<path d="m7 7 10 10-5 5V2l5 5L7 17"/>',
+  terminal:'<path d="m5 7 5 5-5 5M12 17h7"/>',
+  bell:'<path d="M6 16v-5a6 6 0 0 1 12 0v5l1.5 2H4.5z"/><path d="M10 21h4"/>',
+  calendar:'<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/>',
+  keyboard:'<rect x="2" y="6" width="20" height="12" rx="2"/><path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M7 14h10"/>',
+  layers:'<path d="m12 3 9 5-9 5-9-5z"/><path d="m3 13 9 5 9-5"/>',
+  network:'<rect x="9" y="3" width="6" height="5" rx="1"/><rect x="3" y="16" width="6" height="5" rx="1"/><rect x="15" y="16" width="6" height="5" rx="1"/><path d="M12 8v4M6 16v-2a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v2"/>',
+  key:'<circle cx="8" cy="15" r="4"/><path d="m11 12 9-9M17 6l3 3M15 8l2 2"/>',
+  box:'<path d="m12 3 8 4.5v9L12 21l-8-4.5v-9z"/><path d="m4 7.5 8 4.5 8-4.5M12 12v9"/>',
+  server:'<rect x="3" y="4" width="18" height="7" rx="2"/><rect x="3" y="13" width="18" height="7" rx="2"/><path d="M7 7.5h.01M7 16.5h.01"/>',
+  disk:'<rect x="3" y="13" width="18" height="7" rx="2"/><path d="M5.5 13 8 5h8l2.5 8M7 16.5h.01"/>',
+  speaker:'<path d="M4 9v6h4l5 4V5L8 9z"/><path d="M16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12"/>',
+  moon:'<path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/>',
+  belloff:'<path d="M6 16v-5a6 6 0 0 1 12 0v5l1.5 2H4.5z"/><path d="M10 21h4M4 4l16 16"/>',
+  battery:'<rect x="7" y="5" width="10" height="16" rx="2"/><path d="M10 3h4M10 14h4v4h-4z"/>',
+  monitor:'<rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/>',
+  panel:'<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16"/>',
+  bug:'<path d="M8 9a4 4 0 0 1 8 0v6a4 4 0 0 1-8 0z"/><path d="M12 9v10M4 13h4M16 13h4M5 7l3 2M19 7l-3 2M5 19l3-2M19 19l-3-2"/>',
+  square:'<rect x="5" y="5" width="14" height="14" rx="2"/><path d="M5 9h14"/>',
+  mic:'<rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/>',
+  wifi:'<path d="M2 9a15 15 0 0 1 20 0M5 12.5a10 10 0 0 1 14 0M8.5 16a5 5 0 0 1 7 0M12 19.5h.01"/>',
+  copy:'<rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V6a2 2 0 0 1 2-2h9"/>',
+  check:'<path d="m5 12.5 4.5 4.5L19 7.5"/>',
+  arrow:'<path d="M5 12h14M13 6l6 6-6 6"/>',
+  star:'<path d="m12 3 2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z"/>',
+  github:'<path fill="currentColor" stroke="none" d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12"/>'
+};
+const svg = (n) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${I[n] || ''}</svg>`;
+document.querySelectorAll('svg[data-i]').forEach((s) => { s.outerHTML = svg(s.dataset.i); });
+const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+// Scenes mirror data/demo.yaml and data/views.yaml.
+const R = (i, t, m, k, o = {}) => ({ i, t, m, k, ...o });
+const VIEWS = [
+  { q: 'ports:', name: 'Ports', about: 'Listening sockets', f: '1313', fs: [['Listening ports', [R('network', 'hugo', '127.0.0.1:1313 · PID 48211', 'TCP', { sel: 1 })]]], icon: 'network', enter: 'Open URL', shift: 'Copy endpoint', s: [['Listening ports', [R('network', 'Port 22', '0.0.0.0:22', 'TCP', { sel: 1 }), R('network', 'Port 53', '127.0.0.53%lo:53', 'UDP'), R('network', 'hugo', '127.0.0.1:1313 · PID 48211', 'TCP')]]] },
+  { q: 'ssh:', name: 'SSH', about: 'Saved hosts', f: 'prod', fs: [['SSH hosts', [R('key', 'prod-web', 'Saved host · ssh prod-web', 'SSH', { sel: 1 }), R('key', 'Connect to prod', 'ssh prod', 'SSH')]]], icon: 'key', enter: 'Connect', shift: 'Copy command', s: [['SSH hosts', [R('key', 'homelab', 'Saved host · ssh homelab', 'SSH', { sel: 1 }), R('key', 'prod-web', 'Saved host · ssh prod-web', 'SSH'), R('key', 'github.com', 'Known host · ssh github.com', 'SSH')]]] },
+  { q: 'docker:', name: 'Docker', about: 'Containers', f: 'post', fs: [['Docker containers', [R('box', 'postgres', 'postgres:17 · Up 3 hours · 5432/tcp', '', { sel: 1, tag: 'running', ok: 1 })]]], icon: 'box', enter: 'Follow logs', shift: 'Copy ID', s: [['Docker containers', [R('box', 'postgres', 'postgres:17 · Up 3 hours · 5432/tcp', '', { sel: 1, tag: 'running', ok: 1 }), R('box', 'redis', 'redis:7-alpine · Up 3 hours', '', { tag: 'running', ok: 1 }), R('box', 'api-dev', 'api:dev · Exited (0) 2 days ago', '', { tag: 'exited' })]]] },
+  { q: 'services:', name: 'Services', about: 'systemd units', f: 'net', fs: [['System and user services', [R('server', 'NetworkManager', 'active / running · Network Manager', '', { sel: 1, tag: 'system' })]]], icon: 'server', enter: 'Follow logs', shift: 'Copy unit name', s: [['System and user services', [R('server', 'pipewire', 'active / running · PipeWire Multimedia Service', '', { sel: 1, tag: 'user' }), R('server', 'NetworkManager', 'active / running · Network Manager', '', { tag: 'system' }), R('server', 'cups', 'failed / failed · CUPS Scheduler', '', { tag: 'failed', bad: 1 })]]] },
+  { q: 'mounts:', name: 'Mounts', about: 'Filesystems', f: 'nas', fs: [['Mounted filesystems', [R('disk', '/mnt/nas', '//nas.local/media', 'cifs', { sel: 1 })]]], icon: 'disk', enter: 'Open mount', shift: 'Copy path', s: [['Mounted filesystems', [R('disk', '/', '/dev/nvme0n1p2', 'btrfs', { sel: 1 }), R('disk', '/boot', '/dev/nvme0n1p1', 'vfat'), R('disk', '/mnt/nas', '//nas.local/media', 'cifs')]]] },
+  { q: 'audio:', name: 'Audio', about: 'Outputs and inputs', f: 'xm5', fs: [['Audio outputs', [R('speaker', 'WH-1000XM5', 'Available · 60%', 'Output', { sel: 1 })]]], icon: 'speaker', enter: 'Set as default', s: [['Audio outputs', [R('speaker', 'Speakers', 'Default · 45%', 'Output'), R('speaker', 'WH-1000XM5', 'Available · 60%', 'Output', { sel: 1 })]], ['Audio inputs', [R('mic', 'Built-in Microphone', 'Default · 80%', 'Input')]]] },
+  { q: 'wifi:', name: 'Wi-Fi', about: 'Networks', f: 'coffee', fs: [['Wi-Fi networks', [R('wifi', 'CoffeeShop', 'Available · 64% signal · Open', 'Wi-Fi', { sel: 1 })]]], icon: 'wifi', enter: 'Connect', s: [['Wi-Fi networks', [R('wifi', 'home-5G', 'Connected · 86% signal · WPA2', '', { tag: 'connected', ok: 1 }), R('wifi', 'CoffeeShop', 'Available · 64% signal · Open', 'Wi-Fi', { sel: 1 }), R('wifi', 'Manage Wi-Fi…', '', '')]]] },
+  { q: 'bluetooth:', name: 'Bluetooth', about: 'Paired devices', f: 'mx', fs: [['Paired Bluetooth devices', [R('bluetooth', 'MX Keys', 'Paired', 'Bluetooth', { sel: 1 })]]], icon: 'bluetooth', enter: 'Connect', s: [['Paired Bluetooth devices', [R('bluetooth', 'WH-1000XM5', 'Connected', '', { tag: 'connected', ok: 1 }), R('bluetooth', 'MX Keys', 'Paired', 'Bluetooth', { sel: 1 }), R('bluetooth', 'Pair another device…', '', '')]]] }
+];
+// Hero scenes. A chain scene hands straight to the next one, so "ports:" narrows to "ports:1313" without clearing.
+const V = (q) => VIEWS.find((v) => v.q === q), F = (v) => ({ ...v, q: v.q + v.f, s: v.fs });
+const HERO = [
+  { q: '', enter: 'Open', s: [['Applications', [R('app', 'Chromium', '', 'App', { sel: 1 }), R('terminal', 'Ghostty', '', 'App'), R('layers', 'Obsidian', '', 'App')]], ['Commands', [R('keyboard', 'Run Setup Tour', 'Shortcut, search sources and a quick try-out', 'Action')]], ['Files', [R('folder', 'Downloads', '~', 'Folder'), R('file', 'quarterly-report.pdf', '~/Documents', 'File')]], ['Windows', [R('window', 'maajix/omarchy-spotlight', 'chromium', 'Window')]]] },
+  { q: 'chrom', enter: 'Open', s: [['Applications', [R('app', 'Chromium', '', 'Application', { sel: 1 })]], ['Windows', [R('window', 'Chromium', 'maajix/omarchy-spotlight', 'Workspace 2')]], ['Files', [R('file', 'chromium-flags.conf', '~/.config', 'File')]]] },
+  { q: '12*7+3', enter: 'Copy result', s: [['Calculator', [R('calc', '87', '12*7+3', 'Result', { sel: 1, big: 1 })]]] },
+  { ...V('ports:'), chain: 1 }, F(V('ports:')),
+  { q: 'f report', enter: 'Open', shift: 'Open folder', s: [['Files', [R('file', 'quarterly-report.pdf', '~/Documents', 'File', { sel: 1 }), R('folder', 'reports', '~/Documents', 'Folder'), R('file', 'report-template.odt', '~/Templates', 'File')]]] },
+  { q: 'toggle', enter: 'Turn off', after: 'Turn on', press: 1, s: [['Commands', [
+    R('box', 'Toggle Window Transparency', 'For the focused window', '', { sel: 1, pill: 'on' }),
+    R('belloff', 'Toggle Do Not Disturb', 'Silence notifications', '', { pill: 'off' }),
+    R('wifi', 'Toggle Wi-Fi', 'Radio on or off', '', { pill: 'on' }),
+    R('bluetooth', 'Toggle Bluetooth', 'Radio on or off', '', { pill: 'on' }),
+    R('moon', 'Toggle Night Light', 'Warm the screen', '', { pill: 'on' }),
+    R('battery', 'Toggle Battery Percentage', 'Level next to the bar icon', '', { pill: 'off' }),
+    R('monitor', 'Toggle Screensaver', 'Allow it to start when idle', '', { pill: 'on' }),
+    R('panel', 'Toggle Status Bar', 'Show or hide the bar', '', { pill: 'on' }),
+    R('bug', 'Toggle Crash Capture', 'Notify when a program crashes', '', { pill: 'on' }),
+    R('mic', 'Toggle Microphone', 'Mute or unmute input', '', { pill: 'on' }),
+    R('speaker', 'Toggle Speaker', 'Mute or unmute output', '', { pill: 'on' }),
+    R('square', 'Toggle Square Aspect', 'Square ratio for a lone window', '', { pill: 'off' })]]] },
+  { ...V('wifi:'), chain: 1 }, F(V('wifi:')),
+  { q: 'remind me in 20m to check the oven', enter: 'Create reminder', s: [['Reminder', [R('bell', 'Check the oven', 'in 20 minutes', 'omarchy reminder', { sel: 1 })]]] },
+  { q: 'man ssh', enter: 'Copy command', shift: 'Open in terminal', s: [['Connect to a remote server', [R('terminal', 'ssh username@remote_host', '', 'tldr', { sel: 1 })]], ['Use a private key', [R('terminal', 'ssh username@remote_host -i path/to/key_file', '', 'tldr')]], ['Use a specific port', [R('terminal', 'ssh username@10.0.0.1 -p 2222', '', 'tldr')]]] },
+  { q: 'aw hyprland', enter: 'Search Arch Wiki', s: [['Web', [R('globe', 'hyprland', 'Search Arch Wiki', 'Web', { sel: 1 }), R('globe', 'Search Google for “aw hyprland”', '', 'Web')]]] }
+];
+
+const rowsHTML = (sc) => {
+  let n = 0;
+  return sc.s.map(([title, rows]) => `<div class="sec">${esc(title)}</div>` + rows.map((r) => `<div class="row${r.sel ? ' sel' : ''}" style="--i:${n++}"><span class="ic">${svg(r.i)}</span><span class="t${r.big ? ' big' : ''}">${esc(r.t)}</span>${r.m ? `<span class="m">${esc(r.m)}</span>` : '<span class="m"></span>'}${r.pill ? `<span class="pill ${r.pill}"></span>` : ''}${r.tag ? `<span class="tag${r.ok ? ' ok' : ''}${r.bad ? ' bad' : ''}">${esc(r.tag)}</span>` : ''}${r.k ? `<span class="k">${esc(r.k)}</span>` : ''}</div>`).join('')).join('');
+};
+const footHTML = (sc) => `<span class="lg"><span class="mk">${svg('search')}</span>Spotlight</span>${sc.shift ? `<span class="sh"><kbd>⇧↵</kbd>${esc(sc.shift)}</span>` : ''}<span class="en"><kbd>↵</kbd>${esc(sc.enter)}</span>`;
+
+// A palette that types a query and swaps in its results.
+function palette(el, first, fit) {
+  el.innerHTML = `<div class="sp-in">${svg('search')}<span class="sp-q"></span><span class="caret"></span></div><div class="sp-body"><div class="rows"></div></div><div class="sp-foot"></div>`;
+  const q = el.querySelector('.sp-q'), body = el.querySelector('.sp-body'), rows = body.firstChild, foot = el.querySelector('.sp-foot');
+  let token = 0;
+  const show = (sc) => { rows.innerHTML = rowsHTML(sc); foot.innerHTML = footHTML(sc); if (fit) body.style.height = rows.offsetHeight + 16 + 'px'; };
+  show(first); q.textContent = first.q;
+  return {
+    async play(sc) {
+      const my = ++token;
+      if (reduced) { q.textContent = sc.q; show(sc); return; }
+      while (q.textContent && !sc.q.startsWith(q.textContent)) { if (my !== token) return; q.textContent = q.textContent.slice(0, -1); await wait(12); }
+      for (const ch of sc.q.slice(q.textContent.length)) { if (my !== token) return; q.textContent += ch; await wait(28 + Math.random() * 50); }
+      body.classList.add('out'); await wait(140); if (my !== token) return;
+      show(sc); body.classList.remove('out');
+      if (sc.press) {
+        await wait(900); if (my !== token) return;
+        const en = foot.querySelector('.en'), row = rows.querySelector('.sel'), pill = row.querySelector('.pill');
+        en.classList.add('down'); row.classList.add('pressed'); pill && pill.classList.toggle('on');
+        if (sc.after) en.lastChild.textContent = sc.after;
+        await wait(220); en.classList.remove('down'); row.classList.remove('pressed');
+      }
+    },
+    alive: (t) => t === token, get token() { return token; }
+  };
+}
+
+// Hero: press Alt+Space, open, then cycle scenes. Try chips take over and resume later.
+const stage = document.getElementById('stage');
+const hero = palette(document.getElementById('hero-spot'), HERO[0], true);
+let heroIdx = 0, heroHold = 0;
+async function heroLoop() {
+  const keys = document.getElementById('keys'), caps = keys.children;
+  if (!reduced) {
+    // Start only once the stage has faded in and is on screen, so the press is actually seen.
+    await wait(1600); while (!onScreen(stage)) await wait(200); await wait(500);
+    keys.classList.add('show'); await wait(800);
+    caps[0].classList.add('down'); await wait(300); caps[1].classList.add('down'); await wait(450);
+    caps[0].classList.remove('down'); caps[1].classList.remove('down'); await wait(150);
+  }
+  stage.classList.add('open'); await wait(400); keys.classList.remove('show');
+  if (reduced) return;
+  await wait(1400);
+  for (;;) {
+    if (Date.now() < heroHold || !onScreen(stage)) { await wait(400); continue; }
+    heroIdx = heroIdx % (HERO.length - 1) + 1;
+    await hero.play(HERO[heroIdx]);
+    if (HERO[heroIdx].chain) { await wait(1300); continue; }
+    await wait(HERO[heroIdx].press ? 1800 : 2300);
+    if (Date.now() >= heroHold) { await hero.play(HERO[0]); await wait(900); }
+  }
+}
+const vis = new Set();
+const io = new IntersectionObserver((es) => es.forEach((e) => e.isIntersecting ? vis.add(e.target) : vis.delete(e.target)), { threshold: .3 });
+const onScreen = (el) => vis.has(el);
+io.observe(stage);
+heroLoop();
+
+const tryBox = document.getElementById('try');
+['chrom', '12*7+3', 'ports:', 'toggle', 'man ssh', 'remind me in 20m…'].forEach((label) => {
+  const i = HERO.findIndex((sc) => sc.q.startsWith(label.replace('…', '')));
+  const b = document.createElement('button'); b.textContent = label; b.type = 'button';
+  b.onclick = () => {
+    tryBox.querySelectorAll('button').forEach((x) => x.classList.toggle('on', x === b));
+    heroHold = Date.now() + 7000; stage.classList.add('open'); hero.play(HERO[i]);
+  };
+  tryBox.appendChild(b);
+});
+
+// Views widget: each tab runs a timer bar; when it fills, the next view types itself in.
+const tabs = document.getElementById('tabs'), vw = document.getElementById('views-w');
+const vp = palette(document.getElementById('views-spot'), VIEWS[0]);
+let vIdx = 0, vSeq = 0;
+tabs.innerHTML = VIEWS.map((v, i) => `<li><button class="tab${i ? '' : ' on'}" type="button" data-i="${i}">${svg(v.icon)}<b>${v.name}</b><span>${v.about}</span></button></li>`).join('');
+const selectView = (i) => {
+  vIdx = i;
+  tabs.querySelectorAll('.tab').forEach((t, j) => { t.classList.remove('on'); if (j === i) { void t.offsetWidth; t.classList.add('on'); } });
+  const v = VIEWS[i], my = ++vSeq;
+  vp.play(v).then(() => wait(1600)).then(() => { if (my === vSeq && !reduced) vp.play({ ...v, q: v.q + v.f, s: v.fs }); });
+};
+tabs.addEventListener('click', (e) => { const t = e.target.closest('.tab'); if (t) selectView(+t.dataset.i); });
+tabs.addEventListener('animationend', (e) => { if (e.target.classList.contains('on') && !reduced) selectView((vIdx + 1) % VIEWS.length); });
+// Hold the timers until the widget is on screen so the first view is not skipped.
+let vSeen = false;
+new IntersectionObserver(([e]) => {
+  vw.classList.toggle('idle', !e.isIntersecting);
+  // The first view is already rendered; replay it on first sight so its filter step is seen too.
+  if (e.isIntersecting && !vSeen) { vSeen = true; selectView(0); }
+}, { threshold: .3 }).observe(vw);
+
+// Switch board, static.
+const board = document.getElementById('board');
+const SW = [['Bluetooth', 1], ['Wi-Fi', 1], ['Night light', 0], ['Do Not Disturb', 0], ['Speaker mute', 0], ['Stay Awake', 1], ['Status bar', 1], ['Touchpad', 1], ['Window gaps', 1], ['Screensaver', 1], ['Microphone mute', 0], ['Crash capture', 0]];
+board.innerHTML = SW.map(([t, on]) => `<div>${t}<span class="pill${on ? ' on' : ''}"></span></div>`).join('');
+
+// Calculator card: results roll in per character.
+const calc = document.getElementById('calc');
+const CALC = [['12*7+3', '87', 'Calculator'], ['10 km to miles', '6.2137 mi', '10 km = 6.2137 mi'], ['2^10', '1024', 'Calculator'], ['100 USD to EUR', '85.61 EUR', '100 USD = 85.61 EUR · Frankfurter'], ['90min to h', '1.5 h', '90 min = 1.5 h']];
+let ci = 0;
+const showCalc = async () => {
+  const [q, r, s] = CALC[ci++ % CALC.length];
+  const [qe, re, se] = calc.children; qe.textContent = ''; re.innerHTML = ''; se.textContent = '';
+  for (const ch of q) { qe.textContent += ch; if (!reduced) await wait(40); }
+  re.innerHTML = [...r].map((c, i) => `<span style="--i:${i}">${c === ' ' ? '&nbsp;' : esc(c)}</span>`).join(''); se.textContent = s;
+};
+io.observe(calc); showCalc();
+if (!reduced) setInterval(() => { if (onScreen(calc)) showCalc(); }, 3200);
+
+// Bang marquee.
+const B = [['g', 'Google'], ['ddg', 'DuckDuckGo'], ['yt', 'YouTube'], ['gh', 'GitHub'], ['w', 'Wikipedia'], ['aw', 'Arch Wiki'], ['aur', 'AUR'], ['pkg', 'Arch packages'], ['so', 'Stack Overflow'], ['mdn', 'MDN'], ['npm', 'npm'], ['crates', 'crates.io'], ['docker', 'Docker Hub'], ['maps', 'Google Maps'], ['tr', 'DeepL'], ['img', 'Images'], ['hn', 'Hacker News'], ['omarchy', 'Omarchy manual'], ['kagi', 'Kagi'], ['wde', 'German Wikipedia']];
+const chips = (a) => a.map(([b, d]) => `<span><code>${b}</code>${d}</span>`).join('');
+document.getElementById('wall').innerHTML = [B.slice(0, 7), B.slice(7, 14), B.slice(14)].map((r) => `<div class="r">${chips(r)}${chips(r)}</div>`).join('');
+
+// Natural language card: type the sentence, then light up what the parser understood.
+const nl = document.getElementById('nl'), ev = document.getElementById('event');
+const NL = [
+  { parts: [['call sarah', 'x'], [' '], ['tomorrow', 'd'], [' '], ['at 14:00', 't'], [' '], ['for 90min', 'u']], title: 'Call sarah', meta: 'tomorrow at 14:00 · 1h 30m' },
+  { parts: [['lunch with tom', 'x'], [' on '], ['friday', 'd'], [' '], ['at 13:00', 't']], title: 'Lunch with tom', meta: 'Fri at 13:00 · 1h' },
+  { parts: [['standup', 'x'], [' '], ['in 3 days', 'd'], [' '], ['at 9:30', 't']], title: 'Standup', meta: 'Tue at 09:30 · 1h' }
+];
+const cls = { d: '', t: ' t', u: ' d', x: '' };
+let ni = 0;
+async function nlLoop() {
+  for (;;) {
+    const s = NL[ni++ % NL.length];
+    ev.classList.remove('show'); nl.innerHTML = '';
+    const marks = s.parts.map(([txt, k]) => { const m = document.createElement(k ? 'mark' : 'span'); if (k) m.dataset.k = k; nl.appendChild(m); return [m, txt, k]; });
+    const cur = document.createElement('span'); cur.className = 'cursor'; nl.appendChild(cur);
+    for (const [m, txt] of marks) for (const ch of txt) { m.textContent += ch; if (!reduced) await wait(34 + Math.random() * 40); }
+    for (const [m, , k] of marks) if (k && k !== 'x') { m.className = 'lit' + cls[k]; if (!reduced) await wait(260); }
+    ev.querySelector('b').textContent = s.title; ev.querySelector('span').textContent = s.meta; ev.classList.add('show');
+    if (reduced) return;
+    await wait(3200);
+    while (!onScreen(nl)) await wait(400);
+  }
+}
+io.observe(nl); nlLoop();
+
+// Closing: Alt+Space presses, then the field types what you might search next.
+if (!reduced) (async () => {
+  const c = document.getElementById('caps').children, q = document.getElementById('field-q');
+  for (let i = 0; ; i++) {
+    await wait(1600); q.textContent = '';
+    c[0].classList.add('down'); await wait(140); c[1].classList.add('down'); await wait(200);
+    c[0].classList.remove('down'); c[1].classList.remove('down'); await wait(350);
+    for (const ch of ['chrom', '12*7+3', 'ports:', 'f report', 'man ssh'][i % 5]) { q.textContent += ch; await wait(75); }
+    await wait(1800);
+  }
+})();
+
+// Cursor light on cards.
+document.querySelectorAll('.card').forEach((c) => c.addEventListener('pointermove', (e) => {
+  const r = c.getBoundingClientRect(); c.style.setProperty('--x', `${e.clientX - r.left}px`); c.style.setProperty('--y', `${e.clientY - r.top}px`);
+}));
+
+// Headline words rise in one by one.
+const h1 = document.getElementById('h1');
+h1.innerHTML = [...h1.childNodes].flatMap((n) => n.textContent.trim().split(' ').filter(Boolean).map((w) => n.nodeName === 'EM' ? `<em>${w}</em>` : w))
+  .map((w, i) => `<span class="w" style="--i:${i}">${w}</span>`).join(' ');
+
+// Scroll reveal and count-up.
+const rio = new IntersectionObserver((es) => es.forEach((e) => {
+  if (!e.isIntersecting) return;
+  e.target.classList.add('in'); rio.unobserve(e.target);
+  e.target.querySelectorAll('[data-count]').forEach((b) => {
+    const to = +b.dataset.count, t0 = performance.now();
+    const step = (t) => { const p = Math.min(1, (t - t0) / 1100); b.textContent = Math.round(to * (1 - Math.pow(1 - p, 3))); if (p < 1) requestAnimationFrame(step); };
+    if (!reduced) requestAnimationFrame(step);
+  });
+}), { rootMargin: '0px 0px -10%' });
+document.querySelectorAll('.rv').forEach((el) => rio.observe(el));
+
+// Sticky nav gets a surface once the page scrolls.
+const nav = document.getElementById('nav');
+addEventListener('scroll', () => nav.classList.toggle('stuck', scrollY > 8), { passive: true });
+
+// Copy buttons.
+const CMD = 'omarchy plugin add https://github.com/maajix/omarchy-spotlight.git --enable';
+document.querySelectorAll('[data-copy]').forEach((b) => b.addEventListener('click', async () => {
+  try { await navigator.clipboard.writeText(CMD); }
+  catch { getSelection().selectAllChildren(b.previousElementSibling); return; } // No clipboard access: select it for Ctrl+C.
+  b.classList.add('ok'); b.title = 'Copied'; b.querySelector('svg').outerHTML = svg('check');
+  setTimeout(() => { b.classList.remove('ok'); b.title = 'Copy'; b.querySelector('svg').outerHTML = svg('copy'); }, 1600);
+}));
+
+// Live star count; the button still works without it.
+fetch('https://api.github.com/repos/maajix/omarchy-spotlight').then((r) => r.ok ? r.json() : null).then((d) => {
+  if (d && Number.isFinite(d.stargazers_count)) { const s = document.getElementById('stars'); s.textContent = d.stargazers_count.toLocaleString('en'); s.hidden = false; }
+}).catch(() => {});
+
+// Clock in the mocked bar.
+const clock = document.getElementById('clock');
+const tick = () => { const d = new Date(); clock.textContent = d.toLocaleDateString('en', { weekday: 'short' }) + ' ' + d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }); };
+tick(); setInterval(tick, 30000);
+</script>
+</body>
+</html>
