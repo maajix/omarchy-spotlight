@@ -288,7 +288,7 @@ main{min-width:0;width:100%;max-width:740px;justify-self:center;padding:52px 0 0
   <a class="brand" href="../"><span class="mk"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><circle cx="10.5" cy="10.5" r="6"/><path d="m15 15 5 5"/></svg></span>Spotlight<span class="sub">Docs</span></a>
   <button class="find" id="find" type="button" aria-label="Search docs"><svg data-i="search"></svg><span>Search docs</span><kbd>Ctrl</kbd><kbd>K</kbd></button>
   <nav class="tlinks" aria-label="Site"><a href="../">Home</a><a href="?p=changelog">Changelog</a></nav>
-  <a class="gh" href="https://github.com/maajix/omarchy-spotlight" rel="noopener"><svg data-i="github"></svg><span class="l">GitHub</span><span class="n">v1.6.1</span></a>
+  <a class="gh" href="https://github.com/maajix/omarchy-spotlight" rel="noopener"><svg data-i="github"></svg><span class="l">GitHub</span><span class="n">v1.6.2</span></a>
 </header>
 
 <div class="docs">
@@ -311,13 +311,10 @@ main{min-width:0;width:100%;max-width:740px;justify-self:center;padding:52px 0 0
 <pre class="code" data-title="Terminal"><code>omarchy plugin add https://github.com/maajix/omarchy-spotlight.git --enable</code></pre>
 <p>Then press <kbd>Alt</kbd><kbd>Space</kbd>. <a href="?p=installation">Installation</a> covers requirements, the first run, updating and removing. New to Spotlight? Take the <a href="?p=quickstart">Quickstart</a>, then read <a href="?p=how-search-works">How search works</a>.</p>
 
-<h2 id="whats-new">What's new in 1.6.1</h2>
+<h2 id="whats-new">What's new in 1.6.2</h2>
 <ul>
-  <li>A settings panel: search <code class="q">spotlight settings</code> and press <kbd>Enter</kbd>. Every control saves as you change it. See <a href="?p=settings">Settings</a>.</li>
-  <li>Change the shortcut from the panel under Shortcut, <b class="ui">Change</b>. The <b class="ui">Change Spotlight Shortcut</b> and <b class="ui">Reset Spotlight Learning</b> results are gone. See <a href="?p=settings#change-the-shortcut">Change the shortcut</a>.</li>
-  <li><b class="ui">Reset learning data</b> in the panel asks for a second press before it deletes anything. See <a href="?p=settings#reset-learning">Reset learning</a>.</li>
-  <li><kbd>Shift</kbd><kbd>Enter</kbd> on <b class="ui">Spotlight Settings</b> opens <code>spotlight.json</code> in your editor. See <a href="?p=settings#edit-spotlight-json">Edit spotlight.json</a>.</li>
-  <li>A failed save stays visible: the panel shows the error and a <b class="ui">Retry save</b> button, and a desktop notification appears if the panel is already closed. See <a href="?p=settings#when-a-save-fails">When a save fails</a>.</li>
+  <li><b class="ui">Change Theme</b> and <b class="ui">Change Background</b> now apply the choice you pick.</li>
+  <li><b class="ui">Change Font</b> now opens Omarchy's font picker.</li>
 </ul>
 <p>Every release is listed in the <a href="?p=changelog">Changelog</a>.</p>
 
@@ -1096,7 +1093,7 @@ hl.layer_rule({
     <tr><td><code class="q">omarchy</code></td><td>Omarchy manual</td><td>manuals.omamix.org</td></tr>
   </tbody>
 </table>
-<p>The bang list is built in. You cannot add your own bangs in 1.6.1.</p>
+<p>The bang list is built in. You cannot add your own bangs.</p>
 
 <h2 id="translate">Translate text</h2>
 <p>Use the <code class="q">tr</code> bang and end with <code>to</code>, <code>in</code> or <code>into</code> and a language: <code class="q">tr wo ist der bahnhof to english</code>. The row title shows only the text that will be translated, and the subtitle and footer label read <b class="ui">Translate to English</b>. <kbd>Enter</kbd> opens DeepL with that text and target. DeepL detects the source language itself.</p>
@@ -1843,7 +1840,7 @@ hl.layer_rule({
 }</code></pre>
 
 <h3 id="clipboard-search-always">clipboardSearchAlways</h3>
-<p>When <code>true</code>, every plain query of 2 or more characters also includes matching clipboard entries. When <code>false</code>, clipboard entries appear only for <code class="q">cb:</code>, <code class="q">clipboard:</code>, <code class="q">cb text</code>, <code class="q">clip text</code> and <code class="q">clipboard text</code>. The hint under this toggle in 1.6.1 names the wrong prefix; the forms here are the ones that work. It has no effect while <a href="#clipboard-search"><code>clipboardSearch</code></a> is <code>false</code>.</p>
+<p>When <code>true</code>, every plain query of 2 or more characters also includes matching clipboard entries. When <code>false</code>, clipboard entries appear only for <code class="q">cb:</code>, <code class="q">clipboard:</code>, <code class="q">cb text</code>, <code class="q">clip text</code> and <code class="q">clipboard text</code>. The hint under this toggle names the wrong prefix; the forms here are the ones that work. It has no effect while <a href="#clipboard-search"><code>clipboardSearch</code></a> is <code>false</code>.</p>
 <dl class="setting"><dt>Type</dt><dd>boolean</dd><dt>Default</dt><dd><code>true</code></dd><dt>Set in panel</dt><dd><b class="ui">Search</b> → <b class="ui">Include clipboard in every search</b>, under Clipboard history. Not in the setup tour.</dd></dl>
 <pre class="code" data-title="~/.config/omarchy/spotlight.json"><code>{
   "clipboardSearchAlways": false
@@ -2153,6 +2150,13 @@ hl.layer_rule({
 
 <p>Newest release first, starting at 1.5.0. To get the latest version, run <code>omarchy plugin update io.github.maajix.spotlight</code>.</p>
 
+<h2 id="1-6-2">1.6.2 <span class="date">2026-09-24</span></h2>
+<h3 id="1-6-2-fixed">Fixed</h3>
+<ul>
+<li><b class="ui">Change Theme</b> and <b class="ui">Change Background</b> apply the selected theme or background. Contributed by <a href="https://github.com/timothyvermeiren" rel="noopener">@timothyvermeiren</a>.</li>
+<li><b class="ui">Change Font</b> opens Omarchy's font picker.</li>
+</ul>
+
 <h2 id="1-6-1">1.6.1 <span class="date">2026-09-23</span></h2>
 <h3 id="1-6-1-added">Added</h3>
 <ul>
@@ -2299,7 +2303,7 @@ git diff --check</code></pre>
     <div class="pmeta">
       <a id="edit" href="#" rel="noopener"><svg data-i="edit"></svg>Edit this page on GitHub</a>
       <a id="report" href="#" rel="noopener"><svg data-i="flag"></svg>Report a problem with this page</a>
-      <span class="upd">Updated for 1.6.1</span>
+      <span class="upd">Updated for 1.6.2</span>
     </div>
     <nav class="pn" id="pn" aria-label="Previous and next page"></nav>
   </main>
