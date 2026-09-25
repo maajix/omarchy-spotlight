@@ -1402,12 +1402,14 @@ Item {
     var view = Query.isView(parsed.filter)
     if (view) {
       push(root.viewResultRows(parsed.filter, parsed.text))
+    } else if (parsed.filter === "window") {
+      // Like a view: `w:` lists every window and typing narrows it down.
+      push(root.windowRows(parsed.text))
     } else if (parsed.empty) {
       next.push(root.filterHintRow(parsed))
     } else if (parsed.filter) {
       var searchable = parsed.text.length >= 2
       if (parsed.filter === "app" && searchable) push(root.appRows(parsed.text))
-      else if (parsed.filter === "window" && searchable) push(root.windowRows(parsed.text))
       else if (parsed.filter === "file") push(root.fileResultRows(q))
       else if (parsed.filter === "action" && searchable) push(root.commandRows(parsed.text, true))
       else if (parsed.filter === "clipboard") push(root.clipboardResultRows(q))

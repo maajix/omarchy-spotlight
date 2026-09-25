@@ -80,3 +80,14 @@ test("every asynchronous query result is rejected after the query changes", () =
   assert.match(qml, /var restored = root\.pinnedKey \? root\.indexOfKey\(root\.pinnedKey\) : -1/)
   assert.match(qml, /root\.selectedIndex = restored >= 0 \? restored : root\.firstSelectableIndex\(\)/)
 })
+
+// `w:` is a window list, not a hint: it lists every window before anything is
+// typed and the same call narrows it as typing continues.
+test("the window filter lists all windows while its text is still empty", () => {
+  assert.match(qml, /else if \(parsed\.filter === "window"\) \{\s*(\/\/[^\n]*\n\s*)*push\(root\.windowRows\(parsed\.text\)\)/)
+  assert.doesNotMatch(qml, /parsed\.filter === "window" && searchable/)
+  // An empty query matches every candidate, so the same path serves both.
+  const windows = [{ title: "Claude Code" }, { title: "Firefox" }]
+  assert.equal(Fuzzy.rank(windows, "", 50).length, 2)
+  assert.deepEqual(Fuzzy.rank(windows, "cla", 50).map(w => w.title), ["Claude Code"])
+})
