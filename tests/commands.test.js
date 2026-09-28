@@ -50,3 +50,73 @@ test("argvId collapses the menu spelling of a command onto the catalogue one", (
   assert.equal(Commands.argvId(null), "")
   assert.equal(Commands.argvId([]), "")
 })
+
+test("fromPlugins builds summon entries for active interactive plugins", () => {
+  const plugins = {
+    "test.service": {
+      id: "test.service",
+      name: "Background Worker",
+      kinds: ["service"]
+    },
+    "test.disabled": {
+      id: "test.disabled",
+      name: "Disabled Plugin",
+      kinds: ["panel"]
+    },
+    "test.bar.notmounted": {
+      id: "test.bar.notmounted",
+      name: "Not In Bar",
+      kinds: ["bar-widget"]
+    },
+    "test.panel": {
+      id: "test.panel",
+      name: "My Panel",
+      description: "Custom overlay panel",
+      kinds: ["panel"],
+      icon: "rocket"
+    },
+    "test.bar": {
+      id: "test.bar",
+      name: "My Widget",
+      description: "Custom bar widget",
+      kinds: ["bar-widget"],
+      icon: "assets/icon.svg",
+      __sourceDir: "/home/user/.config/omarchy/plugins/test.bar",
+      aliases: ["widget", "test"]
+    },
+    "test.known": {
+      id: "test.known",
+      name: "Curated Plugin",
+      kinds: ["overlay"]
+    }
+  }
+
+  const enabled = new Set(["test.panel", "test.bar", "test.known"])
+  const inBar = new Set(["test.bar"])
+  const known = { "test.known": true }
+
+  const entries = Commands.fromPlugins(plugins, {
+    ignoreId: "test.service",
+    knownIds: known,
+    isEnabled: id => enabled.has(id),
+    inBar: id => inBar.has(id)
+  })
+
+  assert.equal(entries.length, 2)
+  const [panel, widget] = entries
+
+  assert.equal(panel.id, "test.panel")
+  assert.equal(panel.kind, "summon")
+  assert.equal(panel.title, "My Panel")
+  assert.equal(panel.icon, "rocket")
+  assert.equal(panel.image, "")
+
+  assert.equal(widget.id, "test.bar")
+  assert.equal(widget.kind, "summon")
+  assert.equal(widget.title, "My Widget")
+  assert.equal(widget.icon, "")
+  assert.equal(widget.image, "file:///home/user/.config/omarchy/plugins/test.bar/assets/icon.svg")
+  assert.ok(widget.keywords.includes("widget"))
+  assert.ok(widget.keywords.includes("test"))
+})
+

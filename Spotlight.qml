@@ -36,6 +36,7 @@ Item {
   onShellChanged: {
     root.refreshHides()
     root.refreshMenuCommands()
+    root.refreshPluginCommands()
   }
   property var manifest: null
 
@@ -146,6 +147,10 @@ Item {
   // merges the two without needing to know one came from a different
   // source.
   property var menuCommands: []
+
+  // Installed shell plugins (bar widgets, panels, overlays) discovered
+  // dynamically through the host shell.
+  property var pluginCommands: []
 
   // Live state of every toggle the helper could actually read, as
   // { stateId: bool }. An id the probe could not answer is absent rather than
@@ -307,6 +312,7 @@ Item {
     root.pendingCurrency = null
     root.rows = []
     root.pinnedKey = ""
+    root.refreshPluginCommands()
     // A re-summon reloads the view instead of reusing the last list.
     root.resetView("")
     input.text = initial
@@ -446,6 +452,34 @@ Item {
       })
     }
     root.menuCommands = out
+  }
+
+  function refreshPluginCommands() {
+    if (!root.shell || !root.shell.pluginRegistry || !root.shell.pluginRegistry.installedPlugins) {
+      root.pluginCommands = []
+      return
+    }
+    var catalogue = Commands.commands()
+    var known = {}
+    for (var k = 0; k < catalogue.length; k++) {
+      if (catalogue[k].id) known[catalogue[k].id] = true
+    }
+    root.pluginCommands = Commands.fromPlugins(root.shell.pluginRegistry.installedPlugins, {
+      ignoreId: root.pluginId,
+      knownIds: known,
+      isEnabled: function(id) {
+        return typeof root.shell.pluginRegistry.isEnabled === "function"
+          ? root.shell.pluginRegistry.isEnabled(id)
+          : true
+      },
+      inBar: function(id) {
+        return typeof root.shell.pluginRegistry.inBar === "function"
+          ? root.shell.pluginRegistry.inBar(id)
+          : (typeof root.shell.pluginRegistry.isEnabled === "function"
+              ? root.shell.pluginRegistry.isEnabled(id)
+              : true)
+      }
+    })
   }
 
   function refreshReminders() {
@@ -1069,7 +1103,7 @@ Item {
   }
 
   function commandRows(q, actionsOnly, learnedOnly) {
-    var catalogue = Commands.commands().concat(Commands.quicklinks()).concat(root.menuCommands)
+    var catalogue = Commands.commands().concat(Commands.quicklinks()).concat(root.menuCommands).concat(root.pluginCommands)
     if (actionsOnly) catalogue = catalogue.filter(function(c) { return c.kind !== "url" })
     if (learnedOnly) catalogue = catalogue.filter(function(c) {
       return c.kind !== "url" && Frecency.hasItem(root.usage, "action:" + c.key)
@@ -1080,13 +1114,15 @@ Item {
     for (var j = 0; j < ranked.length && j < root.maxAppCandidates; j++) {
       var c = ranked[j]
       var isWeb = c.kind === "url"
+      var isPlugin = c.kind === "summon" && c.key.indexOf("plugin:") === 0
       out.push(root.row({
         key: "cmd:" + c.key,
         kind: c.kind,
         title: c.title, subtitle: c.subtitle,
-        accessory: isWeb ? "Web" : "Action",
+        accessory: isWeb ? "Web" : (isPlugin ? "Plugin" : "Action"),
         icon: c.icon,
-        primaryLabel: isWeb ? "Open in browser" : "Run",
+        image: c.image || "",
+        primaryLabel: isWeb ? "Open in browser" : (isPlugin ? "Open" : "Run"),
         secondaryLabel: c.secondaryLabel,
         confirm: c.confirm === true,
         keywords: c.keywords,
@@ -1681,8 +1717,10 @@ Item {
 
     case "summon":
       root.dismiss()
-      if (root.shell && typeof root.shell.summon === "function")
-        root.shell.summon(r.payload.id, "{}")
+      if (root.shell && typeof root.shell.summon === "function") {
+        if (!root.shell.summon(r.payload.id, "{}") && typeof root.shell.toggle === "function")
+          root.shell.toggle(r.payload.id, "{}")
+      }
       break
 
     case "copy":
@@ -2434,6 +2472,14 @@ Item {
   Connections {
     target: root.appLibrary
     function onAppsChanged() { if (root.opened) root.rebuild() }
+  }
+
+  Connections {
+    target: root.shell ? root.shell.pluginRegistry : null
+    function onPluginsChanged() {
+      root.refreshPluginCommands()
+      if (root.opened) root.rebuild()
+    }
   }
 
   ListModel { id: displayModel }
