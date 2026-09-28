@@ -219,6 +219,13 @@ explicit target. Shorthand currency codes must be uppercase (`23 USD`); aliases
 such as `23 dollars` and symbols such as `$23` also work. Bare numbers and
 non-currency units do not trigger currency lookup.
 
+Currency calculations also accept expressions such as `23 EUR + 43 JPY`,
+`(23 EUR + 43 JPY) * 2`, and `23 EUR + 43 JPY to USD`. Use `+` and `-` between
+currency amounts, and `*` or `/` with plain numbers. Parentheses set the order;
+without a target or configured default, the first currency sets the result
+currency. Each distinct source currency may need its own rate lookup. Enter
+while rates load copies the result once every required rate arrives.
+
 Each pair is cached for 24 hours in `~/.cache/omarchy/spotlight-currency.json` (up to
 128 pairs). Expired rates are refreshed on the next conversion. If that fails, the
 last valid rate stays available with its original date and **Cached · refresh

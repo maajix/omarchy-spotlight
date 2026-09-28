@@ -847,13 +847,16 @@ Item {
 
     var currency = (!unit && (!filter || filter === "unit")) ? root.currencyQuery(q) : null
     if (currency) {
-      var cached = Currency.entry(root.currencySession, currency.key)
+      var cached = currency.expression ? root.currencySession
+        : Currency.entry(root.currencySession, currency.key)
       var converted = Currency.result(currency, cached, Date.now(), Units.formatNumber)
       var waiting = currencyDebounce.running || root.currencySession.request !== null
       out.push(root.row({
         key: "currency", kind: converted ? "copy" : waiting ? "currency-wait" : "noop",
         title: converted ? converted.text : (waiting ? "Loading exchange rate…" : "Exchange rate unavailable"),
-        subtitle: converted ? converted.detail : currency.base + " → " + currency.quote + " · Frankfurter",
+        subtitle: converted ? converted.detail : (currency.expression
+          ? currency.source + " → " + currency.quote + " · Frankfurter"
+          : currency.base + " → " + currency.quote + " · Frankfurter"),
         accessory: "Currency", section: "Conversions", icon: "󰑤", mono: true,
         primaryLabel: converted ? "Copy result" : waiting ? "Copy when ready" : "",
         payload: converted ? { text: converted.copy } : ({})
@@ -1977,13 +1980,17 @@ Item {
   function loadCurrency(raw, request) {
     if (!root.opened) return
     if (!Currency.accept(root.currencySession, request, root.helperReply(raw), Date.now())) return
+    if (Currency.select(root.currencySession, root.currencySession.target, Date.now()))
+      currencyDebounce.restart()
     root.rebuild()
     var pending = root.pendingCurrency
     if (!pending || pending.query !== root.query || !root.currencySession.target
         || pending.key !== root.currencySession.target.key) return
-    root.pendingCurrency = null
     var index = root.indexOfKey("currency")
-    if (index >= 0 && root.rows[index].kind === "copy") root.activate(index, false)
+    if (index >= 0 && root.rows[index].kind === "copy") {
+      root.pendingCurrency = null
+      root.activate(index, false)
+    } else if (!currencyDebounce.running) root.pendingCurrency = null
   }
 
   // Query changes fan out to the async providers on a short debounce so a
