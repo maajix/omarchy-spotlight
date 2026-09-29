@@ -44,6 +44,7 @@ import sys
 import time
 import unicodedata
 from datetime import date, datetime, timezone
+from urllib.parse import urlsplit
 
 EUID = os.geteuid()
 ACTIVE_PROC = None
@@ -168,6 +169,11 @@ TLDR_BYTES = 64 * 1024
 TLDR_DEADLINE = 4.0
 TLDR_EXAMPLES = 16
 TLDR_FIELD_CHARS = 512
+AI_OUTPUT_BYTES = 512 * 1024
+AI_DEADLINE = 120.0
+AI_TEXT_CHARS = 16384
+AI_MODEL_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:/@-]{0,191}$")
+AI_EFFORTS = {"low", "medium", "high", "xhigh", "max", "ultra"}
 TLDR_PAGE_RE = re.compile(r"^[a-z0-9][a-z0-9._+-]{0,63}$")
 # `{{[-a|--all]}}` is an option alternation; the long form reads best.
 TLDR_OPTION_RE = re.compile(r"\{\{\[[^|\]]*\|([^\]]*)\]\}\}")
@@ -552,7 +558,7 @@ def write_new(dirfd, name, payload):
 
 
 # ------------------------------------------------------------ subprocesses
-def run_bounded(argv, cap, deadline, stdin_bytes=None, want_status=False):
+def run_bounded(argv, cap, deadline, stdin_bytes=None, want_status=False, on_line=None):
     """Run `argv`, returning at most `cap` bytes of stdout within `deadline`.
 
     The child gets its own session, so the deadline tears down the whole
@@ -601,6 +607,7 @@ def run_bounded(argv, cap, deadline, stdin_bytes=None, want_status=False):
         chunks = []
         total = 0
         truncated = False
+        pending_line = b""
 
         while True:
             remaining = end - time.monotonic()
@@ -625,6 +632,13 @@ def run_bounded(argv, cap, deadline, stdin_bytes=None, want_status=False):
                 break
             chunks.append(chunk)
             total += len(chunk)
+            if on_line:
+                pending_line += chunk
+                while b"\n" in pending_line:
+                    line, pending_line = pending_line.split(b"\n", 1)
+                    on_line(line)
+        if on_line and pending_line and not truncated:
+            on_line(pending_line)
         result = (b"".join(chunks), truncated)
     finally:
         _reap(proc)
@@ -725,6 +739,12 @@ def normalize_settings(parsed):
         "clipboardSearch": True,
         "clipboardSearchAlways": True,
         "learningEnabled": True,
+        "aiEnabled": False,
+        "aiProvider": "claude",
+        "aiModel": "",
+        "aiEffort": "",
+        "aiWebSearch": False,
+        "artifactSettings": {"weather": {"defaultLocation": ""}},
         "maxResults": 20,
         "maxApps": 8,
         "maxSuggestions": 4,
@@ -740,6 +760,21 @@ def normalize_settings(parsed):
     out["clipboardSearch"] = clamp_bool(parsed.get("clipboardSearch"), True)
     out["clipboardSearchAlways"] = clamp_bool(parsed.get("clipboardSearchAlways"), True)
     out["learningEnabled"] = clamp_bool(parsed.get("learningEnabled"), True)
+    out["aiEnabled"] = clamp_bool(parsed.get("aiEnabled"), False)
+    out["aiWebSearch"] = clamp_bool(parsed.get("aiWebSearch"), False)
+    artifact_settings = parsed.get("artifactSettings")
+    weather_settings = artifact_settings.get("weather") if isinstance(artifact_settings, dict) else None
+    location = weather_settings.get("defaultLocation") if isinstance(weather_settings, dict) else None
+    if (isinstance(location, str) and len(location) <= 120 and location == location.strip()
+            and not any(ord(char) < 32 or unicodedata.category(char) == "Cf" for char in location)):
+        out["artifactSettings"]["weather"]["defaultLocation"] = location
+    if parsed.get("aiProvider") in ("claude", "codex"):
+        out["aiProvider"] = parsed["aiProvider"]
+    if isinstance(parsed.get("aiModel"), str) and AI_MODEL_RE.fullmatch(parsed["aiModel"]):
+        out["aiModel"] = parsed["aiModel"]
+    if (isinstance(parsed.get("aiEffort"), str) and parsed["aiEffort"] in AI_EFFORTS
+            and (out["aiProvider"] == "codex" or parsed["aiEffort"] != "ultra")):
+        out["aiEffort"] = parsed["aiEffort"]
     out["maxResults"] = clamp_int(parsed.get("maxResults"), 8, 50, 20)
     out["maxApps"] = clamp_int(parsed.get("maxApps"), 3, 24, 8)
     out["maxSuggestions"] = clamp_int(parsed.get("maxSuggestions"), 0, SUGGEST_COUNT, 4)
@@ -1330,11 +1365,56 @@ def _menu_commands():
 
 
 # ---------------------------------------------------------------- commands
+def ai_catalogs():
+    """Project the installed CLIs' local model catalogs into bounded picker data."""
+    catalogs = {"claude": [], "codex": []}
+    try:
+        fd = walk([".codex"])
+        try:
+            cache = read_json(fd, "models_cache.json", 1024 * 1024, {})
+        finally:
+            os.close(fd)
+        models = cache.get("models", []) if isinstance(cache, dict) else []
+        for item in models[:50]:
+            if not isinstance(item, dict) or item.get("visibility") != "list":
+                continue
+            levels = item.get("supported_reasoning_levels", [])
+            catalogs["codex"].append((item.get("slug"), item.get("display_name"),
+                                       [level.get("effort") for level in levels if isinstance(level, dict)]))
+    except (OSError, Denied, TypeError, AttributeError):
+        pass
+    try:
+        fd = walk([".claude", "cache", "model-catalog"])
+        try:
+            names = [name for name in os.listdir(fd) if name.endswith(".json")][:32]
+            newest = max(names, key=lambda name: os.stat(name, dir_fd=fd, follow_symlinks=False).st_mtime)
+            cache = read_json(fd, newest, 256 * 1024, {})
+        finally:
+            os.close(fd)
+        models = cache.get("catalog", {}).get("config", {}).get("models", [])
+        for item in models[:50]:
+            if not isinstance(item, dict):
+                continue
+            thinking = item.get("thinking") or {}
+            levels = thinking.get("effort_options", []) if isinstance(thinking, dict) else []
+            catalogs["claude"].append((item.get("id"), item.get("name"),
+                                        [level.get("id") for level in levels if isinstance(level, dict)]))
+    except (OSError, Denied, TypeError, AttributeError, ValueError):
+        pass
+    for provider, entries in catalogs.items():
+        catalogs[provider] = [
+            {"id": model, "name": name[:80], "efforts": [e for e in efforts if e in AI_EFFORTS]}
+            for model, name, efforts in entries[:30]
+            if isinstance(model, str) and AI_MODEL_RE.fullmatch(model) and isinstance(name, str)
+        ]
+    return catalogs
+
+
 def cmd_read_settings():
     try:
         fd = walk([".config", "omarchy"])
     except FileNotFoundError:
-        emit({"settings": normalize_settings({})})
+        emit({"settings": normalize_settings({}), "aiModels": ai_catalogs()})
         return
     try:
         raw = read_file(fd, "spotlight.json", SETTINGS_BYTES)
@@ -1348,7 +1428,7 @@ def cmd_read_settings():
     # shortcut claimed. write-settings refuses to touch it as well.
     if not isinstance(parsed, dict):
         parsed = {"setupCompleted": True}
-    emit({"settings": normalize_settings(parsed)})
+    emit({"settings": normalize_settings(parsed), "aiModels": ai_catalogs()})
 
 
 def cmd_ensure_settings():
@@ -2460,7 +2540,15 @@ def cmd_write_settings():
         known = normalize_settings({})
         for key in known:
             if key in patch:
-                existing[key] = patch[key]
+                if key == "artifactSettings" and isinstance(patch[key], dict):
+                    current = existing.get(key) if isinstance(existing.get(key), dict) else {}
+                    weather = patch[key].get("weather")
+                    if isinstance(weather, dict):
+                        current_weather = current.get("weather") if isinstance(current.get("weather"), dict) else {}
+                        current["weather"] = {**current_weather, **weather}
+                    existing[key] = current
+                else:
+                    existing[key] = patch[key]
         settings = normalize_settings(existing)
         for key in known:
             if key in patch:
@@ -2884,6 +2972,325 @@ COMMANDS = {
     "write-binding": (cmd_write_binding, True),
     "revert-binding": (cmd_revert_binding, False),
 }
+
+
+def validate_map_artifact(item):
+    if (not isinstance(item.get("title"), str) or not item["title"].strip()
+            or not all(isinstance(item.get(key), (int, float)) and not isinstance(item.get(key), bool)
+                       and math.isfinite(item[key]) for key in ("latitude", "longitude"))
+            or not -85 <= item["latitude"] <= 85 or not -180 <= item["longitude"] <= 180
+            or (item["latitude"] == 0 and item["longitude"] == 0)
+            or type(item.get("zoom")) is not int or not 2 <= item["zoom"] <= 17):
+        raise Denied("AI returned an invalid map")
+    return {"type": "map", "title": item["title"].strip()[:120], "latitude": item["latitude"],
+            "longitude": item["longitude"], "zoom": item["zoom"]}
+
+
+def validate_weather_artifact(item):
+    variant = item.get("variant")
+    location, source = item.get("location"), item.get("sourceUrl")
+    days = item.get("days")
+    if (variant not in ("current", "rain", "forecast")
+            or not isinstance(location, str) or not 1 <= len(location.strip()) <= 120
+            or not isinstance(source, str) or not 1 <= len(source) <= 2048
+            or any(char.isspace() for char in source)
+            or not isinstance(days, list) or not 1 <= len(days) <= 7
+            or (variant == "current" and len(days) != 1)
+            or (variant == "rain" and len(days) != 2)):
+        raise Denied("AI returned invalid weather data")
+    try:
+        url = urlsplit(source)
+        if url.scheme != "https" or not url.hostname or url.username or url.password:
+            raise ValueError("invalid source")
+    except ValueError:
+        raise Denied("AI returned an invalid weather source")
+    clean_days = []
+    for day in days:
+        if not isinstance(day, dict):
+            raise Denied("AI returned invalid weather data")
+        day_date, summary = day.get("date"), day.get("summary")
+        if (not isinstance(day_date, str) or not re.fullmatch(r"\d{4}-\d{2}-\d{2}", day_date)
+                or not isinstance(summary, str) or not 1 <= len(summary.strip()) <= 100):
+            raise Denied("AI returned invalid weather data")
+        try:
+            date.fromisoformat(day_date)
+        except ValueError:
+            raise Denied("AI returned invalid weather date")
+        values = {}
+        for field, lower, upper in (("temperatureC", -100, 65), ("lowC", -100, 65),
+                                    ("highC", -100, 65), ("rainPercent", 0, 100)):
+            value = day.get(field)
+            if value is not None and (not isinstance(value, (int, float)) or isinstance(value, bool)
+                                      or not math.isfinite(value) or not lower <= value <= upper):
+                raise Denied("AI returned invalid weather data")
+            values[field] = value
+        clean_days.append({"date": day_date, "summary": summary.strip(), **values})
+    dates = [date.fromisoformat(day["date"]) for day in clean_days]
+    today = datetime.now(timezone.utc).date()
+    if (len(set(dates)) != len(dates)
+            or dates != sorted(dates)
+            or (variant in ("current", "rain") and abs((dates[0] - today).days) > 1)
+            or (variant == "rain" and (dates[1] - dates[0]).days != 1)
+            or (variant == "forecast" and any(not -1 <= (day - today).days <= 14 for day in dates))
+            or (variant == "current" and clean_days[0]["temperatureC"] is None)
+            or (variant == "rain" and any(day["rainPercent"] is None for day in clean_days))
+            or (variant == "forecast" and any(day["highC"] is None or day["lowC"] is None
+                                               for day in clean_days))):
+        raise Denied("AI returned incomplete weather data")
+    return {"type": "weather", "variant": variant, "location": location.strip(),
+            "sourceUrl": source, "retrievedAt": datetime.now(timezone.utc).isoformat(timespec="minutes"),
+            "days": clean_days}
+
+
+ARTIFACT_VALIDATORS = {"map": validate_map_artifact, "weather": validate_weather_artifact}
+
+
+def ai_result(raw, provider, allow_weather=False, weather_request=False):
+    try:
+        value = json.loads(raw.decode("utf-8"))
+        if provider == "claude":
+            value = value.get("structured_output") or value.get("result")
+            if isinstance(value, str):
+                value = json.loads(value)
+    except (UnicodeError, ValueError, AttributeError, TypeError):
+        raise Denied("AI returned an invalid response")
+    if not isinstance(value, dict) or value.get("kind") not in ("answer", "command", "steps"):
+        raise Denied("AI returned an invalid response")
+    kind, body, commands = value["kind"], value.get("text"), value.get("commands")
+    artifacts = value.get("artifacts", [])
+    if (not isinstance(body, str) or not isinstance(commands, list) or len(commands) > 6
+            or not isinstance(artifacts, list) or len(artifacts) > 2):
+        raise Denied("AI returned an invalid response")
+    weather = value.get("weather")
+    if weather_request and isinstance(weather, dict) and weather.get("type") == "weather":
+        artifacts = [weather]
+    if len(body) > AI_TEXT_CHARS:
+        body = body[:AI_TEXT_CHARS] + "…"
+    if "\n" not in body and "\\n" in body:
+        body = body.replace("\\n", "\n")
+    clean = []
+    for item in commands:
+        if not isinstance(item, dict):
+            raise Denied("AI returned an invalid command")
+        command, explanation = item.get("command"), item.get("explanation")
+        if (not isinstance(command, str) or not command.strip() or len(command) > 2048
+                or any(ord(char) < 32 or 127 <= ord(char) <= 159
+                       or unicodedata.category(char) == "Cf" for char in command)
+                or not isinstance(explanation, str)):
+            raise Denied("AI returned an invalid command")
+        clean.append({"command": command.strip(), "explanation": explanation[:1024]})
+    if (kind == "answer" and clean) or (kind == "command" and len(clean) != 1) or (kind == "steps" and not clean):
+        raise Denied("AI returned an invalid response")
+    validated_artifacts = []
+    for item in artifacts:
+        if not isinstance(item, dict):
+            continue
+        kind_validator = ARTIFACT_VALIDATORS.get(item.get("type"))
+        if (not kind_validator or (item.get("type") == "weather" and not allow_weather)
+                or (item.get("type") == "map" and weather_request)):
+            continue
+        try:
+            validated_artifacts.append(kind_validator(item))
+        except Denied:
+            # A malformed card should not discard an otherwise useful answer.
+            continue
+    return {"kind": kind, "text": body, "commands": clean, "artifacts": validated_artifacts}
+
+
+def ai_stream_event(raw, provider):
+    """Return (progress, final) from a provider's JSONL event, if present."""
+    try:
+        event = json.loads(raw)
+    except (ValueError, UnicodeError):
+        return "", None
+    if not isinstance(event, dict):
+        return "", None
+    if provider == "claude":
+        if event.get("type") == "result":
+            return "", event.get("structured_output") or event.get("result")
+        if event.get("type") == "stream_event":
+            stream = event.get("event")
+            delta = stream.get("delta") if isinstance(stream, dict) else None
+            if isinstance(delta, dict) and delta.get("type") == "thinking_delta":
+                return str(delta.get("thinking", ""))[:1024], None
+            if isinstance(delta, dict) and delta.get("type") == "text_delta":
+                return str(delta.get("text", ""))[:1024], None
+        return "", None
+    item = event.get("item")
+    if not isinstance(item, dict):
+        return "", None
+    if event.get("type") == "item.completed" and item.get("type") == "agent_message":
+        return "", item.get("text")
+    if item.get("type") == "reasoning" and event.get("type") in ("item.updated", "item.completed"):
+        summary = item.get("text") or item.get("summary") or ""
+        if isinstance(summary, list):
+            summary = "\n".join(part.get("text", "") for part in summary if isinstance(part, dict))
+        return str(summary)[:2048], None
+    if event.get("type") == "item.started" and item.get("type") == "web_search":
+        return "Searching the web…\n", None
+    return "", None
+
+
+def ai_partial_text(fragment):
+    """Read the completed prefix of `text` from Claude's streamed tool input."""
+    match = re.search(r'"text"\s*:\s*"', fragment)
+    if not match:
+        return ""
+    start, escaped = match.end(), False
+    for pos in range(start, min(len(fragment), start + AI_TEXT_CHARS * 2)):
+        char = fragment[pos]
+        if char == '"' and not escaped:
+            break
+        if char == "\\" and not escaped:
+            escaped = True
+        else:
+            escaped = False
+    else:
+        pos = min(len(fragment), start + AI_TEXT_CHARS * 2)
+    raw = fragment[start:pos]
+    if raw.endswith("\\"):
+        raw = raw[:-1]
+    try:
+        return json.loads('"' + raw + '"')
+    except ValueError:
+        return ""
+
+
+def cmd_ai(argv):
+    if (len(argv) not in (4, 5, 6) or argv[0] not in ("claude", "codex")
+            or argv[3] not in ("true", "false")
+            or (len(argv) == 6 and argv[5] not in ("true", "false"))):
+        raise Denied("unknown AI provider")
+    provider, model, effort, web_search = argv[:4]
+    weather_location = argv[4] if len(argv) >= 5 else ""
+    weather_request = argv[5] == "true" if len(argv) == 6 else False
+    if (len(weather_location) > 120 or weather_location != weather_location.strip()
+            or any(ord(char) < 32 or unicodedata.category(char) == "Cf" for char in weather_location)):
+        raise Denied("invalid weather location")
+    if (model and not AI_MODEL_RE.fullmatch(model)) or (effort and effort not in AI_EFFORTS):
+        raise Denied("invalid AI model or effort")
+    query = read_stdin(4096).decode("utf-8", "replace").strip()
+    if not query or len(query) > 512:
+        raise Denied("AI query must be 1–512 characters")
+    schema_name = "ai-weather-result.schema.json" if weather_request else "ai-result.schema.json"
+    schema_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "resources", schema_name)
+    with open(schema_path, encoding="utf-8") as schema_file:
+        schema = schema_file.read()
+    language_rule = (
+        "The actual user's question is the text after 'User request:'. Follow an explicit "
+        "output-language request there; otherwise write every natural-language result field "
+        "in the language of that question. This includes text, command explanations, map "
+        "titles and weather summaries. Do not switch languages because of web pages, the "
+        "system locale or a saved location. Keep proper names, URLs and commands intact."
+    )
+    instruction = (
+        "Follow an explicit output-language request; otherwise answer in the language of the user's question. "
+        "Return one structured result. "
+        "Write the text field as concise Markdown with short paragraphs and clear lists. "
+        "Separate paragraphs, headings, lists, and tables with blank lines. "
+        "Put runnable commands in the commands field rather than repeating them in the text. "
+        "Choose kind=answer for information, kind=command for one terminal command, "
+        "or kind=steps for a task requiring several commands. "
+        "For answer use commands=[]. For command use exactly one command. "
+        "For steps list up to six commands in execution order. "
+        "When a non-weather place request would benefit from a map, you may add one map artifact "
+        "with a short title, latitude, longitude and zoom (2–17). "
+        "Never execute commands, modify files, or claim a change was made. "
+        "Use web search for current facts when available and cite the source in text. "
+        "Give commands the user can inspect and run manually. "
+        "If a capability is unavailable or details are missing, explain that in text; "
+        "do not invent a successful result."
+        + (" This is a WEATHER REQUEST. Fill the required weather field with a weather object. "
+           "Search the web for the requested place first; use a real HTTPS sourceUrl. "
+           "For current observed conditions use variant=current and a measured temperatureC. "
+           "For today's outlook with only a high and low, use variant=forecast with one day. "
+           "For rain today versus tomorrow use variant=rain with two days and numeric rainPercent values. "
+           "For a general outlook use variant=forecast. For a week request, include every "
+           "requested day with trustworthy high and low values, up to seven days; "
+           "if fewer days are available, explain the gap in text. "
+           "All day fields are required; use null for optional values that the source does not provide. "
+           "Use Celsius, percent, ISO dates, a place name and short summaries. "
+           "Keep text to a short introduction instead of repeating the card. "
+           "If there is no place or no trustworthy source for the needed values, set weather "
+           "to {\"type\":\"unavailable\"} and explain why. Never invent weather values or sources."
+           if weather_request and web_search == "true" else "")
+        + (" This is a WEATHER REQUEST but web search is disabled. Set weather to "
+           "{\"type\":\"unavailable\"} and explain that current weather requires AI web search."
+           if weather_request and web_search != "true" else "")
+        + (" For weather requests without an explicit place, use this saved default location: "
+           + json.dumps(weather_location) + ". An explicit place in the request wins."
+           if weather_location and web_search == "true" else "")
+        + "\n\nUser request: " + query
+        + "\n\nResponse language: " + language_rule
+    )
+    if provider == "claude":
+        tools = "WebSearch,WebFetch" if web_search == "true" else ""
+        command = ["claude", "--safe-mode", "--append-system-prompt", language_rule,
+                   "--tools", tools, "--no-session-persistence",
+                   "--output-format", "stream-json", "--verbose", "--include-partial-messages",
+                   "--json-schema", schema, "-p"]
+        if web_search == "true":
+            command += ["--allowedTools", tools]
+        if model:
+            command += ["--model", model]
+        if effort:
+            if effort == "ultra":
+                raise Denied("Claude does not support ultra effort")
+            command += ["--effort", effort]
+    else:
+        command = ["codex", "exec", "--ephemeral", "--ignore-user-config",
+                   "--json",
+                   "--skip-git-repo-check", "--sandbox", "read-only",
+                   "--disable", "shell_tool", "--disable", "unified_exec",
+                   "--disable", "code_mode_host", "--disable", "apps",
+                   "--disable", "plugins", "--disable", "browser_use",
+                   "--disable", "computer_use", "--disable", "image_generation",
+                   "-c", 'web_search="%s"' % ("live" if web_search == "true" else "disabled"),
+                   "--output-schema", schema_path, "-"]
+        if model:
+            command += ["--model", model]
+        if effort:
+            command += ["-c", "model_reasoning_effort=" + json.dumps(effort)]
+    if not shutil.which(command[0]):
+        raise Denied(provider + " CLI is not installed")
+    final = None
+    partial_json = ""
+    partial_sent = ""
+    def on_line(line):
+        nonlocal final, partial_json, partial_sent
+        progress, value = ai_stream_event(line, provider)
+        if value is not None:
+            final = value
+        if provider == "claude" and len(partial_json) < AI_TEXT_CHARS * 2:
+            try:
+                event = json.loads(line)
+                delta = event.get("event", {}).get("delta", {})
+                if delta.get("type") == "input_json_delta":
+                    partial_json += delta.get("partial_json", "")
+                    current = ai_partial_text(partial_json)
+                    if current.startswith(partial_sent) and len(current) > len(partial_sent):
+                        progress += current[len(partial_sent):]
+                        partial_sent = current
+            except (ValueError, AttributeError, TypeError):
+                pass
+        if progress:
+            emit({"event": "progress", "text": progress})
+            sys.stdout.flush()
+
+    raw, truncated, status = run_bounded(command, AI_OUTPUT_BYTES, AI_DEADLINE,
+                                          instruction.encode("utf-8"), want_status=True, on_line=on_line)
+    if truncated:
+        raise Denied("AI response exceeded its time or size limit")
+    if status != 0:
+        raise Denied(provider + " CLI failed; check its login and connection")
+    if final is None:
+        raise Denied("AI did not return a structured answer")
+    encoded = (json.dumps({"structured_output": final}) if provider == "claude"
+               else final if isinstance(final, str) else json.dumps(final)).encode()
+    emit({"event": "result", "result": ai_result(encoded, provider, web_search == "true", weather_request)})
+
+
+COMMANDS["ai"] = (cmd_ai, True)
 
 
 def main(argv):

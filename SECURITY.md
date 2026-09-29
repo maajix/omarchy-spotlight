@@ -75,6 +75,11 @@ Spotlight is designed to keep most processing local.
 
 Optional web suggestions may send the current search query to a third-party suggestion endpoint when that feature is enabled. Currency conversions may contact `api.frankfurter.dev` while typing when `currencyRates` is enabled (the default); only the currency codes are sent, never the amount. Set `"currencyRates": false` to disable those network requests while retaining local conversions and cached rates. Normal web-search and calendar URLs are opened only after explicit user activation.
 
+AI is disabled by default. Submitting an `ai:` query after enabling it sends the request to the selected Claude or Codex CLI provider. Spotlight restricts those calls to answers and proposed commands. Commands are displayed and can be copied; the user chooses whether to run one.
+AI web search is separately disabled by default and can be enabled in Spotlight Settings.
+When a location artifact appears, Spotlight requests a static preview from `mapmap.ai` using its coordinates and zoom. If the preview fails, the coordinates and link remain visible. Clicking **Open in OpenStreetMap** sends the location to the browser.
+Weather cards require AI web search and are built from the selected provider's answer; Spotlight makes no direct weather request. An optional saved weather location is sent to the provider only for recognized weather questions. Clicking a weather card's source opens that AI-provided HTTPS URL in the browser. Spotlight validates its shape but cannot prove the provider read it.
+
 `bin/spotlight-helper` acts as the primary boundary for file access and subprocess execution. Security issues involving this boundary, especially those involving command execution, file validation, paths, permissions, or untrusted input, are particularly important.
 
 Spotlight does not intentionally include telemetry, analytics, or a background network service.

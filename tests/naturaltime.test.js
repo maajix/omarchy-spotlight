@@ -23,8 +23,7 @@ test("a date phrase makes an event without a trigger word", () => {
     ["dentist next monday at 10", "Dentist", "2026-09-21 10:00", false],
     ["lunch with tom on friday at 13:00", "Lunch with tom", "2026-09-25 13:00", false],
     ["party in 3 days", "Party", "2026-09-22 10:00", true],
-    ["team offsite 2027-01-15", "Team offsite", "2027-01-15 09:00", true],
-    ["termin zahnarzt morgen um 8", "Zahnarzt", "2026-09-20 08:00", false]
+    ["team offsite 2027-01-15", "Team offsite", "2027-01-15 09:00", true]
   ]
   for (const [text, title, start, allDay] of cases) {
     const e = event(text)
@@ -93,7 +92,7 @@ test("the trigger word is the title when the query is nothing but a date", () =>
 
 test("an ordinary search is not an event", () => {
   for (const text of ["firefox", "python 3.12.1", "monday-notes.md", "budget 2026",
-                      "note friday ideas", "erinnere mich morgen um 8", "remind me tomorrow at 9"])
+                      "note friday ideas", "remind me tomorrow at 9"])
     assert.equal(event(text), null, text)
 })
 

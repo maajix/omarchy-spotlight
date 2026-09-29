@@ -14,7 +14,7 @@ test("every colon alias selects exactly one provider", () => {
     unit: "unit", convert: "unit",
     reminder: "reminder",
     calendar: "calendar", event: "calendar",
-    man: "tldr", tldr: "tldr",
+    man: "tldr", tldr: "tldr", ai: "ai",
     ports: "ports", ssh: "ssh", docker: "docker", services: "services", mounts: "mounts",
     audio: "audio", wifi: "wifi", bluetooth: "bluetooth"
   }
@@ -53,12 +53,15 @@ test("view prefixes offer completions without replacing filtered queries", () =>
   assert.deepEqual(Query.viewCompletions("aud"), ["audio"])
   assert.deepEqual(Query.viewCompletions("wif"), ["wifi"])
   assert.deepEqual(Query.viewCompletions("blue"), ["bluetooth"])
+  assert.deepEqual(Query.viewCompletions("ai"), ["ai"])
   assert.deepEqual(Query.viewCompletions("ports:22"), [])
   assert.deepEqual(Query.viewCompletions("hello world"), [])
   for (const name of ["ports", "ssh", "docker", "services", "mounts", "audio", "wifi", "bluetooth"]) {
     assert.equal(Query.parse(`${name}:`).filter, name)
     assert.ok(Query.viewDetails(name).title)
   }
+  assert.equal(Query.viewDetails("ai").title, "Ask AI")
+  assert.equal(Query.isView("ai"), false)
 })
 
 test("default selection favors matching apps, then unique views", () => {
@@ -97,6 +100,7 @@ test("Tab completes the row Enter would act on", () => {
   assert.equal(tab([view("ports"), app("Portal")], "port"), "Portal")
   assert.equal(tab([view("mounts"), app("Moonlight")], "moun"), "mounts:")
   assert.equal(tab([view("bluetooth"), app("Bluetooth Manager")], "bluetooth"), "bluetooth:")
+  assert.equal(tab([view("ai")], "ai"), "ai:")
   assert.equal(Query.completionText({ kind: "url", title: "Search" }), "")
   assert.equal(Query.completionText(undefined), "")
 })
