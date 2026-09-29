@@ -1,36 +1,310 @@
 {
   "type": "object",
   "properties": {
-    "kind": { "type": "string", "enum": ["answer", "command", "steps"] },
-    "text": { "type": "string" },
+    "kind": {
+      "type": "string",
+      "enum": [
+        "answer",
+        "command",
+        "steps"
+      ]
+    },
+    "text": {
+      "type": "string"
+    },
     "commands": {
       "type": "array",
       "items": {
         "type": "object",
         "properties": {
-          "command": { "type": "string" },
-          "explanation": { "type": "string" }
+          "command": {
+            "type": "string"
+          },
+          "explanation": {
+            "type": "string"
+          }
         },
-        "required": ["command", "explanation"],
+        "required": [
+          "command",
+          "explanation"
+        ],
         "additionalProperties": false
       }
     },
     "artifacts": {
       "type": "array",
       "items": {
-        "type": "object",
-        "properties": {
-          "type": { "type": "string", "enum": ["map"] },
-          "title": { "type": "string" },
-          "latitude": { "type": "number" },
-          "longitude": { "type": "number" },
-          "zoom": { "type": "integer" }
-        },
-        "required": ["type", "title", "latitude", "longitude", "zoom"],
-        "additionalProperties": false
-      }
+        "anyOf": [
+          {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "map"
+                ]
+              },
+              "title": {
+                "type": "string",
+                "maxLength": 120
+              },
+              "latitude": {
+                "type": "number"
+              },
+              "longitude": {
+                "type": "number"
+              },
+              "zoom": {
+                "type": "integer"
+              }
+            },
+            "required": [
+              "type",
+              "title",
+              "latitude",
+              "longitude",
+              "zoom"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "palette"
+                ]
+              },
+              "title": {
+                "type": "string",
+                "maxLength": 160
+              },
+              "colors": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "label": {
+                      "type": "string",
+                      "maxLength": 40
+                    },
+                    "hex": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "label",
+                    "hex"
+                  ],
+                  "additionalProperties": false
+                },
+                "minItems": 2,
+                "maxItems": 8
+              }
+            },
+            "required": [
+              "type",
+              "title",
+              "colors"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "chart"
+                ]
+              },
+              "title": {
+                "type": "string",
+                "maxLength": 160
+              },
+              "variant": {
+                "type": "string",
+                "enum": [
+                  "line",
+                  "bar",
+                  "donut"
+                ]
+              },
+              "unit": {
+                "type": "string",
+                "maxLength": 20
+              },
+              "note": {
+                "type": "string",
+                "maxLength": 240
+              },
+              "sourceUrl": {
+                "type": "string",
+                "maxLength": 2048
+              },
+              "labels": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "maxLength": 48
+                },
+                "minItems": 2,
+                "maxItems": 24
+              },
+              "series": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "label": {
+                      "type": "string",
+                      "maxLength": 48
+                    },
+                    "values": {
+                      "type": "array",
+                      "items": {
+                        "type": "number"
+                      }
+                    }
+                  },
+                  "required": [
+                    "label",
+                    "values"
+                  ],
+                  "additionalProperties": false
+                },
+                "minItems": 1,
+                "maxItems": 4
+              }
+            },
+            "required": [
+              "type",
+              "title",
+              "variant",
+              "unit",
+              "note",
+              "sourceUrl",
+              "labels",
+              "series"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "comparison"
+                ]
+              },
+              "title": {
+                "type": "string",
+                "maxLength": 160
+              },
+              "note": {
+                "type": "string",
+                "maxLength": 240
+              },
+              "options": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "name": {
+                      "type": "string",
+                      "maxLength": 80
+                    },
+                    "price": {
+                      "type": "string",
+                      "maxLength": 60
+                    },
+                    "summary": {
+                      "type": "string",
+                      "maxLength": 200
+                    },
+                    "sourceUrl": {
+                      "type": "string",
+                      "maxLength": 2048
+                    },
+                    "recommended": {
+                      "type": "boolean"
+                    },
+                    "pros": {
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "maxLength": 120
+                      },
+                      "minItems": 1,
+                      "maxItems": 4
+                    },
+                    "cons": {
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "maxLength": 120
+                      },
+                      "minItems": 1,
+                      "maxItems": 4
+                    },
+                    "facts": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "label": {
+                            "type": "string",
+                            "maxLength": 40
+                          },
+                          "value": {
+                            "type": "string",
+                            "maxLength": 100
+                          }
+                        },
+                        "required": [
+                          "label",
+                          "value"
+                        ],
+                        "additionalProperties": false
+                      },
+                      "maxItems": 5
+                    }
+                  },
+                  "required": [
+                    "name",
+                    "price",
+                    "summary",
+                    "sourceUrl",
+                    "recommended",
+                    "pros",
+                    "cons",
+                    "facts"
+                  ],
+                  "additionalProperties": false
+                },
+                "minItems": 2,
+                "maxItems": 4
+              }
+            },
+            "required": [
+              "type",
+              "title",
+              "note",
+              "options"
+            ],
+            "additionalProperties": false
+          }
+        ]
+      },
+      "maxItems": 2
     }
   },
-  "required": ["kind", "text", "commands"],
+  "required": [
+    "kind",
+    "text",
+    "commands"
+  ],
   "additionalProperties": false
 }

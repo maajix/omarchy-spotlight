@@ -497,7 +497,7 @@ class HelperTests(unittest.TestCase):
         with_map = {"kind": "answer", "text": "Here", "commands": [], "artifacts": [
             {"type": "map", "title": "Berlin", "latitude": 52.52, "longitude": 13.405, "zoom": 12}]}
         self.assertEqual(HELPER.ai_result(json.dumps(with_map).encode(), "codex")["artifacts"][0]["title"], "Berlin")
-        self.assertEqual(HELPER.ai_result(json.dumps(with_map).encode(), "codex", True, True)["artifacts"], [])
+        self.assertEqual(HELPER.ai_result(json.dumps(with_map).encode(), "codex", True, True)["artifacts"][0]["variant"], "unavailable")
         with_map["artifacts"][0]["latitude"] = 0
         with_map["artifacts"][0]["longitude"] = 0
         self.assertEqual(HELPER.ai_result(json.dumps(with_map).encode(), "codex")["artifacts"], [])
@@ -526,7 +526,9 @@ class HelperTests(unittest.TestCase):
                         "sourceUrl": "https://example.org/weather/tokyo", "days": days}
             payload = {**answer, "weather": artifact}
             encoded = json.dumps(payload).encode()
-            self.assertEqual(HELPER.ai_result(encoded, "codex", False, True)["artifacts"], [])
+            disabled = HELPER.ai_result(encoded, "codex", False, True)["artifacts"][0]
+            self.assertEqual(disabled["variant"], "unavailable")
+            self.assertIn("Enable AI web search", disabled["message"])
             card = HELPER.ai_result(encoded, "codex", True, True)["artifacts"][0]
             self.assertEqual(card["variant"], variant)
             self.assertEqual(card["location"], "Tokyo")
@@ -535,14 +537,28 @@ class HelperTests(unittest.TestCase):
                            {**artifact, "days": [{**day, "rainPercent": 101}]},
                            {**artifact, "days": []}):
                 payload["weather"] = broken
-                self.assertEqual(HELPER.ai_result(json.dumps(payload).encode(), "codex", True, True)["artifacts"], [])
+                rejected = HELPER.ai_result(json.dumps(payload).encode(), "codex", True, True)["artifacts"][0]
+                self.assertEqual(rejected["variant"], "unavailable")
+                self.assertIn("could not be validated", rejected["message"])
         week_days = [{**day, "date": (today + timedelta(days=i)).isoformat()} for i in range(7)]
         weekly = {**answer, "weather": {**artifact, "variant": "forecast", "days": week_days}}
         self.assertEqual(len(HELPER.ai_result(json.dumps(weekly).encode(), "codex", True, True)["artifacts"][0]["days"]), 7)
+        weekly["weather"]["days"] = week_days[:3]
+        self.assertEqual(len(HELPER.ai_result(json.dumps(weekly).encode(), "codex", True, True)["artifacts"][0]["days"]), 3)
+        weekly["weather"]["days"] = [day, {**tomorrow, "lowC": None},
+                                      {**week_days[2], "lowC": None, "highC": None}]
+        partial = HELPER.ai_result(json.dumps(weekly).encode(), "codex", True, True)["artifacts"][0]
+        self.assertEqual(len(partial["days"]), 2)
+        self.assertIsNone(partial["days"][1]["lowC"])
+        self.assertEqual(partial["days"][1]["highC"], 20)
+        weekly["weather"]["days"] = [{**day, "highC": None, "lowC": None}]
+        self.assertEqual(HELPER.ai_result(json.dumps(weekly).encode(), "codex", True, True)["artifacts"][0]["variant"], "unavailable")
         weekly["weather"]["days"] = week_days + [{**day, "date": (today + timedelta(days=7)).isoformat()}]
-        self.assertEqual(HELPER.ai_result(json.dumps(weekly).encode(), "codex", True, True)["artifacts"], [])
+        self.assertEqual(HELPER.ai_result(json.dumps(weekly).encode(), "codex", True, True)["artifacts"][0]["variant"], "unavailable")
         unavailable = {**answer, "weather": {"type": "unavailable"}}
-        self.assertEqual(HELPER.ai_result(json.dumps(unavailable).encode(), "codex", True, True)["artifacts"], [])
+        card = HELPER.ai_result(json.dumps(unavailable).encode(), "codex", True, True)["artifacts"][0]
+        self.assertEqual(card["variant"], "unavailable")
+        self.assertEqual(card["days"], [])
 
     def test_weather_default_location_is_only_in_weather_prompt(self):
         from datetime import date
@@ -556,6 +572,8 @@ class HelperTests(unittest.TestCase):
             self.assertIn(b"WEATHER REQUEST", prompt)
             self.assertIn(b"required weather field", prompt)
             self.assertIn(b"up to seven days", prompt)
+            self.assertIn(b"A partial forecast is a valid result", prompt)
+            self.assertIn(b"Current UTC date and time:", prompt)
             if command[0] == "codex":
                 self.assertTrue(command[command.index("--output-schema") + 1]
                                 .endswith("ai-weather-result.schema.json"))

@@ -1,17 +1,33 @@
 {
   "type": "object",
   "properties": {
-    "kind": { "type": "string", "enum": ["answer", "command", "steps"] },
-    "text": { "type": "string" },
+    "kind": {
+      "type": "string",
+      "enum": [
+        "answer",
+        "command",
+        "steps"
+      ]
+    },
+    "text": {
+      "type": "string"
+    },
     "commands": {
       "type": "array",
       "items": {
         "type": "object",
         "properties": {
-          "command": { "type": "string" },
-          "explanation": { "type": "string" }
+          "command": {
+            "type": "string"
+          },
+          "explanation": {
+            "type": "string"
+          }
         },
-        "required": ["command", "explanation"],
+        "required": [
+          "command",
+          "explanation"
+        ],
         "additionalProperties": false
       }
     },
@@ -20,39 +36,111 @@
         {
           "type": "object",
           "properties": {
-            "type": { "type": "string", "enum": ["weather"] },
-            "variant": { "type": "string", "enum": ["current", "rain", "forecast"] },
-            "location": { "type": "string" },
-            "sourceUrl": { "type": "string" },
+            "type": {
+              "type": "string",
+              "enum": [
+                "weather"
+              ]
+            },
+            "variant": {
+              "type": "string",
+              "enum": [
+                "current",
+                "rain",
+                "forecast"
+              ]
+            },
+            "location": {
+              "type": "string",
+              "maxLength": 120
+            },
+            "sourceUrl": {
+              "type": "string",
+              "maxLength": 2048
+            },
             "days": {
               "type": "array",
               "items": {
                 "type": "object",
                 "properties": {
-                  "date": { "type": "string" },
-                  "summary": { "type": "string" },
-                  "temperatureC": { "type": ["number", "null"] },
-                  "lowC": { "type": ["number", "null"] },
-                  "highC": { "type": ["number", "null"] },
-                  "rainPercent": { "type": ["number", "null"] }
+                  "date": {
+                    "type": "string"
+                  },
+                  "summary": {
+                    "type": "string",
+                    "maxLength": 100
+                  },
+                  "temperatureC": {
+                    "type": [
+                      "number",
+                      "null"
+                    ]
+                  },
+                  "lowC": {
+                    "type": [
+                      "number",
+                      "null"
+                    ]
+                  },
+                  "highC": {
+                    "type": [
+                      "number",
+                      "null"
+                    ]
+                  },
+                  "rainPercent": {
+                    "type": [
+                      "number",
+                      "null"
+                    ]
+                  }
                 },
-                "required": ["date", "summary", "temperatureC", "lowC", "highC", "rainPercent"],
+                "required": [
+                  "date",
+                  "summary",
+                  "temperatureC",
+                  "lowC",
+                  "highC",
+                  "rainPercent"
+                ],
                 "additionalProperties": false
-              }
+              },
+              "minItems": 1,
+              "maxItems": 7
             }
           },
-          "required": ["type", "variant", "location", "sourceUrl", "days"],
+          "required": [
+            "type",
+            "variant",
+            "location",
+            "sourceUrl",
+            "days"
+          ],
           "additionalProperties": false
         },
         {
           "type": "object",
-          "properties": { "type": { "type": "string", "enum": ["unavailable"] } },
-          "required": ["type"],
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "unavailable"
+              ]
+            }
+          },
+          "required": [
+            "type"
+          ],
           "additionalProperties": false
         }
       ]
     }
   },
-  "required": ["kind", "text", "commands", "weather"],
+  "required": [
+    "kind",
+    "text",
+    "commands",
+    "weather"
+  ],
   "additionalProperties": false
 }

@@ -158,6 +158,20 @@ Item {
       }
 
       Repeater {
+        model: panel.result && panel.result.artifactWarnings ? panel.result.artifactWarnings : []
+        delegate: Text {
+          required property var modelData
+          Layout.fillWidth: true
+          text: modelData
+          textFormat: Text.PlainText
+          color: panel.bodyColor
+          font.family: "sans-serif"
+          font.pixelSize: Style.font.body
+          wrapMode: Text.WordWrap
+        }
+      }
+
+      Repeater {
         model: panel.result && panel.result.artifacts ? panel.result.artifacts : []
         delegate: ArtifactHost {
           required property var modelData
@@ -165,6 +179,7 @@ Item {
           artifact: modelData
           chrome: panel.chrome
           onOpenRequested: function(url) { panel.mapRequested(url) }
+          onCopyRequested: function(value) { panel.copyRequested(value) }
         }
       }
 

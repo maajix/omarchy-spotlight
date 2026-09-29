@@ -12,8 +12,10 @@ Rectangle {
   readonly property var days: artifact.days || []
   readonly property var primaryDay: days.length ? days[0] : ({})
   readonly property bool isRain: artifact.variant === "rain"
+  readonly property bool unavailable: artifact.variant === "unavailable"
 
   function hasNumber(value) { return typeof value === "number" && isFinite(value) }
+  function temperature(value) { return hasNumber(value) ? Math.round(value) + "°" : "—" }
   function iconFor(summary) {
     var text = String(summary || "").toLowerCase()
     if (/gewitter|thunder|storm/.test(text)) return "⚡"
@@ -66,7 +68,8 @@ Rectangle {
           elide: Text.ElideRight
         }
         Text {
-          text: Qt.formatDate(new Date(weather.primaryDay.date + "T12:00:00"), "dddd, d. MMMM")
+          text: weather.unavailable ? "Forecast unavailable"
+            : Qt.formatDate(new Date(weather.primaryDay.date + "T12:00:00"), "dddd, d. MMMM")
           color: "#c4d5e8"
           font.family: "sans-serif"
           font.pixelSize: Style.font.body
@@ -83,12 +86,13 @@ Rectangle {
 
     RowLayout {
       Layout.fillWidth: true
+      visible: !weather.unavailable
       spacing: 20
 
       Text {
-        text: weather.isRain ? Math.round(weather.primaryDay.rainPercent) + "%"
-          : Math.round(weather.artifact.variant === "current"
-            ? weather.primaryDay.temperatureC : weather.primaryDay.highC) + "°"
+        text: weather.unavailable ? "" : weather.isRain ? Math.round(weather.primaryDay.rainPercent) + "%"
+          : weather.temperature(weather.artifact.variant === "current" ? weather.primaryDay.temperatureC
+            : weather.hasNumber(weather.primaryDay.highC) ? weather.primaryDay.highC : weather.primaryDay.lowC)
         color: "#ffffff"
         font.family: "sans-serif"
         font.pixelSize: 58
@@ -100,7 +104,7 @@ Rectangle {
         spacing: 4
         Text {
           Layout.fillWidth: true
-          text: weather.primaryDay.summary
+          text: weather.primaryDay.summary || ""
           textFormat: Text.PlainText
           color: "#ffffff"
           font.family: "sans-serif"
@@ -109,11 +113,11 @@ Rectangle {
           wrapMode: Text.WordWrap
         }
         Text {
-          visible: weather.isRain || (weather.hasNumber(weather.primaryDay.highC)
-            && weather.hasNumber(weather.primaryDay.lowC))
-          text: weather.isRain ? "Regenwahrscheinlichkeit"
-            : "H: " + Math.round(weather.primaryDay.highC) + "°   T: "
-              + Math.round(weather.primaryDay.lowC) + "°"
+          visible: weather.isRain || weather.hasNumber(weather.primaryDay.highC)
+            || weather.hasNumber(weather.primaryDay.lowC)
+          text: weather.isRain ? "Rain probability"
+            : "H: " + weather.temperature(weather.primaryDay.highC) + "   L: "
+              + weather.temperature(weather.primaryDay.lowC)
           color: "#c4d5e8"
           font.family: "sans-serif"
           font.pixelSize: Style.font.body
@@ -123,6 +127,7 @@ Rectangle {
 
     Rectangle {
       Layout.fillWidth: true
+      visible: !weather.unavailable
       implicitHeight: forecastColumn.implicitHeight + 24
       radius: 12
       color: "#28212e48"
@@ -136,7 +141,7 @@ Rectangle {
         spacing: 10
 
         Text {
-          text: weather.isRain ? "REGENAUSSICHT" : "TAGESÜBERSICHT"
+          text: weather.isRain ? "RAIN OUTLOOK" : "FORECAST · " + weather.days.length + (weather.days.length === 1 ? " DAY" : " DAYS")
           color: "#bdd3ea"
           font.family: "sans-serif"
           font.pixelSize: Style.font.caption
@@ -175,8 +180,8 @@ Rectangle {
               elide: Text.ElideRight
             }
             Text {
-              visible: weather.hasNumber(modelData.lowC) && weather.hasNumber(modelData.highC)
-              text: Math.round(modelData.lowC) + "°  /  " + Math.round(modelData.highC) + "°"
+              visible: weather.hasNumber(modelData.lowC) || weather.hasNumber(modelData.highC)
+              text: weather.temperature(modelData.lowC) + "  /  " + weather.temperature(modelData.highC)
               color: "#f5f9ff"
               font.family: "sans-serif"
               font.pixelSize: Style.font.body
@@ -208,12 +213,24 @@ Rectangle {
       }
     }
 
+    Text {
+      Layout.fillWidth: true
+      visible: weather.unavailable
+      text: weather.artifact.message || ""
+      textFormat: Text.PlainText
+      color: "#d5e1ef"
+      font.family: "sans-serif"
+      font.pixelSize: Style.font.body + 1
+      wrapMode: Text.WordWrap
+    }
+
     RowLayout {
       Layout.fillWidth: true
+      visible: !weather.unavailable
       spacing: 8
       Text {
         Layout.fillWidth: true
-        text: "Stand " + weather.artifact.retrievedAt.slice(11, 16) + " UTC"
+        text: "Checked " + weather.artifact.retrievedAt.slice(11, 16) + " UTC"
         color: "#b2c4d9"
         font.family: "sans-serif"
         font.pixelSize: Style.font.caption

@@ -46,6 +46,9 @@ import unicodedata
 from datetime import date, datetime, timezone
 from urllib.parse import urlsplit
 
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "lib"))
+from ai_artifacts import VALIDATORS as CARD_VALIDATORS
+
 EUID = os.geteuid()
 ACTIVE_PROC = None
 
@@ -3034,15 +3037,21 @@ def validate_weather_artifact(item):
             or (variant == "forecast" and any(not -1 <= (day - today).days <= 14 for day in dates))
             or (variant == "current" and clean_days[0]["temperatureC"] is None)
             or (variant == "rain" and any(day["rainPercent"] is None for day in clean_days))
-            or (variant == "forecast" and any(day["highC"] is None or day["lowC"] is None
-                                               for day in clean_days))):
+            ):
         raise Denied("AI returned incomplete weather data")
+    if variant == "forecast":
+        # Sources often publish a high without a low. Keep known temperatures;
+        # never turn a missing value into a fabricated zero or drop valid days.
+        clean_days = [day for day in clean_days if day["highC"] is not None or day["lowC"] is not None]
+        if not clean_days:
+            raise Denied("AI returned incomplete weather data")
     return {"type": "weather", "variant": variant, "location": location.strip(),
             "sourceUrl": source, "retrievedAt": datetime.now(timezone.utc).isoformat(timespec="minutes"),
             "days": clean_days}
 
 
 ARTIFACT_VALIDATORS = {"map": validate_map_artifact, "weather": validate_weather_artifact}
+ARTIFACT_VALIDATORS.update(CARD_VALIDATORS)
 
 
 def ai_result(raw, provider, allow_weather=False, weather_request=False):
@@ -3082,6 +3091,7 @@ def ai_result(raw, provider, allow_weather=False, weather_request=False):
     if (kind == "answer" and clean) or (kind == "command" and len(clean) != 1) or (kind == "steps" and not clean):
         raise Denied("AI returned an invalid response")
     validated_artifacts = []
+    artifact_warnings = []
     for item in artifacts:
         if not isinstance(item, dict):
             continue
@@ -3091,10 +3101,23 @@ def ai_result(raw, provider, allow_weather=False, weather_request=False):
             continue
         try:
             validated_artifacts.append(kind_validator(item))
-        except Denied:
+        except (Denied, ValueError, TypeError, KeyError) as error:
             # A malformed card should not discard an otherwise useful answer.
+            if item.get("type") != "weather":
+                artifact_warnings.append(item["type"].capitalize() + " card could not be displayed: "
+                                         + str(error)[:160] + ". Try again.")
             continue
-    return {"kind": kind, "text": body, "commands": clean, "artifacts": validated_artifacts}
+    if weather_request and not any(item["type"] == "weather" for item in validated_artifacts):
+        message = ("Enable AI web search in Settings to fetch weather." if not allow_weather
+                   else "The returned weather data could not be validated. Try again or specify a location."
+                   if isinstance(weather, dict) and weather.get("type") == "weather"
+                   else "No verified weather data was returned. See the answer above for details.")
+        validated_artifacts.append({"type": "weather", "variant": "unavailable", "location": "Weather",
+                                    "days": [], "sourceUrl": "", "retrievedAt": "", "message": message})
+    result = {"kind": kind, "text": body, "commands": clean, "artifacts": validated_artifacts}
+    if artifact_warnings:
+        result["artifactWarnings"] = artifact_warnings
+    return result
 
 
 def ai_stream_event(raw, provider):
@@ -3179,8 +3202,9 @@ def cmd_ai(argv):
     language_rule = (
         "The actual user's question is the text after 'User request:'. Follow an explicit "
         "output-language request there; otherwise write every natural-language result field "
-        "in the language of that question. This includes text, command explanations, map "
-        "titles and weather summaries. Do not switch languages because of web pages, the "
+        "in the language of that question. This includes text, command explanations and ALL "
+        "artifact titles, color labels, descriptions and weather summaries. For an English "
+        "question, every generated label must be English too. Do not switch languages because of web pages, the "
         "system locale or a saved location. Keep proper names, URLs and commands intact."
     )
     instruction = (
@@ -3195,6 +3219,25 @@ def cmd_ai(argv):
         "For steps list up to six commands in execution order. "
         "When a non-weather place request would benefit from a map, you may add one map artifact "
         "with a short title, latitude, longitude and zoom (2–17). "
+        "For color scheme requests, include a palette artifact with a title and 2–8 colors, "
+        "each with a short role label and a six-digit HEX value (for example #14283F). "
+        "For numerical comparisons, trends or proportions, include a chart artifact: "
+        "variant=line, bar or donut; title, unit, category labels and named series of values. "
+        "Use 2–24 categories for lines, 2–12 for bars, or 2–8 categories and one nonnegative "
+        "series for donuts. Each series has a label and one value per category. Include a note "
+        "stating provenance (user-provided, illustrative example, or verified source), and "
+        "sourceUrl (HTTPS or an empty string). Never invent current or local-system measurements; "
+        "if measurements are missing, explain what is needed instead. "
+        "For comparing 2–4 products or approaches, include a comparison artifact with title, "
+        "a short provenance note and options. Each option has name, price (or 'Not applicable' "
+        "or 'Not verified'), summary, 1–4 pros, 1–4 cons, up to five facts (label/value), "
+        "sourceUrl (HTTPS or empty for conceptual comparisons) and recommended (boolean). "
+        "Use the same fact labels across options for comparable attributes. "
+        "Keep summaries within 200 characters, pros/cons within 120 characters each, "
+        "fact labels within 40, fact values within 100, and provenance notes within 240. "
+        "Recommend at most one option and explain the criteria. Verify current prices via web "
+        "search; do not invent prices or product specifications. "
+        "Keep text short when an artifact already communicates the answer. "
         "Never execute commands, modify files, or claim a change was made. "
         "Use web search for current facts when available and cite the source in text. "
         "Give commands the user can inspect and run manually. "
@@ -3206,12 +3249,16 @@ def cmd_ai(argv):
            "For today's outlook with only a high and low, use variant=forecast with one day. "
            "For rain today versus tomorrow use variant=rain with two days and numeric rainPercent values. "
            "For a general outlook use variant=forecast. For a week request, include every "
-           "requested day with trustworthy high and low values, up to seven days; "
-           "if fewer days are available, explain the gap in text. "
-           "All day fields are required; use null for optional values that the source does not provide. "
+           "requested day with trustworthy high or low values, up to seven days; "
+           "if fewer days are available, RETURN A FORECAST CARD with those verified days "
+           "and briefly explain the gap in text. A partial forecast is a valid result. "
+           "Do not set weather=unavailable merely because some requested days are missing. "
+           "One trustworthy source is sufficient; agreement from multiple sources is not required. "
+           "All day fields are required; use null for values the source does not provide, "
+           "including a missing high or low. A forecast day needs at least one verified temperature. "
            "Use Celsius, percent, ISO dates, a place name and short summaries. "
            "Keep text to a short introduction instead of repeating the card. "
-           "If there is no place or no trustworthy source for the needed values, set weather "
+           "Only if there is no place or ZERO verified days with the needed values, set weather "
            "to {\"type\":\"unavailable\"} and explain why. Never invent weather values or sources."
            if weather_request and web_search == "true" else "")
         + (" This is a WEATHER REQUEST but web search is disabled. Set weather to "
@@ -3220,6 +3267,7 @@ def cmd_ai(argv):
         + (" For weather requests without an explicit place, use this saved default location: "
            + json.dumps(weather_location) + ". An explicit place in the request wins."
            if weather_location and web_search == "true" else "")
+        + "\n\nCurrent UTC date and time: " + datetime.now(timezone.utc).isoformat(timespec="minutes")
         + "\n\nUser request: " + query
         + "\n\nResponse language: " + language_rule
     )

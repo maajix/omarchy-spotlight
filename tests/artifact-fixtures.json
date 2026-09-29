@@ -1,0 +1,362 @@
+[
+  {
+    "type": "palette",
+    "title": "Ocean",
+    "colors": [
+      {
+        "label": "Navy",
+        "hex": "#14283F"
+      },
+      {
+        "label": "Mint",
+        "hex": "#79D7EB"
+      }
+    ]
+  },
+  {
+    "type": "chart",
+    "variant": "bar",
+    "title": "Example sales",
+    "labels": [
+      "Jan",
+      "Feb",
+      "Mar",
+      "Apr"
+    ],
+    "series": [
+      {
+        "label": "Sales",
+        "values": [
+          12,
+          18,
+          9,
+          24
+        ]
+      }
+    ],
+    "unit": "EUR",
+    "note": "Illustrative data",
+    "sourceUrl": "",
+    "retrievedAt": ""
+  },
+  {
+    "type": "chart",
+    "variant": "line",
+    "title": "Example trends",
+    "labels": [
+      "Mon",
+      "Tue",
+      "Wed",
+      "Thu"
+    ],
+    "series": [
+      {
+        "label": "A",
+        "values": [
+          -2,
+          4,
+          3,
+          8
+        ]
+      },
+      {
+        "label": "B",
+        "values": [
+          3,
+          1,
+          6,
+          4
+        ]
+      }
+    ],
+    "unit": "",
+    "note": "Illustrative data",
+    "sourceUrl": "",
+    "retrievedAt": ""
+  },
+  {
+    "type": "chart",
+    "variant": "donut",
+    "title": "Example budget",
+    "labels": [
+      "Rent",
+      "Food",
+      "Travel",
+      "Savings"
+    ],
+    "series": [
+      {
+        "label": "Budget",
+        "values": [
+          900,
+          300,
+          100,
+          400
+        ]
+      }
+    ],
+    "unit": "EUR",
+    "note": "Illustrative data",
+    "sourceUrl": "",
+    "retrievedAt": ""
+  },
+  {
+    "type": "comparison",
+    "title": "SSH transfer tools",
+    "note": "Conceptual comparison; no prices apply",
+    "retrievedAt": "",
+    "options": [
+      {
+        "name": "SCP",
+        "price": "Not applicable",
+        "summary": "Simple remote copies over SSH.",
+        "pros": [
+          "Short commands",
+          "Widely installed"
+        ],
+        "cons": [
+          "No transfer resume"
+        ],
+        "facts": [
+          {
+            "label": "Best for",
+            "value": "One-off transfers"
+          }
+        ],
+        "recommended": false,
+        "sourceUrl": ""
+      },
+      {
+        "name": "Rsync",
+        "price": "Not applicable",
+        "summary": "Efficient repeat copies and synchronization.",
+        "pros": [
+          "Incremental copies",
+          "Resumable transfers"
+        ],
+        "cons": [
+          "More options to learn"
+        ],
+        "facts": [
+          {
+            "label": "Best for",
+            "value": "Repeated synchronization"
+          }
+        ],
+        "recommended": true,
+        "sourceUrl": ""
+      }
+    ]
+  },
+  {
+    "type": "comparison",
+    "title": "Uneven comparison rows",
+    "note": "Conceptual comparison; no prices apply",
+    "retrievedAt": "",
+    "options": [
+      {
+        "name": "SCP",
+        "price": "Not applicable",
+        "summary": "A deliberately longer description that wraps across several lines so the following fact and bullet rows must remain aligned with the shorter right column.",
+        "pros": [
+          "A longer benefit that needs more than one line of space and should expand the matching row for the other option as well.",
+          "Second benefit"
+        ],
+        "cons": [
+          "No transfer resume"
+        ],
+        "facts": [
+          {
+            "label": "Memory",
+            "value": "32 GB"
+          },
+          {
+            "label": "Platform",
+            "value": "Linux"
+          }
+        ],
+        "recommended": false,
+        "sourceUrl": ""
+      },
+      {
+        "name": "Rsync",
+        "price": "Not applicable",
+        "summary": "Short description.",
+        "pros": [
+          "Short benefit"
+        ],
+        "cons": [
+          "More options to learn"
+        ],
+        "facts": [
+          {
+            "label": "Platform",
+            "value": "Linux and Windows"
+          },
+          {
+            "label": "Memory",
+            "value": "16 GB"
+          },
+          {
+            "label": "Bandwidth",
+            "value": "500 GB/s"
+          }
+        ],
+        "recommended": true,
+        "sourceUrl": ""
+      }
+    ]
+  },
+  {
+    "type": "comparison",
+    "title": "Four uneven options",
+    "note": "Conceptual comparison; no prices apply",
+    "retrievedAt": "",
+    "options": [
+      {
+        "name": "SCP",
+        "price": "Not applicable",
+        "summary": "A deliberately longer description that wraps across several lines so the following fact and bullet rows must remain aligned with the shorter right column.",
+        "pros": [
+          "A longer benefit that needs more than one line of space and should expand the matching row for the other option as well.",
+          "Second benefit"
+        ],
+        "cons": [
+          "No transfer resume"
+        ],
+        "facts": [
+          {
+            "label": "Memory",
+            "value": "32 GB"
+          },
+          {
+            "label": "Platform",
+            "value": "Linux"
+          }
+        ],
+        "recommended": false,
+        "sourceUrl": ""
+      },
+      {
+        "name": "Rsync",
+        "price": "Not applicable",
+        "summary": "Short description.",
+        "pros": [
+          "Short benefit"
+        ],
+        "cons": [
+          "More options to learn"
+        ],
+        "facts": [
+          {
+            "label": "Platform",
+            "value": "Linux and Windows"
+          },
+          {
+            "label": "Memory",
+            "value": "16 GB"
+          },
+          {
+            "label": "Bandwidth",
+            "value": "500 GB/s"
+          }
+        ],
+        "recommended": true,
+        "sourceUrl": ""
+      },
+      {
+        "name": "SCP",
+        "price": "Not applicable",
+        "summary": "A deliberately longer description that wraps across several lines so the following fact and bullet rows must remain aligned with the shorter right column.",
+        "pros": [
+          "A longer benefit that needs more than one line of space and should expand the matching row for the other option as well.",
+          "Second benefit"
+        ],
+        "cons": [
+          "No transfer resume"
+        ],
+        "facts": [
+          {
+            "label": "Memory",
+            "value": "32 GB"
+          },
+          {
+            "label": "Platform",
+            "value": "Linux"
+          }
+        ],
+        "recommended": false,
+        "sourceUrl": ""
+      },
+      {
+        "name": "Rsync",
+        "price": "Not applicable",
+        "summary": "Short description.",
+        "pros": [
+          "Short benefit"
+        ],
+        "cons": [
+          "More options to learn"
+        ],
+        "facts": [
+          {
+            "label": "Platform",
+            "value": "Linux and Windows"
+          },
+          {
+            "label": "Memory",
+            "value": "16 GB"
+          },
+          {
+            "label": "Bandwidth",
+            "value": "500 GB/s"
+          }
+        ],
+        "recommended": true,
+        "sourceUrl": ""
+      }
+    ]
+  },
+  {
+    "type": "weather",
+    "variant": "forecast",
+    "location": "Tokyo",
+    "sourceUrl": "https://example.org/weather/tokyo",
+    "retrievedAt": "2026-09-30T08:00+00:00",
+    "days": [
+      {
+        "date": "2026-09-30",
+        "summary": "Cloudy",
+        "temperatureC": null,
+        "lowC": 18,
+        "highC": 24,
+        "rainPercent": 30
+      },
+      {
+        "date": "2026-10-01",
+        "summary": "Rain",
+        "temperatureC": null,
+        "lowC": 17,
+        "highC": 22,
+        "rainPercent": 70
+      },
+      {
+        "date": "2026-10-02",
+        "summary": "Sunny",
+        "temperatureC": null,
+        "lowC": null,
+        "highC": 25,
+        "rainPercent": 10
+      }
+    ]
+  },
+  {
+    "type": "weather",
+    "variant": "unavailable",
+    "location": "Weather",
+    "sourceUrl": "",
+    "retrievedAt": "",
+    "days": [],
+    "message": "No verified weather data was returned. See the answer above for details."
+  }
+]
