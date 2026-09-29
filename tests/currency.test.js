@@ -210,6 +210,60 @@ test("session cache stays bounded, including failed requests", () => {
   assert.equal(Currency.select(session, session.target, NOW + 1), false)
 })
 
+test("mixed expressions keep their own rates when the session cache is full", () => {
+  const session = Currency.createSession()
+  for (const code of Currency.CODES) {
+    if (code === "CHF") continue
+    Currency.select(session, target(`1 ${code} to CHF`), NOW)
+    Currency.accept(session, Currency.begin(session), null, NOW)
+  }
+  const old = { fetchedAt: NOW / 1000 - 3600 }
+  const expression = target("1 USD + 1 JPY to EUR")
+  Currency.select(session, expression, NOW)
+  Currency.accept(session, Currency.begin(session, NOW), reply(old), NOW)
+  Currency.select(session, expression, NOW)
+  Currency.accept(session, Currency.begin(session, NOW), reply({ base: "JPY", rate: 0.5, ...old }), NOW)
+  assert.equal(session.entries.length, Currency.KEEP)
+  assert.equal(Currency.select(session, expression, NOW), false)
+  assert.equal(Currency.result(expression, session, NOW, Units.formatNumber).text, "1.4234 EUR")
+})
+
+test("mixed expressions reject zero divisors and wrapped lone amounts before any lookup", () => {
+  for (const text of ["23 EUR / 0", "23 EUR + 43 JPY / 0 + 1 EUR", "23 EUR / (2 - 2)",
+    "(23 EUR)", "--23 EUR", "-(23 EUR)", "- 23 EUR", "+23 EUR"]) {
+    assert.equal(Currency.parse(text), null, text)
+  }
+  assert.equal(target("23 EUR * 1").quote, "EUR")
+  assert.equal(target("-(23 EUR + 1 EUR)").quote, "EUR")
+  assert.equal(target("- 23 EUR to USD").quote, "USD")
+  assert.equal(Currency.parse("(23 EUR)", "USD").quote, "USD")
+})
+
+test("a failed rate stops the remaining lookups of a mixed expression", () => {
+  const session = Currency.createSession()
+  const expression = target("1 USD + 1 JPY + 1 GBP to EUR")
+  assert.equal(Currency.select(session, expression, NOW), true)
+  Currency.accept(session, Currency.begin(session, NOW), null, NOW)
+  assert.equal(Currency.select(session, expression, NOW), false)
+  assert.equal(Currency.begin(session, NOW), null)
+  assert.equal(Currency.result(expression, session, NOW, Units.formatNumber), null)
+  assert.equal(Currency.select(session, expression, NOW + Currency.RETRY), true)
+})
+
+test("adding a currency keeps the in-flight request for a pair still needed", () => {
+  const session = Currency.createSession()
+  Currency.select(session, target("2 USD + 3 JPY to EUR"), NOW)
+  const usd = Currency.begin(session, NOW)
+  const generation = session.generation
+  assert.equal(Currency.select(session, target("2 USD + 3 JPY + 1 GBP to EUR"), NOW), false)
+  assert.equal(session.generation, generation)
+  assert.equal(Currency.accept(session, JSON.parse(JSON.stringify(usd)), reply(), NOW), true)
+  assert.equal(Currency.select(session, target("1 JPY + 1 GBP to EUR"), NOW), true)
+  const jpy = Currency.begin(session, NOW)
+  Currency.select(session, target("1 GBP to EUR"), NOW)
+  assert.equal(Currency.accept(session, jpy, reply({ base: "JPY" }), NOW), false)
+})
+
 // Execute the actual QML provider methods with a timer/process stand-in. This
 // tests routing and row payloads, rather than merely matching implementation text.
 function overlay() {

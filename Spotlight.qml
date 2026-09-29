@@ -854,9 +854,8 @@ Item {
       out.push(root.row({
         key: "currency", kind: converted ? "copy" : waiting ? "currency-wait" : "noop",
         title: converted ? converted.text : (waiting ? "Loading exchange rate…" : "Exchange rate unavailable"),
-        subtitle: converted ? converted.detail : (currency.expression
-          ? currency.source + " → " + currency.quote + " · Frankfurter"
-          : currency.base + " → " + currency.quote + " · Frankfurter"),
+        subtitle: converted ? converted.detail : (currency.expression ? currency.source
+          : currency.base) + " → " + currency.quote + " · Frankfurter",
         accessory: "Currency", section: "Conversions", icon: "󰑤", mono: true,
         primaryLabel: converted ? "Copy result" : waiting ? "Copy when ready" : "",
         payload: converted ? { text: converted.copy } : ({})
