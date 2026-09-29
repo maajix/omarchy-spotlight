@@ -146,6 +146,12 @@ test("mixed currency expressions use arithmetic precedence and a chosen target",
   assert.equal(Currency.parse("23 EUR + 43 JPY", "USD").quote, "USD")
   assert.equal(target("23 EUR + 43 JPY to GBP").quote, "GBP")
   assert.equal(target("23 eur + 43 jpy to GBP").quote, "GBP")
+  assert.equal(target("2 yen + 3 EUR").base, "JPY")
+  assert.equal(Currency.parse("2 yen + 3 EUR", "EUR").quote, "EUR")
+  assert.equal(target("$-2 + €3").expression.left.value, -2)
+  assert.equal(target("US$-2 + £3 to EUR").expression.left.value, -2)
+  assert.equal(Currency.result(target("$-2 + $3"), Currency.createSession(), NOW,
+    Units.formatNumber).text, "1 USD")
   const session = Currency.createSession()
   assert.equal(Currency.select(session, implicit, NOW), true)
   const request = Currency.begin(session, NOW)
