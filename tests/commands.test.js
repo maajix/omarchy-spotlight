@@ -119,4 +119,3 @@ test("fromPlugins builds summon entries for active interactive plugins", () => {
   assert.ok(widget.keywords.includes("widget"))
   assert.ok(widget.keywords.includes("test"))
 })
-
