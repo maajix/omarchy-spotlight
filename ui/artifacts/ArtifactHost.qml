@@ -12,6 +12,9 @@ Item {
   signal copyRequested(string value)
   property var checklistCompleted: []
   signal checklistProgressRequested(var completed)
+  property var galleryActions: ({})
+  property bool galleryBusy: false
+  signal imageActionRequested(string identity, string action)
 
   implicitHeight: card.item ? card.item.implicitHeight : 0
 
@@ -29,7 +32,20 @@ Item {
       : host.artifact.type === "checklist" ? checklistCard
       : host.artifact.type === "dashboard" ? dashboardCard
       : host.artifact.type === "places" ? placesCard
-      : host.artifact.type === "diff" ? diffCard : null
+      : host.artifact.type === "diff" ? diffCard
+      : host.artifact.type === "gallery" ? galleryCard : null
+  }
+
+  Component {
+    id: galleryCard
+    GalleryArtifact {
+      artifact: host.artifact
+      chrome: host.chrome
+      actions: host.galleryActions
+      actionBusy: host.galleryBusy
+      onImageActionRequested: function(identity, action) { host.imageActionRequested(identity, action) }
+      onOpenRequested: function(url) { host.openRequested(url) }
+    }
   }
 
   Component {

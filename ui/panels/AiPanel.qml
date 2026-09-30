@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Layouts
+import Quickshell.Io
 import qs.Commons
 import "../components"
 import "../artifacts"
@@ -14,6 +15,40 @@ Item {
   property string error: ""
   property string progress: ""
   property var result: null
+  property var helperCommand: []
+  property var galleryActions: ({})
+  function setGalleryStatus(identity, status) {
+    var next = {}, keys = Object.keys(galleryActions).filter(function(key) { return key !== identity }).slice(-15)
+    keys.forEach(function(key) { next[key] = panel.galleryActions[key] })
+    next[identity] = status
+    galleryActions = next
+  }
+  function imageAction(identity, action) {
+    if (galleryProcess.running || !helperCommand.length || !/^[0-9a-f]{64}$/.test(identity)
+        || ["save", "apply"].indexOf(action) < 0) return
+    galleryProcess.identity = identity
+    galleryProcess.delivered = false
+    setGalleryStatus(identity, action === "save" ? "Saving…" : "Applying…")
+    galleryProcess.command = helperCommand.concat(["gallery", action, identity])
+    galleryProcess.running = true
+  }
+  Process {
+    id: galleryProcess
+    property string identity: ""
+    property bool delivered: false
+    stdout: StdioCollector {
+      onStreamFinished: {
+        galleryProcess.delivered = true
+        try {
+          var reply = JSON.parse(text)
+          panel.setGalleryStatus(galleryProcess.identity, reply.ok ? reply.status : reply.error || "Image action failed")
+        } catch (error) { panel.setGalleryStatus(galleryProcess.identity, "Image action failed") }
+      }
+    }
+    onExited: Qt.callLater(function() {
+      if (!galleryProcess.delivered) panel.setGalleryStatus(galleryProcess.identity, "Image action failed")
+    })
+  }
   // ponytail: remember up to 32 checklists in this shell session. Add disk
   // persistence only when progress must survive a shell restart.
   property var checklistProgress: ({})
@@ -187,6 +222,9 @@ Item {
           Layout.fillWidth: true
           artifact: modelData
           checklistCompleted: panel.checklistProgress[modelData.id] || []
+          galleryActions: panel.galleryActions
+          galleryBusy: galleryProcess.running
+          onImageActionRequested: function(identity, action) { panel.imageAction(identity, action) }
           onChecklistProgressRequested: function(completed) { panel.setChecklistProgress(modelData.id, completed) }
           chrome: panel.chrome
           onOpenRequested: function(url) { panel.mapRequested(url) }

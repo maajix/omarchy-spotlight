@@ -110,9 +110,14 @@ Fenced code blocks appear as terminal cards with a **Copy** action. AI artifacts
 | `ai: preview changing font size from 12 to 14 in this config: size = 12` | A diff preview with additions, removals, line numbers and copy actions. |
 | `ai: help me prepare for a server migration` | An interactive checklist with progress, reset and copy actions. |
 | `ai: explain how DNS resolution works` | Connected nodes with selectable connections and readable captions. |
+| `ai: suggest two minimalist mountain wallpapers` | Image previews with attribution, source links and separate Save / Apply actions. |
 | `ai: what's the weather in Tokyo this week?` | A sourced weather card with up to seven days when AI web search is enabled. |
 
 Set an optional default weather location under **Spotlight Settings → Artifacts**. A place in the question takes priority. Contributors can add card types using the [artifact guide](docs/artifacts.md).
+
+For an event page, try `ai: extract the schedule from <event URL> and show a timeline`. A fictional demo prompt: `ai: show a timeline for Future Summit: 09:00 registration, 10:00 keynote, 12:00 lunch, 14:00 workshops`.
+
+Gallery previews require the native `curl` and ImageMagick (`magick`) tools. Save keeps the sanitized image in **Pictures/Spotlight**; Apply saves it and sets it as your wallpaper. Source links let you check image attribution and licensing.
 
 ## Keyboard shortcuts
 

@@ -44,11 +44,12 @@ import sys
 import time
 import unicodedata
 from datetime import date, datetime, timezone
-from urllib.parse import urlsplit
+from urllib.parse import quote, urlsplit
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "lib"))
 from ai_artifacts import VALIDATORS as CARD_VALIDATORS
 from system_metrics import snapshot as system_snapshot
+from gallery_images import fetch as fetch_gallery_image, IMAGE_BYTES
 
 EUID = os.geteuid()
 ACTIVE_PROC = None
@@ -3309,6 +3310,14 @@ def cmd_ai(argv):
         "clearly label the starting point as an illustrative example, not a file read from disk. "
         "Empty before is a new file, empty after removes its contents. Do not place the diff in a "
         "code fence too; Spotlight generates the diff and copy actions. These are previews only. "
+        "For wallpaper suggestions or visual image search, include a gallery artifact with title, note "
+        "and 1–4 images. Each image has title (up to 80), description (up to 160), credit (up to 100), "
+        "imageUrl (a verified direct HTTPS PNG/JPEG URL) and sourceUrl (the HTTPS attribution/license page). "
+        "Search for actual images when web search is available; otherwise use only URLs the user supplied. "
+        "Never invent image URLs or photographer credits. Prefer public image CDNs with images under "
+        "8 MB and 8 megapixels; no redirects, authenticated or private URLs. Spotlight downloads and "
+        "sanitizes previews locally; saving or applying a wallpaper requires an explicit user click. "
+        "Explain unavailable images in text rather than fabricating results. Keep introductions brief. "
         "Never execute commands, modify files, or claim a change was made. "
         "Use web search for current facts when available and cite the source in text. "
         "Give commands the user can inspect and run manually. "
@@ -3412,9 +3421,79 @@ def cmd_ai(argv):
             emit({"event": "progress", "text": "\nCollecting local system snapshot…"})
             sys.stdout.flush()
             result["artifacts"][index] = local_dashboard(card)
+        elif card["type"] == "gallery":
+            emit({"event": "progress", "text": "\nLoading image previews…"})
+            sys.stdout.flush()
+            try:
+                result["artifacts"][index] = local_gallery(card)
+            except (OSError, Denied) as exc:
+                for image in card["images"]:
+                    image.update({"id": "", "previewUrl": "", "error": clamp_text(str(exc), 160)})
     emit({"event": "result", "result": result})
 
 
+def gallery_cache():
+    return walk([".cache", "omarchy-spotlight", "gallery"], create=True)
+
+
+def local_gallery(card):
+    fd = gallery_cache()
+    try:
+        lock = lock_at(fd, "lock", blocking=False)
+        try:
+            for image in card["images"]:
+                image.update({"id": "", "previewUrl": "", "error": ""})
+                try:
+                    data = fetch_gallery_image(image["imageUrl"], run_bounded)
+                    identity = hashlib.sha256(data).hexdigest()
+                    name = identity + ".jpg"
+                    write_atomic(fd, name, data)
+                    image["id"] = identity
+                    image["previewUrl"] = "file://" + quote(
+                        os.readlink("/proc/self/fd/" + str(fd)) + "/" + name)
+                except (ValueError, Denied, OSError) as exc:
+                    image["error"] = clamp_text(str(exc), 160)
+            # ponytail: keep the latest 12 previews (at most 96 MiB); old cards can refetch.
+            names = [name for name in os.listdir(fd) if re.fullmatch(r"[0-9a-f]{64}\.jpg", name)]
+            names.sort(key=lambda name: os.stat(name, dir_fd=fd, follow_symlinks=False).st_mtime, reverse=True)
+            for name in names[12:]:
+                os.unlink(name, dir_fd=fd)
+        finally:
+            os.close(lock)
+    finally:
+        os.close(fd)
+    return card
+
+
+def cmd_gallery(args):
+    if len(args) != 2 or args[0] not in ("save", "apply") or not re.fullmatch(r"[0-9a-f]{64}", args[1]):
+        raise Denied("invalid gallery action")
+    name = args[1] + ".jpg"
+    fd = gallery_cache()
+    try:
+        data = read_file(fd, name, IMAGE_BYTES)
+    finally:
+        os.close(fd)
+    if data is None or hashlib.sha256(data).hexdigest() != args[1]:
+        raise Denied("Preview expired or changed; request the gallery again")
+    fd = walk(["Pictures", "Spotlight"], create=True)
+    try:
+        previous = read_file(fd, name, IMAGE_BYTES)
+        if previous is not None and previous != data:
+            raise Denied("Saved image changed; refusing to overwrite it")
+        if previous is None:
+            write_atomic(fd, name, data)
+        path = os.readlink("/proc/self/fd/" + str(fd)) + "/" + name
+        if args[0] == "apply":
+            _, truncated, status = run_bounded(["omarchy", "theme", "bg", "set", path], 1024, 5, want_status=True)
+            if truncated or status != 0:
+                raise Denied("Image saved, but the wallpaper could not be applied")
+    finally:
+        os.close(fd)
+    emit({"status": "Wallpaper applied" if args[0] == "apply" else "Saved to Pictures/Spotlight", "path": path})
+
+
+COMMANDS["gallery"] = (cmd_gallery, True)
 COMMANDS["ai"] = (cmd_ai, True)
 
 

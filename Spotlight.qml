@@ -3061,6 +3061,7 @@ Item {
         error: root.aiError
         progress: root.aiProgress
         result: root.aiResult
+        helperCommand: root.helperArgv([])
         onCopyRequested: function(value) { Util.execArgv(["wl-copy", "--", value]) }
         onMapRequested: function(url) { root.openUrl(url) }
         onBackRequested: { root.stopAi(); root.rebuild(); input.forceActiveFocus() }

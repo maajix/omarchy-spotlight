@@ -593,5 +593,32 @@
         "description": "Keep the old server available until verification is complete."
       }
     ]
+  },
+  {
+    "type": "gallery",
+    "title": "Mountain wallpapers",
+    "note": "Illustrative fixture; no image hosts are contacted.",
+    "images": [
+      {
+        "title": "Alpine morning",
+        "description": "Soft mountain silhouettes for a calm desktop.",
+        "credit": "Example photographer",
+        "imageUrl": "https://example.org/image.jpg",
+        "sourceUrl": "https://example.org/license",
+        "id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "previewUrl": "",
+        "error": ""
+      },
+      {
+        "title": "Blue horizon",
+        "description": "A spacious sky with cool ocean tones.",
+        "credit": "Example photographer",
+        "imageUrl": "https://example.org/image.jpg",
+        "sourceUrl": "https://example.org/license",
+        "id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "previewUrl": "",
+        "error": ""
+      }
+    ]
   }
 ]

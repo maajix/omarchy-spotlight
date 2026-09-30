@@ -82,6 +82,10 @@ Weather cards require AI web search and are built from the selected provider's a
 
 Diff previews never open their display-labelled paths or read/write configuration files. Before/after text is bounded and rendered as plain code. Both copy actions are explicit; the user reviews and applies any proposed edits manually.
 
+Image galleries download AI-selected or user-supplied direct HTTPS PNG/JPEG URLs for previews. The broker rejects credentials, non-443 ports, private/mixed DNS answers and redirects, disables curl configuration/proxies, and pins a public IP with hostname TLS verification. Downloads and native image decoding have byte, dimension, memory and time bounds; Quickshell loads only metadata-stripped local JPEGs. The private cache keeps at most 12 images. Preview fetching sends a request to the image host; Source opens the attribution page only after a click.
+
+Gallery Save and Apply accept only a helper-generated content hash and verify cached bytes/ownership. Save creates a fixed private file in `~/Pictures/Spotlight` without overwriting changed files. Apply performs that save and invokes only `omarchy theme bg set` with the verified saved path. These actions require separate explicit user clicks; AI output cannot apply wallpaper or choose a destination path.
+
 Place cards make no automatic map requests. Clicking View map opens an OpenStreetMap search for the validated venue name/address; Source opens the provider-supplied HTTPS URL. Opening hours and ratings come from the provider, with provenance and unknown states shown; URL validation does not prove that the provider checked the page.
 
 System dashboards are collected locally after the AI requests a validated card. The provider cannot supply measurements and is not given the collected data. Reads of `/proc`, filesystem statistics, the existing bounded service listing, and a three-second home-folder `du` scan are read-only. Directory scans do not follow symlinks or cross filesystems. Partial and unavailable data are labelled; only an explicit Copy snapshot action exports the values to the clipboard.

@@ -248,5 +248,22 @@ def diff(item):
     return {"type": "diff", "title": text(item.get("title")), "note": text(item.get("note"), 240), "files": clean}
 
 
+def gallery(item):
+    images = item.get("images")
+    if not isinstance(images, list) or not 1 <= len(images) <= 4:
+        raise ValueError("a gallery needs 1–4 images")
+    clean = []
+    for image in images:
+        if not isinstance(image, dict):
+            raise ValueError("invalid gallery image")
+        url, attribution = source(image.get("imageUrl")), source(image.get("sourceUrl"))
+        if not url or not attribution:
+            raise ValueError("images need direct HTTPS and source URLs")
+        clean.append({"title": text(image.get("title"), 80), "description": text(image.get("description"), 160),
+                      "credit": text(image.get("credit"), 100), "imageUrl": url, "sourceUrl": attribution})
+    return {"type": "gallery", "title": text(item.get("title")), "note": text(item.get("note"), 240), "images": clean}
+
+
 VALIDATORS = {"palette": palette, "chart": chart, "comparison": comparison, "timeline": timeline,
-              "diagram": diagram, "checklist": checklist, "dashboard": dashboard, "places": places, "diff": diff}
+              "diagram": diagram, "checklist": checklist, "dashboard": dashboard, "places": places, "diff": diff,
+              "gallery": gallery}

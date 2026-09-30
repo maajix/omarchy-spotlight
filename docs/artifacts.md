@@ -4,7 +4,8 @@ Artifacts are optional visual cards beside an `ai:` answer. The provider returns
 structured JSON, `bin/spotlight-helper` validates it, and
 `ui/panels/AiPanel.qml` renders the approved data through
 `ui/artifacts/ArtifactHost.qml`. The text answer remains visible if a card is
-missing or invalid. Cards display information; they never execute commands.
+missing or invalid. Provider output never executes commands. Gallery Save and
+Apply buttons invoke fixed helper actions only after a user click.
 
 ## Choose the response shape
 
@@ -45,7 +46,7 @@ field into the `artifacts` list in `ai_result()`.
 4. Tell the provider when to return this object in `cmd_ai()`. For an optional
    card, a short instruction in the shared prompt is enough. For a required
    card, also wire the request flag, schema, result field and unavailable case.
-5. Add one valid and one invalid response to `tests/helper_test.py`. If the
+5. Add one valid and one invalid response to `tests/artifacts_test.py`. If the
    card needs local request detection, test that in `tests/` too. Update
    `SECURITY.md` for any new data flow or external link.
 
@@ -71,6 +72,40 @@ Copy proposed config copies the complete `after` text, not only the visible
 hunks. Copy diff copies the unified diff. Paths are never opened, configs are
 never read or written, and no apply action is available. When the user has not
 supplied a starting configuration, the provider must label it illustrative.
+
+## Image galleries and explicit actions
+
+`gallery` contains a title, provenance note and 1–4 images, each with `title`,
+`description`, `credit`, a direct HTTPS `imageUrl` and HTTPS attribution/license
+`sourceUrl`. Prefer a CDN's bounded image size rather than a full-resolution
+original. The provider must find actual URLs using web search or use URLs
+explicitly supplied by the user; unavailable results must not be invented.
+
+After validation, `local_gallery()` uses `lib/gallery_images.py` to fetch each
+image. DNS resolution must yield only public IPs, and curl pins the connection
+to a checked IP while verifying TLS for the original hostname. Port 443 only;
+no redirects, proxies, curl configuration or credentials. Each download is
+capped at 8 MiB with an eight-second network deadline. Only PNG/JPEG inputs up
+to eight megapixels and 8,192 pixels per edge are decoded. Native ImageMagick
+has memory, disk, thread and time limits, strips metadata and emits a JPEG up
+to 2,560 × 1,440. Quickshell receives only the sanitized local preview. Missing
+tools, invalid images and failed downloads show per-image unavailable states.
+
+The private cache under `~/.cache/omarchy-spotlight/gallery` retains the newest
+12 previews (at most 96 MiB). `id` and `previewUrl` are helper-owned, never
+provider fields. Expired previews require another request. Save writes the
+sanitized image to `~/Pictures/Spotlight/<hash>.jpg`; it never overwrites an
+existing changed file. Apply saves the same image and calls the fixed native
+`omarchy theme bg set` command. Neither occurs on generation or card reopening.
+Review the source license before reuse; downloading a preview grants no rights.
+
+`GalleryArtifact` emits `imageActionRequested(id, action)`; `ArtifactHost`
+forwards it to `AiPanel`, which runs the existing helper command with `gallery`
+and a validated `save`/`apply` action. Actions accept only a content hash, never
+a provider path or command. The panel allows one action at a time and stores
+bounded status outside delegates so closing Spotlight does not discard it.
+For another actionable artifact, use the same signal/validated helper pattern
+and document exactly which user click authorizes the operation.
 
 ## Place recommendations
 
@@ -148,6 +183,7 @@ Omarchy shell after changing QML if the running plugin does not pick it up.
 | `comparison` | 2–4 options with facts, pros, cons, price status and optional HTTPS sources | Rows share the tallest cell's height; facts match by label, missing values show `—`. At most one suggested pick and a copy action. |
 | `timeline` | Title, provenance note, 1–12 chronological entries with when, title, description, status and optional HTTPS source | A connected itinerary or milestone list with planned/current/completed markers and a copy action. |
 | `diff` | Title, provenance note and 1–3 display-labelled before/after files | Read-only unified hunks, old/new line numbers, change counts and explicit copy actions. |
+| `gallery` | Title, note and 1–4 attributed direct HTTPS PNG/JPEG images | Sanitized local previews, source links, explicit Save and Apply wallpaper actions. |
 | `places` | Title, note and 1–4 venues with address, hours, summary, nullable rating/rating source and optional HTTPS source | Venue cards, explicit map/source links and copy address; unavailable ratings stay unavailable. |
 | `dashboard` | Provider-selected title/focus; helper-owned CPU, memory, filesystem, folder and service measurements | Local snapshot, unavailable/partial states and explicit copy. No metrics sent to AI. |
 | `checklist` | Title, note, optional HTTPS source and 1–12 tasks with titles/descriptions | User-owned checkmarks, progress bar, reset and copy. State survives closing Spotlight within the current shell session. |

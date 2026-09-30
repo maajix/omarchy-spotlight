@@ -12,6 +12,11 @@ ROOT = Path(__file__).resolve().parents[1]
 fixtures = json.loads((ROOT / "tests/artifact-fixtures.json").read_text())
 with tempfile.TemporaryDirectory(prefix="spotlight-qml-check-") as directory:
     directory = Path(directory)
+    image = directory / "preview.jpg"
+    subprocess.run(["magick", "-size", "320x180", "gradient:#234b68-#9be4ef", str(image)], check=True, timeout=5)
+    for fixture in fixtures:
+        if fixture["type"] == "gallery":
+            for entry in fixture["images"]: entry["previewUrl"] = image.as_uri()
     (directory / "Commons").symlink_to("/usr/share/omarchy/shell/Commons")
     (directory / "ui").symlink_to(ROOT / "ui")
     (directory / "lib").symlink_to(ROOT / "lib")
@@ -78,6 +83,8 @@ ShellRoot {
         chrome: root.chrome
         property string lastOpen: ""
         property string lastCopy: ""
+        property string lastAction: ""
+        onImageActionRequested: function(identity, action) { lastAction = identity + ":" + action }
         onOpenRequested: function(url) { lastOpen = url }
         onCopyRequested: function(value) { lastCopy = value }
       }
@@ -100,6 +107,17 @@ ShellRoot {
           var height = cards.itemAt(i).implicitHeight
           if (!isFinite(height) || height <= 0) throw new Error("Card failed to lay out: " + i)
           var host = cards.itemAt(i)
+          if (stage === 1 && host.artifact.type === "gallery") {
+            if (host.lastAction) throw new Error("Gallery applied without a click")
+            var save = root.button(host, "Save"), apply = root.button(host, "Apply")
+            if (!save.enabled || !apply.enabled) throw new Error("Gallery preview did not load")
+            save.clicked()
+            if (host.lastAction !== host.artifact.images[0].id + ":save") throw new Error("Gallery save failed")
+            apply.clicked()
+            if (host.lastAction !== host.artifact.images[0].id + ":apply") throw new Error("Gallery apply failed")
+            host.galleryBusy = true
+            if (save.enabled || apply.enabled) throw new Error("Gallery actions allow overlapping requests")
+          }
           if (stage === 0 && host.artifact.type === "diff") {
             root.button(host, "Copy proposed config").clicked()
             if (host.lastCopy !== host.artifact.files[0].after) throw new Error("Diff config copy failed")
