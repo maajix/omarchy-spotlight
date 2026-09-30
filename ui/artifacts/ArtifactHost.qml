@@ -27,7 +27,18 @@ Item {
       : host.artifact.type === "timeline" ? timelineCard
       : host.artifact.type === "diagram" ? diagramCard
       : host.artifact.type === "checklist" ? checklistCard
-      : host.artifact.type === "dashboard" ? dashboardCard : null
+      : host.artifact.type === "dashboard" ? dashboardCard
+      : host.artifact.type === "places" ? placesCard : null
+  }
+
+  Component {
+    id: placesCard
+    PlacesArtifact {
+      artifact: host.artifact
+      chrome: host.chrome
+      onOpenRequested: function(url) { host.openRequested(url) }
+      onCopyRequested: function(value) { host.copyRequested(value) }
+    }
   }
 
   Component {

@@ -496,6 +496,36 @@
     "errors": []
   },
   {
+    "type": "places",
+    "title": "Example Tokyo places",
+    "note": "Fictional showcase data, not real venues.",
+    "retrievedAt": "",
+    "places": [
+      {
+        "name": "Moonlight Ramen",
+        "category": "Ramen restaurant",
+        "address": "Example Street 12, Tokyo, Japan",
+        "hours": "Example hours: 11:00\u201321:00",
+        "summary": "A fictional small restaurant with a quiet counter.",
+        "rating": 4.5,
+        "ratingSource": "Illustrative example",
+        "sourceUrl": "https://example.org/venues",
+        "mapUrl": "https://www.openstreetmap.org/search?query=Tokyo"
+      },
+      {
+        "name": "Cloud Garden",
+        "category": "Public garden",
+        "address": "Example Avenue 4, Tokyo, Japan",
+        "hours": "Not verified",
+        "summary": "An illustrative garden card with unavailable rating data.",
+        "rating": null,
+        "ratingSource": "",
+        "sourceUrl": "",
+        "mapUrl": "https://www.openstreetmap.org/search?query=Tokyo"
+      }
+    ]
+  },
+  {
     "type": "checklist",
     "id": "fixture-migration",
     "title": "Server migration",

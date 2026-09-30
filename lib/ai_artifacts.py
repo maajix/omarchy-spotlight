@@ -5,7 +5,7 @@ import json
 import math
 import re
 from datetime import datetime, timezone
-from urllib.parse import urlsplit
+from urllib.parse import quote, urlsplit
 
 
 def text(value, limit=160):
@@ -179,5 +179,28 @@ def dashboard(item):
     return {"type": "dashboard", "title": text(item.get("title")), "focus": item["focus"]}
 
 
+def places(item):
+    entries = item.get("places")
+    if not isinstance(entries, list) or not 1 <= len(entries) <= 4:
+        raise ValueError("a places card needs 1–4 places")
+    clean = []
+    for entry in entries:
+        if not isinstance(entry, dict):
+            raise ValueError("invalid place")
+        place = {key: text(entry.get(key), limit) for key, limit in
+                 (("name", 100), ("category", 60), ("address", 180), ("hours", 160), ("summary", 180))}
+        rating = entry.get("rating")
+        if rating is not None and not 0 <= number(rating) <= 5:
+            raise ValueError("invalid place rating")
+        place["rating"] = rating
+        place["ratingSource"] = text(entry.get("ratingSource"), 60) if rating is not None else ""
+        place["sourceUrl"] = source(entry.get("sourceUrl"))
+        place["mapUrl"] = "https://www.openstreetmap.org/search?query=" + quote(place["name"] + " " + place["address"], safe="")
+        clean.append(place)
+    return {"type": "places", "title": text(item.get("title")), "note": text(item.get("note"), 240),
+            "places": clean, "retrievedAt": datetime.now(timezone.utc).isoformat(timespec="minutes")
+            if any(place["sourceUrl"] for place in clean) else ""}
+
+
 VALIDATORS = {"palette": palette, "chart": chart, "comparison": comparison, "timeline": timeline,
-              "diagram": diagram, "checklist": checklist, "dashboard": dashboard}
+              "diagram": diagram, "checklist": checklist, "dashboard": dashboard, "places": places}

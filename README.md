@@ -106,6 +106,7 @@ Fenced code blocks appear as terminal cards with a **Copy** action. AI artifacts
 | `ai: compare scp and rsync for SSH file transfers` | Options with facts, strengths, tradeoffs and source links. |
 | `ai: plan a weekend in Tokyo` | A timeline with dates, activities, descriptions and optional source links. |
 | `ai: show my CPU, memory, storage and service status in a dashboard` | A measured local snapshot with usage bars and service health. |
+| `ai: find two ramen restaurants in Tokyo with opening hours and ratings` | Place cards with addresses, ratings, sources and map links. |
 | `ai: help me prepare for a server migration` | An interactive checklist with progress, reset and copy actions. |
 | `ai: explain how DNS resolution works` | Connected nodes with selectable connections and readable captions. |
 | `ai: what's the weather in Tokyo this week?` | A sourced weather card with up to seven days when AI web search is enabled. |

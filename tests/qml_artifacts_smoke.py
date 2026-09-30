@@ -24,6 +24,15 @@ import "ui/panels"
 ShellRoot {
   id: root
   property SpotlightPalette chrome: SpotlightPalette {}
+  function button(item, text) {
+    if (item.text === text && typeof item.clicked === "function") return item
+    var children = item.children || []
+    for (var i = 0; i < children.length; i++) {
+      var found = button(children[i], text)
+      if (found) return found
+    }
+    return null
+  }
   function checklist(item) {
     if (typeof item.toggleItem === "function") return item
     var children = item.children || []
@@ -67,6 +76,10 @@ ShellRoot {
         width: 714
         artifact: modelData
         chrome: root.chrome
+        property string lastOpen: ""
+        property string lastCopy: ""
+        onOpenRequested: function(url) { lastOpen = url }
+        onCopyRequested: function(value) { lastCopy = value }
       }
     }
     AiPanel {
@@ -86,6 +99,16 @@ ShellRoot {
         for (var i = 0; i < cards.count; i++) {
           var height = cards.itemAt(i).implicitHeight
           if (!isFinite(height) || height <= 0) throw new Error("Card failed to lay out: " + i)
+          var host = cards.itemAt(i)
+          if (stage === 0 && host.artifact.type === "places") {
+            if (host.lastOpen) throw new Error("Place card opened a link without a click")
+            root.button(host, "View map ↗").clicked()
+            if (host.lastOpen !== host.artifact.places[0].mapUrl) throw new Error("Place map link failed")
+            root.button(host, "Copy address").clicked()
+            if (host.lastCopy !== host.artifact.places[0].address) throw new Error("Place copy failed")
+            root.button(host, "Source ↗").clicked()
+            if (host.lastOpen !== host.artifact.places[0].sourceUrl) throw new Error("Place source failed")
+          }
           if (["comparison", "diagram"].indexOf(cards.itemAt(i).artifact.type) >= 0)
             root.checkComparisonRows(cards.itemAt(i), cards.itemAt(i), {})
         }

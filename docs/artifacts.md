@@ -59,6 +59,20 @@ This is a **source-level extension point**: adding a card currently means
 editing the plugin and reloading the shell. Users cannot drop an arbitrary QML
 file into a folder and have Spotlight load it automatically.
 
+## Place recommendations
+
+`places` contains 1–4 venues with name, category, address, hours, summary,
+a nullable 0–5 rating, rating source and optional HTTPS source URL. Unknown
+ratings remain `null`; current hours/ratings require verification through AI
+web search or explicitly supplied data. The provider explains provenance in
+`note`; Spotlight validates structure but cannot prove the provider read a page.
+
+The helper generates an OpenStreetMap search link from the validated venue
+name and address. The card makes no automatic map/image requests; View map
+and Source open the browser only after a click. Copy address copies only the
+address. For nearby recommendations, specify a location in the prompt; the
+weather default is not sent for venue requests.
+
 ## Local system dashboards
 
 The provider returns only `{ "type": "dashboard", "title": "System snapshot",
@@ -120,6 +134,7 @@ Omarchy shell after changing QML if the running plugin does not pick it up.
 | `chart` | Variant, category labels, 1–4 named numeric series, unit, provenance note, optional HTTPS source | Line and grouped bar charts, or a single-series donut; exact values on hover or with arrow keys. |
 | `comparison` | 2–4 options with facts, pros, cons, price status and optional HTTPS sources | Rows share the tallest cell's height; facts match by label, missing values show `—`. At most one suggested pick and a copy action. |
 | `timeline` | Title, provenance note, 1–12 chronological entries with when, title, description, status and optional HTTPS source | A connected itinerary or milestone list with planned/current/completed markers and a copy action. |
+| `places` | Title, note and 1–4 venues with address, hours, summary, nullable rating/rating source and optional HTTPS source | Venue cards, explicit map/source links and copy address; unavailable ratings stay unavailable. |
 | `dashboard` | Provider-selected title/focus; helper-owned CPU, memory, filesystem, folder and service measurements | Local snapshot, unavailable/partial states and explicit copy. No metrics sent to AI. |
 | `checklist` | Title, note, optional HTTPS source and 1–12 tasks with titles/descriptions | User-owned checkmarks, progress bar, reset and copy. State survives closing Spotlight within the current shell session. |
 | `diagram` | Title, provenance note, optional source, 2–10 unique nodes and 1–16 directed connections | Native rounded nodes with compact grid spacing. Previous/next controls select a connection, highlight its directed route and show its full caption above the diagram. Clicking a node selects an outgoing connection. Up to three columns and six rows. No executable markup. |

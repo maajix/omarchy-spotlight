@@ -5,6 +5,23 @@ from helper_test import HELPER
 
 
 class ArtifactTests(unittest.TestCase):
+    def test_places_bound_ratings_and_build_map_links(self):
+        place = {"name": "Example Ramen", "category": "Restaurant", "address": "Example Street & Park, Tokyo",
+                 "hours": "Not verified", "summary": "Illustrative example", "rating": None, "ratingSource": "", "sourceUrl": ""}
+        card = {"type": "places", "title": "Example places", "note": "Fictional example", "places": [place]}
+        validate = HELPER.ARTIFACT_VALIDATORS["places"]
+        result = validate(card)["places"][0]
+        self.assertIsNone(result["rating"])
+        self.assertIn("%26", result["mapUrl"])
+        self.assertTrue(result["mapUrl"].startswith("https://www.openstreetmap.org/search?query="))
+        for bad in ({**card, "places": []}, {**card, "places": [place] * 5},
+                    {**card, "places": [{**place, "rating": True}]}, {**card, "places": [{**place, "rating": 6}]},
+                    {**card, "places": [{**place, "rating": float("nan")}]},
+                    {**card, "places": [{**place, "rating": 4, "ratingSource": ""}]},
+                    {**card, "places": [{**place, "sourceUrl": "javascript:alert(1)"}]}):
+            with self.assertRaises(ValueError):
+                validate(bad)
+
     def test_checklist_identity_is_stable_and_progress_is_user_owned(self):
         card = {"type": "checklist", "title": "Server migration", "note": "Suggested plan", "sourceUrl": "",
                 "items": [{"title": "Check backups", "description": "Try a restore."}]}
