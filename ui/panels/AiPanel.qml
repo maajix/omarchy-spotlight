@@ -37,6 +37,7 @@ Item {
     property string identity: ""
     property bool delivered: false
     stdout: StdioCollector {
+      waitForEnd: true
       onStreamFinished: {
         galleryProcess.delivered = true
         try {
