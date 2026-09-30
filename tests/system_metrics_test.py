@@ -12,11 +12,13 @@ class SystemMetricsTests(unittest.TestCase):
         stats = SimpleNamespace(f_fsid=7, f_blocks=100, f_bfree=40, f_bavail=35, f_frsize=1024)
         services = {"services": [{"scope": "user", "active": "failed", "name": "example.service"}],
                     "partial": True, "scopes": ["user"]}
-        run = mock.Mock(return_value=(b"1024\t/home/example/Downloads\n4096\t/home/example/.cache\n999\t/incomplete", True, None))
+        run = mock.Mock(side_effect=lambda argv, *_args, **_kwargs:
+                        (b"abcd-1234\n", False, 0) if argv[0] == "findmnt"
+                        else (b"1024\t/home/example/Downloads\n4096\t/home/example/.cache\n999\t/incomplete", True, None))
         with mock.patch.object(metrics, "cpu_ticks", side_effect=[(100, 50), (200, 125)]), \
                 mock.patch.object(metrics.time, "sleep"), \
                 mock.patch.object(metrics, "memory", return_value={"total": 100, "used": 60, "available": 40}), \
-                mock.patch.object(metrics.os, "statvfs", return_value=stats):
+                mock.patch.object(metrics.os, "statvfs", side_effect=[stats, SimpleNamespace(**{**vars(stats), "f_fsid": 8})]):
             result = metrics.snapshot("all", run, "/home/example", services)
         self.assertEqual(result["cpu"]["percent"], 25)
         self.assertEqual(result["memory"]["used"], 60)

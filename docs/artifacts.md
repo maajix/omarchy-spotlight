@@ -69,7 +69,8 @@ measurements are discarded. The snapshot is not included in the AI prompt.
 
 CPU is sampled over 200 ms from `/proc/stat`; memory uses `MemAvailable` from
 `/proc/meminfo`. Filesystem usage comes from `statvfs`, with duplicate
-filesystems merged. Storage requests also run `du` for direct home folders,
+filesystems merged using `findmnt`'s UUID (including Btrfs subvolumes that share
+one pool), falling back to the filesystem ID when a UUID is unavailable. Storage requests also run `du` for direct home folders,
 without following symlinks or crossing filesystems. Its 64 KiB / three-second
 bounds can produce a partial scan, explicitly labelled in the card. Folder
 bars show allocated size relative to the largest returned folder, not a

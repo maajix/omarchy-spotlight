@@ -1,5 +1,6 @@
 """Small, bounded local snapshots for the dashboard card; never AI measurements."""
 import os
+import re
 import time
 from datetime import datetime, timezone
 
@@ -74,7 +75,12 @@ def snapshot(focus, run, home, services=None):
                 continue
             try:
                 stats = os.statvfs(path)
-                identity = stats.f_fsid
+                # Btrfs subvolumes can have different f_fsid values while sharing
+                # one storage pool. findmnt's filesystem UUID identifies that pool.
+                raw_id, truncated_id, id_status = run(["findmnt", "--noheadings", "--output", "UUID", "--target", path],
+                                                       256, 1, want_status=True)
+                uuid = raw_id.decode("ascii", "replace").strip()
+                identity = uuid if not truncated_id and id_status == 0 and re.fullmatch(r"[a-fA-F0-9-]{4,80}", uuid) else stats.f_fsid
                 if identity in seen:
                     continue
                 seen.add(identity)
