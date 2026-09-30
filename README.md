@@ -71,6 +71,12 @@ From two characters onward, Spotlight searches enabled local providers together 
 
 Spotlight runs inside the existing `omarchy-shell` process, so there is no separate launcher or cold start. Late file and web results also cannot steal the current selection while you type.
 
+Enabled shell panels, overlays, and menus are searchable by name and plugin ID.
+The list refreshes when Spotlight opens, and curated entries keep their titles
+and icons. Plugins with only a `bar-widget` kind are excluded because the shell
+does not report whether a widget has an openable panel. Discovered entries use
+a default plugin icon; a failed launch produces a desktop notification.
+
 ## Features
 
 - Unified search across apps, windows, actions, files, clipboard history, and the web

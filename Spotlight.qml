@@ -148,8 +148,7 @@ Item {
   // source.
   property var menuCommands: []
 
-  // Installed shell plugins (bar widgets, panels, overlays) discovered
-  // dynamically through the host shell.
+  // Enabled panels, overlays and menus discovered through shell IPC.
   property var pluginCommands: []
 
   // Live state of every toggle the helper could actually read, as
@@ -455,31 +454,16 @@ Item {
   }
 
   function refreshPluginCommands() {
-    if (!root.shell || !root.shell.pluginRegistry || !root.shell.pluginRegistry.installedPlugins) {
-      root.pluginCommands = []
-      return
-    }
-    var catalogue = Commands.commands()
-    var known = {}
-    for (var k = 0; k < catalogue.length; k++) {
-      if (catalogue[k].id) known[catalogue[k].id] = true
-    }
-    root.pluginCommands = Commands.fromPlugins(root.shell.pluginRegistry.installedPlugins, {
-      ignoreId: root.pluginId,
-      knownIds: known,
-      isEnabled: function(id) {
-        return typeof root.shell.pluginRegistry.isEnabled === "function"
-          ? root.shell.pluginRegistry.isEnabled(id)
-          : true
-      },
-      inBar: function(id) {
-        return typeof root.shell.pluginRegistry.inBar === "function"
-          ? root.shell.pluginRegistry.inBar(id)
-          : (typeof root.shell.pluginRegistry.isEnabled === "function"
-              ? root.shell.pluginRegistry.isEnabled(id)
-              : true)
-      }
-    })
+    root.pluginCommands = []
+    pluginsProc.running = false
+    pluginsProc.command = root.helperArgv(["read-plugins"])
+    pluginsProc.running = true
+  }
+
+  function loadPluginCommands(raw) {
+    var reply = root.helperReply(raw)
+    root.pluginCommands = Commands.fromPlugins(reply ? reply.plugins : [], root.pluginId)
+    if (root.opened) root.rebuild()
   }
 
   function refreshReminders() {
@@ -1123,7 +1107,6 @@ Item {
         title: c.title, subtitle: c.subtitle,
         accessory: isWeb ? "Web" : (isPlugin ? "Plugin" : "Action"),
         icon: c.icon,
-        image: c.image || "",
         primaryLabel: isWeb ? "Open in browser" : (isPlugin ? "Open" : "Run"),
         secondaryLabel: c.secondaryLabel,
         confirm: c.confirm === true,
@@ -1719,10 +1702,9 @@ Item {
 
     case "summon":
       root.dismiss()
-      if (root.shell && typeof root.shell.summon === "function") {
-        if (!root.shell.summon(r.payload.id, "{}") && typeof root.shell.toggle === "function")
-          root.shell.toggle(r.payload.id, "{}")
-      }
+      pluginSummonProc.running = false
+      pluginSummonProc.command = root.helperArgv(["summon-plugin", r.payload.id])
+      pluginSummonProc.running = true
       break
 
     case "copy":
@@ -2344,6 +2326,26 @@ Item {
   }
 
   Process {
+    id: pluginsProc
+    stdout: StdioCollector {
+      waitForEnd: true
+      onStreamFinished: root.loadPluginCommands(text)
+    }
+  }
+
+  Process {
+    id: pluginSummonProc
+    stdout: StdioCollector {
+      waitForEnd: true
+      onStreamFinished: {
+        if (!root.helperReply(text))
+          Util.execArgv(["notify-send", "Spotlight could not open plugin",
+            root.helperError(text) || "The shell did not confirm the launch."])
+      }
+    }
+  }
+
+  Process {
     id: usageReadProc
     stdout: StdioCollector {
       waitForEnd: true
@@ -2465,6 +2467,8 @@ Item {
     settingsProc.running = false
     hidesProc.running = false
     menuCommandsProc.running = false
+    pluginsProc.running = false
+    pluginSummonProc.running = false
     usageReadProc.running = false
     usageWriteProc.running = false
     icsProc.running = false
@@ -2478,14 +2482,6 @@ Item {
   Connections {
     target: root.appLibrary
     function onAppsChanged() { if (root.opened) root.rebuild() }
-  }
-
-  Connections {
-    target: root.shell ? root.shell.pluginRegistry : null
-    function onPluginsChanged() {
-      root.refreshPluginCommands()
-      if (root.opened) root.rebuild()
-    }
   }
 
   ListModel { id: displayModel }

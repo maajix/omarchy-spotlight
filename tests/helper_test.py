@@ -1416,6 +1416,129 @@ class BindingTests(unittest.TestCase):
                 run(HELPER.cmd_revert_binding)
 
 
+class PluginCommandsTests(unittest.TestCase):
+    def test_list_projects_enabled_loader_kinds_and_bounds_untrusted_names(self):
+        plugins = [
+            {"id": "test.panel", "name": "Line1\nLine2\x7f\u202e" + "x" * 5000,
+             "kinds": ["panel"], "enabled": True, "icon": "/etc/shadow"},
+            {"id": "test.panel", "name": "Duplicate", "kinds": ["panel"], "enabled": True},
+            {"id": "test.menu", "name": None, "kinds": ["menu", "bar-widget"], "enabled": True},
+            {"id": "test.overlay", "name": "\n\t", "kinds": ["overlay"], "enabled": True},
+            {"id": "test.bar", "kinds": ["bar-widget"], "enabled": True},
+            {"id": "test.service", "kinds": ["service"], "enabled": True},
+            {"id": "test.disabled", "kinds": ["panel"], "enabled": False},
+            {"id": "test.truthy", "kinds": ["panel"], "enabled": "true"},
+            {"id": "test.badkinds", "kinds": "panel", "enabled": True},
+            {"id": "test.inject\n", "kinds": ["panel"], "enabled": True},
+            {"id": "../path", "kinds": ["panel"], "enabled": True},
+            None,
+        ]
+        raw = json.dumps(plugins).encode()
+        config = b'{"plugins":[{"id":"test.menu"}]}'
+        with mock.patch.object(HELPER, "run_bounded",
+                               side_effect=[(raw, False, 0), (config, False, 0)]) as call:
+            reply = run(HELPER.cmd_read_plugins)
+        self.assertEqual([c.args[0] for c in call.call_args_list],
+                         [["omarchy-shell", "shell", "listPlugins"],
+                          ["omarchy-shell", "shell", "listShellConfig"]])
+        self.assertTrue(all(c.args[1:] == (HELPER.PLUGINS_BYTES, HELPER.PLUGINS_DEADLINE)
+                            and c.kwargs == {"want_status": True}
+                            for c in call.call_args_list))
+        self.assertEqual([p["id"] for p in reply["plugins"]],
+                         ["test.panel", "test.menu", "test.overlay"])
+        self.assertTrue(reply["plugins"][0]["name"].startswith("Line1 Line2 "))
+        self.assertLessEqual(len(reply["plugins"][0]["name"]), HELPER.PLUGIN_NAME_CHARS)
+        self.assertEqual(reply["plugins"][1]["name"], "test.menu")
+        self.assertEqual(reply["plugins"][2]["name"], "test.overlay")
+        self.assertTrue(all(set(p) == {"id", "name"} for p in reply["plugins"]))
+
+    def test_hybrid_panel_enablement_is_independent_of_bar_placement(self):
+        plugins = [
+            {"id": "test." + kind, "name": kind, "kinds": ["bar-widget", kind],
+             "enabled": False} for kind in ("panel", "overlay", "menu")
+        ] + [
+            {"id": "test.mounted", "kinds": ["bar-widget", "panel"], "enabled": True},
+            {"id": "omarchy.hybrid", "kinds": ["bar-widget", "menu"],
+             "enabled": False, "firstParty": True},
+            {"id": "test.off", "kinds": ["bar-widget", "panel"], "enabled": False},
+            {"id": "test.disabled", "kinds": ["bar-widget", "panel"], "enabled": True},
+            {"id": "omarchy.disabled", "kinds": ["bar-widget", "panel"],
+             "enabled": False, "firstParty": True},
+            {"id": "test.baroption", "kinds": ["bar", "bar-widget", "panel"],
+             "enabled": False, "firstParty": True},
+        ]
+        config = {"plugins": [{"id": "test." + kind} for kind in ("panel", "overlay", "menu")]
+                  + [{"id": "test.disabled"}],
+                  "disabledPlugins": ["test.disabled", "omarchy.disabled"]}
+        replies = [(json.dumps(value).encode(), False, 0) for value in (plugins, config)]
+        with mock.patch.object(HELPER, "run_bounded", side_effect=replies) as call:
+            reply = run(HELPER.cmd_read_plugins)
+        self.assertEqual([p["id"] for p in reply["plugins"]],
+                         ["test.panel", "test.overlay", "test.menu", "test.mounted", "omarchy.hybrid"])
+        self.assertEqual(call.call_count, 2, "Read configuration once for all hybrids")
+        for bad_config in [(b"not JSON", False, 0), (b"[]", False, 0),
+                           (b"{}", True, 0), (b"{}", False, 1)]:
+            with self.subTest(config=bad_config), mock.patch.object(
+                    HELPER, "run_bounded", side_effect=[replies[0], bad_config]):
+                self.assertFalse(run(HELPER.main, ["read-plugins"])["ok"])
+
+    def test_list_count_cap_and_bad_replies(self):
+        raw = json.dumps([{"id": "test.p%d" % i, "name": "😀" * 200,
+                           "kinds": ["panel"], "enabled": True}
+                          for i in range(HELPER.PLUGINS_COUNT + 1)]).encode()
+        with mock.patch.object(HELPER, "run_bounded", return_value=(raw, False, 0)):
+            reply = run(HELPER.cmd_read_plugins)
+        self.assertEqual(len(reply["plugins"]), HELPER.PLUGINS_COUNT)
+        self.assertLess(len(json.dumps(reply, ensure_ascii=False).encode("utf-16-le")) // 2,
+                        524288)
+        for result in [(b"not JSON", False, 0), (b"{}", False, 0),
+                       (b"[]", True, 0), (b"[]", False, 1)]:
+            with self.subTest(result=result), \
+                    mock.patch.object(HELPER, "run_bounded", return_value=result):
+                self.assertFalse(run(HELPER.main, ["read-plugins"])["ok"])
+
+    def test_summon_requires_valid_id_and_exact_acknowledgement(self):
+        with mock.patch.object(HELPER, "run_bounded", return_value=(b"ok\n", False, 0)) as call:
+            self.assertEqual(run(HELPER.cmd_summon_plugin, ["test.panel"]),
+                             {"opened": True, "ok": True})
+        self.assertEqual(call.call_args.args[0],
+                         ["omarchy-shell", "shell", "summon", "test.panel", "{}"])
+        for args in [[], [""], ["--flag"], ["test.panel\n"], ["x" * 129],
+                     ["$(touch /tmp/injected)"], ["test.panel", "extra"]]:
+            with self.subTest(args=args), mock.patch.object(HELPER, "run_bounded") as call:
+                self.assertFalse(run(HELPER.main, ["summon-plugin"] + args)["ok"])
+                call.assert_not_called()
+        for result in [(b"unknown\n", False, 0), (b"", False, 0),
+                       (b"ok extra", False, 0), (b"ok", True, 0), (b"ok", False, 1)]:
+            with self.subTest(result=result), \
+                    mock.patch.object(HELPER, "run_bounded", return_value=result):
+                self.assertFalse(run(HELPER.main, ["summon-plugin", "test.panel"])["ok"])
+
+    def test_helper_cli_uses_real_subprocess_argv_and_rejects_oversized_output(self):
+        with tempfile.TemporaryDirectory() as directory:
+            shell = Path(directory) / "omarchy-shell"
+            shell.write_text("#!/usr/bin/env python3\nimport json,sys\n"
+                             "if sys.argv[1:] == ['shell','listPlugins']:\n"
+                             " print(json.dumps([{'id':'test.panel','name':'Panel',"
+                             "'kinds':['panel'],'enabled':True}]))\n"
+                             "elif sys.argv[1:] == ['shell','summon','test.panel','{}']:\n"
+                             " print('ok')\nelse:\n print('unknown')\n")
+            shell.chmod(0o700)
+            env = dict(os.environ, PATH=directory + os.pathsep + os.environ["PATH"])
+            def cli(*args):
+                result = subprocess.run([sys.executable, str(HELPER_PATH), *args],
+                                        env=env, capture_output=True, timeout=8, check=True)
+                self.assertEqual(result.stderr, b"")
+                return json.loads(result.stdout)
+            self.assertEqual(cli("read-plugins")["plugins"],
+                             [{"id": "test.panel", "name": "Panel"}])
+            self.assertTrue(cli("summon-plugin", "test.panel")["opened"])
+            self.assertFalse(cli("summon-plugin", "missing.plugin")["ok"])
+            shell.write_text("#!/usr/bin/env python3\nprint('x' * %d)\n" %
+                             (HELPER.PLUGINS_BYTES + 1))
+            self.assertFalse(cli("read-plugins")["ok"])
+
+
 class MenuCommandsTests(unittest.TestCase):
     MENU_FIXTURE = {
         "root": {"label": "Go"},
