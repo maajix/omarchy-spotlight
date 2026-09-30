@@ -24,6 +24,15 @@ ShellRoot {
   id: root
   property SpotlightPalette chrome: SpotlightPalette {}
   function checkComparisonRows(item, host, positions) {
+    if (typeof item.selectNext === "function") {
+      item.selectNext(-1)
+      if (item.selectedEdge !== item.artifact.edges.length - 1) throw new Error("Diagram previous failed")
+      item.selectNext(1)
+      if (item.selectedEdge !== 0) throw new Error("Diagram next failed")
+      item.selectNext(1)
+      if (item.edge.from !== item.artifact.edges[1].from || item.edge.to !== item.artifact.edges[1].to) throw new Error("Diagram caption did not update")
+      item.selectNext(-1)
+    }
     var name = item.objectName || ""
     if (name.indexOf("comparison-cell-") === 0) {
       var parts = name.split("-")
@@ -57,7 +66,7 @@ ShellRoot {
         for (var i = 0; i < cards.count; i++) {
           var height = cards.itemAt(i).implicitHeight
           if (!isFinite(height) || height <= 0) throw new Error("Card failed to lay out: " + i)
-          if (cards.itemAt(i).artifact.type === "comparison")
+          if (["comparison", "diagram"].indexOf(cards.itemAt(i).artifact.type) >= 0)
             root.checkComparisonRows(cards.itemAt(i), cards.itemAt(i), {})
         }
         console.log("ARTIFACT_SMOKE_OK", cards.count)

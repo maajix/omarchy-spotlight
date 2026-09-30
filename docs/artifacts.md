@@ -84,7 +84,7 @@ Omarchy shell after changing QML if the running plugin does not pick it up.
 | `chart` | Variant, category labels, 1–4 named numeric series, unit, provenance note, optional HTTPS source | Line and grouped bar charts, or a single-series donut; exact values on hover or with arrow keys. |
 | `comparison` | 2–4 options with facts, pros, cons, price status and optional HTTPS sources | Rows share the tallest cell's height; facts match by label, missing values show `—`. At most one suggested pick and a copy action. |
 | `timeline` | Title, provenance note, 1–12 chronological entries with when, title, description, status and optional HTTPS source | A connected itinerary or milestone list with planned/current/completed markers and a copy action. |
-| `diagram` | Title, provenance note, optional source, 2–10 unique nodes and 1–16 directed connections | Native rounded nodes and labelled arrows on a grid of up to three columns and six rows. No executable markup. |
+| `diagram` | Title, provenance note, optional source, 2–10 unique nodes and 1–16 directed connections | Native rounded nodes with compact grid spacing. Previous/next controls select a connection, highlight its directed route and show its full caption above the diagram. Clicking a node selects an outgoing connection. Up to three columns and six rows. No executable markup. |
 
 Weather requires AI web search. The helper rejects invalid or stale
 measurements and stamps the time Spotlight received the answer. A
