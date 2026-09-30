@@ -139,6 +139,65 @@ test("identity conversions are local and clipboard text has no grouping or code"
   assert.doesNotMatch(result.detail, /Frankfurter/)
 })
 
+test("mixed currency expressions use arithmetic precedence and a chosen target", () => {
+  const implicit = target("23 EUR + 43 JPY")
+  assert.equal(implicit.quote, "EUR")
+  assert.deepEqual(Array.from(implicit.pairs, pair => pair.key), ["EUR/EUR", "JPY/EUR"])
+  assert.equal(Currency.parse("23 EUR + 43 JPY", "USD").quote, "USD")
+  assert.equal(target("23 EUR + 43 JPY to GBP").quote, "GBP")
+  assert.equal(target("23 eur + 43 jpy to GBP").quote, "GBP")
+  assert.equal(target("2 yen + 3 EUR").base, "JPY")
+  assert.equal(Currency.parse("2 yen + 3 EUR", "EUR").quote, "EUR")
+  assert.equal(target("$-2 + €3").expression.left.value, -2)
+  assert.equal(target("US$-2 + £3 to EUR").expression.left.value, -2)
+  assert.equal(Currency.result(target("$-2 + $3"), Currency.createSession(), NOW,
+    Units.formatNumber).text, "1 USD")
+  const session = Currency.createSession()
+  assert.equal(Currency.select(session, implicit, NOW), true)
+  const request = Currency.begin(session, NOW)
+  assert.equal(request.pairKey, "JPY/EUR")
+  assert.equal(Currency.result(implicit, session, NOW, Units.formatNumber), null)
+  Currency.accept(session, request, reply({ base: "JPY", quote: "EUR", rate: 0.006 }), NOW)
+  assert.equal(Currency.result(implicit, session, NOW, Units.formatNumber).text, "23.258 EUR")
+  assert.equal(Currency.result(implicit, session, NOW, Units.formatNumber).copy, "23.258")
+
+  const complex = target("(23 EUR + 43 JPY) * 2 - 3 EUR / 2 to EUR")
+  assert.equal(Currency.result(complex, session, NOW, Units.formatNumber).text, "45.016 EUR")
+  assert.equal(target("23 EUR + 43 JPY * 2").expression.right.op, "*")
+  assert.equal(target("23 EUR * 2").quote, "EUR")
+  for (const text of ["23 EUR + 4", "23 EUR * 43 JPY", "23 EUR / 43 JPY",
+    "23 EUR + unknown", "23 EUR + 43 JPY tomorrow", "23 EUR + 43 JPY to XXX",
+    "23 EUR + (43 JPY", "23 EUR + 43 JPY / 0 + 1 EUR",
+    "5 all + 3 pen", "23 eur + 43 jpy", "2 pounds + 3 pounds"]) {
+    const parsed = target(text)
+    assert.equal(parsed && Currency.result(parsed, session, NOW, Units.formatNumber), null, text)
+  }
+})
+
+test("multiple rate requests stay in order, reuse cache and reject old replies", () => {
+  const session = Currency.createSession()
+  const expression = target("2 USD + 3 JPY to EUR")
+  assert.equal(Currency.select(session, expression, NOW), true)
+  const usd = Currency.begin(session, NOW)
+  assert.equal(usd.pairKey, "USD/EUR")
+  assert.equal(Currency.select(session, target("4 USD + 3 JPY to EUR"), NOW), false)
+  assert.equal(Currency.select(session, target("3 JPY + 4 USD to EUR"), NOW), false)
+  assert.equal(session.request, usd)
+  assert.equal(Currency.accept(session, usd, reply({ rate: 2 }), NOW), true)
+  assert.equal(Currency.select(session, session.target, NOW), true)
+  const jpy = Currency.begin(session, NOW)
+  assert.equal(jpy.pairKey, "JPY/EUR")
+  assert.equal(Currency.accept(session, jpy,
+    reply({ base: "JPY", rate: 0.5 }), NOW), true)
+  assert.equal(Currency.select(session, session.target, NOW), false)
+  assert.equal(Currency.result(session.target, session, NOW, Units.formatNumber).text, "9.5 EUR")
+  Currency.select(session, target("4 USD + 3 GBP to EUR"), NOW)
+  const gbp = Currency.begin(session, NOW)
+  Currency.select(session, expression, NOW)
+  assert.equal(Currency.accept(session, gbp, reply({ base: "GBP" }), NOW), false)
+  assert.equal(Currency.select(session, session.target, NOW), false)
+})
+
 test("session cache stays bounded, including failed requests", () => {
   const session = Currency.createSession()
   for (const code of Currency.CODES) {
@@ -149,6 +208,60 @@ test("session cache stays bounded, including failed requests", () => {
   assert.equal(session.entries.length, Currency.KEEP)
   assert.ok(Currency.entry(session, session.target.key))
   assert.equal(Currency.select(session, session.target, NOW + 1), false)
+})
+
+test("mixed expressions keep their own rates when the session cache is full", () => {
+  const session = Currency.createSession()
+  for (const code of Currency.CODES) {
+    if (code === "CHF") continue
+    Currency.select(session, target(`1 ${code} to CHF`), NOW)
+    Currency.accept(session, Currency.begin(session), null, NOW)
+  }
+  const old = { fetchedAt: NOW / 1000 - 3600 }
+  const expression = target("1 USD + 1 JPY to EUR")
+  Currency.select(session, expression, NOW)
+  Currency.accept(session, Currency.begin(session, NOW), reply(old), NOW)
+  Currency.select(session, expression, NOW)
+  Currency.accept(session, Currency.begin(session, NOW), reply({ base: "JPY", rate: 0.5, ...old }), NOW)
+  assert.equal(session.entries.length, Currency.KEEP)
+  assert.equal(Currency.select(session, expression, NOW), false)
+  assert.equal(Currency.result(expression, session, NOW, Units.formatNumber).text, "1.4234 EUR")
+})
+
+test("mixed expressions reject zero divisors and wrapped lone amounts before any lookup", () => {
+  for (const text of ["23 EUR / 0", "23 EUR + 43 JPY / 0 + 1 EUR", "23 EUR / (2 - 2)",
+    "(23 EUR)", "--23 EUR", "-(23 EUR)", "- 23 EUR", "+23 EUR"]) {
+    assert.equal(Currency.parse(text), null, text)
+  }
+  assert.equal(target("23 EUR * 1").quote, "EUR")
+  assert.equal(target("-(23 EUR + 1 EUR)").quote, "EUR")
+  assert.equal(target("- 23 EUR to USD").quote, "USD")
+  assert.equal(Currency.parse("(23 EUR)", "USD").quote, "USD")
+})
+
+test("a failed rate stops the remaining lookups of a mixed expression", () => {
+  const session = Currency.createSession()
+  const expression = target("1 USD + 1 JPY + 1 GBP to EUR")
+  assert.equal(Currency.select(session, expression, NOW), true)
+  Currency.accept(session, Currency.begin(session, NOW), null, NOW)
+  assert.equal(Currency.select(session, expression, NOW), false)
+  assert.equal(Currency.begin(session, NOW), null)
+  assert.equal(Currency.result(expression, session, NOW, Units.formatNumber), null)
+  assert.equal(Currency.select(session, expression, NOW + Currency.RETRY), true)
+})
+
+test("adding a currency keeps the in-flight request for a pair still needed", () => {
+  const session = Currency.createSession()
+  Currency.select(session, target("2 USD + 3 JPY to EUR"), NOW)
+  const usd = Currency.begin(session, NOW)
+  const generation = session.generation
+  assert.equal(Currency.select(session, target("2 USD + 3 JPY + 1 GBP to EUR"), NOW), false)
+  assert.equal(session.generation, generation)
+  assert.equal(Currency.accept(session, JSON.parse(JSON.stringify(usd)), reply(), NOW), true)
+  assert.equal(Currency.select(session, target("1 JPY + 1 GBP to EUR"), NOW), true)
+  const jpy = Currency.begin(session, NOW)
+  Currency.select(session, target("1 GBP to EUR"), NOW)
+  assert.equal(Currency.accept(session, jpy, reply({ base: "JPY" }), NOW), false)
 })
 
 // Execute the actual QML provider methods with a timer/process stand-in. This
@@ -256,6 +369,28 @@ test("Enter on a loading rate copies the completed result", () => {
   root.loadCurrency(JSON.stringify(reply()), request)
   assert.deepEqual(Array.from(root.copyCalls[0]), ["wl-copy", "--", "92.34"])
   assert.equal(root.opened, false)
+})
+
+test("Enter on a mixed expression waits for every rate before copying", () => {
+  const { root, timer } = overlay()
+  root.query = "2 USD + 3 JPY to EUR"
+  root.updateCurrency()
+  root.rows = root.intentRows(root.query, "unit")
+  assert.equal(root.rows[0].kind, "currency-wait")
+  root.activate(0, false)
+  root.rebuild = function() { this.rows = this.intentRows(this.query, "unit") }
+  timer.stop()
+  const first = Currency.begin(root.currencySession, NOW)
+  root.loadCurrency(JSON.stringify(reply({ rate: 2 })), first)
+  assert.equal(timer.running, true)
+  assert.equal(root.rows[0].kind, "currency-wait")
+  assert.equal(root.copyCalls.length, 0)
+  assert.ok(root.pendingCurrency)
+  timer.stop()
+  const second = Currency.begin(root.currencySession, NOW)
+  root.loadCurrency(JSON.stringify(reply({ base: "JPY", rate: 0.5 })), second)
+  assert.equal(root.rows[0].title, "5.5 EUR")
+  assert.deepEqual(Array.from(root.copyCalls[0]), ["wl-copy", "--", "5.5"])
 })
 
 test("QML filters, unit precedence, loading rows and copy payloads", () => {
