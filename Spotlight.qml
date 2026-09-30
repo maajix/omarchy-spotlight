@@ -2581,7 +2581,9 @@ Item {
       // from the search input while the tour or the settings panel is up.
       visible: !root.tourActive && !root.settingsActive
 
-      readonly property int listHeight: Math.min(root.maxListHeight, root.contentHeight)
+      readonly property int availableBodyHeight: Math.max(0, panel.height - y - Style.space(24)
+        - root.searchHeight - root.footerHeight - root.hairline * 2 - root.listPadding * 2)
+      readonly property int listHeight: Math.min(root.maxListHeight, root.contentHeight, availableBodyHeight)
       readonly property bool hasResults: displayModel.count > 0
 
       width: Math.min(Style.space(750), panel.width - Style.space(48))

@@ -18,10 +18,9 @@ import Quickshell
 ShellRoot {
   Item {
     id: root
-    width: 1920; height: 1080
+    width: 1920; height: 580
     property bool tourActive: false
     property bool settingsActive: false
-    property bool aiActive: false
     property int contentHeight: 456
     ''' + dimensions + '''
     QtObject { id: displayModel; property int count: 10 }
@@ -31,7 +30,7 @@ ShellRoot {
       Rectangle {
         id: card
         ''' + geometry + '''
-        Behavior on height { NumberAnimation { duration: 110 } }
+        Behavior on height { NumberAnimation { id: heightAnim; duration: 110 } }
       }
     }
     Timer {
@@ -43,15 +42,16 @@ ShellRoot {
         if (top < 0) top = card.y
         if (Math.abs(card.y - top) > 0.5) throw new Error("Search card top moved")
         if (card.y < 0) throw new Error("Search card top is offscreen")
+        if (!heightAnim.running && card.y + card.height > panel.height + 0.5)
+          throw new Error("Search card bottom is offscreen")
         if (Math.abs(card.x - (panel.width - card.width) / 2) > 0.5)
           throw new Error("Search card is not horizontally centered")
         frame++
         if (frame === 1) root.contentHeight = 36
         if (frame === 10) { displayModel.count = 0; root.contentHeight = 0 }
         if (frame === 20) { displayModel.count = 10; root.contentHeight = 1000 }
-        if (frame === 25) root.aiActive = true
-        if (frame === 30) { root.height = 540; top = -1 }
-        if (frame === 35) root.aiActive = false
+        if (frame === 30) { root.height = 1080; top = -1 }
+        if (frame === 32) { root.height = 540; top = -1 }
         if (frame === 40) root.contentHeight = 36
         if (frame === 50) { console.log("POSITION_SMOKE_OK"); Qt.quit() }
         } catch (error) { console.error(error); Qt.quit() }
@@ -70,4 +70,4 @@ ShellRoot {
     output = result.stdout + result.stderr
     assert result.returncode == 0 and "POSITION_SMOKE_OK" in output, output
     assert not any(error in output for error in ("Error:", "Unable to assign", "Binding loop")), output
-    print("Search card top stayed fixed through animated result changes on 1080p and short screens")
+    print("Search card top stayed fixed and settled bottom stayed onscreen on 580px, 1080p and 540px screens")
