@@ -48,6 +48,7 @@ from urllib.parse import urlsplit
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "lib"))
 from ai_artifacts import VALIDATORS as CARD_VALIDATORS
+from system_metrics import snapshot as system_snapshot
 
 EUID = os.geteuid()
 ACTIVE_PROC = None
@@ -2153,8 +2154,9 @@ def cmd_docker():
           "partial": truncated or len(rows) > DOCKER_COUNT})
 
 
-def cmd_services():
+def service_snapshot():
     rows = []
+    scopes = []
     answered = False
     partial = False
     for scope in ("user", "system"):
@@ -2168,6 +2170,7 @@ def cmd_services():
             partial = True
             continue
         answered = True
+        scopes.append(scope)
         partial = partial or truncated
         for line in raw.decode("utf-8", "replace").splitlines():
             parts = line.split(None, 5)
@@ -2189,8 +2192,12 @@ def cmd_services():
     rows.sort(key=lambda row: (
         0 if row["active"] == "failed" else 1 if row["active"] == "active" else 2,
         row["scope"] != "user", row["name"].lower()))
-    emit({"services": rows[:SERVICES_COUNT],
-          "partial": partial or len(rows) > SERVICES_COUNT})
+    return {"services": rows[:SERVICES_COUNT], "partial": partial or len(rows) > SERVICES_COUNT, "scopes": scopes}
+
+
+def cmd_services():
+    data = service_snapshot()
+    emit({"services": data["services"], "partial": data["partial"]})
 
 
 def cmd_mounts():
@@ -3179,6 +3186,30 @@ def ai_partial_text(fragment):
         return ""
 
 
+def local_dashboard(card):
+    home = None
+    try:
+        fd = home_fd()
+        try:
+            home = os.readlink("/proc/self/fd/" + str(fd))
+        finally:
+            os.close(fd)
+    except (Denied, OSError):
+        pass
+    services = None
+    if card["focus"] in ("all", "services"):
+        try:
+            services = service_snapshot()
+        except Denied:
+            pass
+    def run(argv, cap, deadline, **kwargs):
+        try:
+            return run_bounded(argv, cap, deadline, **kwargs)
+        except Denied:
+            return b"", False, 1
+    return {**card, **system_snapshot(card["focus"], run, home, services)}
+
+
 def cmd_ai(argv):
     if (len(argv) not in (4, 5, 6) or argv[0] not in ("claude", "codex")
             or argv[3] not in ("true", "false")
@@ -3255,6 +3286,12 @@ def cmd_ai(argv):
         "note (up to 240 characters), sourceUrl (HTTPS or empty), and 1–12 items. Each item has "
         "title (up to 100 characters) and description (up to 240). Keep the answer brief when "
         "the card covers the steps. Do not include completion states: only the user checks off tasks. "
+        "For questions about this computer's CPU, memory, disk usage or service status, include "
+        "a dashboard artifact with title and focus (all, cpu, memory, storage or services). "
+        "Spotlight fills it with a bounded local snapshot AFTER your answer; you cannot see these "
+        "measurements. Do not invent them or claim to have inspected the machine. Keep the text "
+        "to a brief explanation of what the snapshot can show, and propose commands only for "
+        "actions the user needs to take. Dashboard collection is read-only and local. "
         "Never execute commands, modify files, or claim a change was made. "
         "Use web search for current facts when available and cite the source in text. "
         "Give commands the user can inspect and run manually. "
@@ -3352,7 +3389,13 @@ def cmd_ai(argv):
         raise Denied("AI did not return a structured answer")
     encoded = (json.dumps({"structured_output": final}) if provider == "claude"
                else final if isinstance(final, str) else json.dumps(final)).encode()
-    emit({"event": "result", "result": ai_result(encoded, provider, web_search == "true", weather_request)})
+    result = ai_result(encoded, provider, web_search == "true", weather_request)
+    for index, card in enumerate(result.get("artifacts", [])):
+        if card["type"] == "dashboard":
+            emit({"event": "progress", "text": "\nCollecting local system snapshot…"})
+            sys.stdout.flush()
+            result["artifacts"][index] = local_dashboard(card)
+    emit({"event": "result", "result": result})
 
 
 COMMANDS["ai"] = (cmd_ai, True)

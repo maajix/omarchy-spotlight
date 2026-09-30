@@ -59,6 +59,27 @@ This is a **source-level extension point**: adding a card currently means
 editing the plugin and reloading the shell. Users cannot drop an arbitrary QML
 file into a folder and have Spotlight load it automatically.
 
+## Local system dashboards
+
+The provider returns only `{ "type": "dashboard", "title": "System snapshot",
+"focus": "all" }`. Focus can also be `cpu`, `memory`, `storage` or `services`.
+`cmd_ai()` enriches the validated selector after the provider finishes, using
+`lib/system_metrics.py` and the existing service collector. Provider-supplied
+measurements are discarded. The snapshot is not included in the AI prompt.
+
+CPU is sampled over 200 ms from `/proc/stat`; memory uses `MemAvailable` from
+`/proc/meminfo`. Filesystem usage comes from `statvfs`, with duplicate
+filesystems merged. Storage requests also run `du` for direct home folders,
+without following symlinks or crossing filesystems. Its 64 KiB / three-second
+bounds can produce a partial scan, explicitly labelled in the card. Folder
+bars show allocated size relative to the largest returned folder, not a
+complete breakdown of the filesystem. Service counts reuse the bounded
+system/user service listing; incomplete listings remain labelled partial.
+Unavailable measurements remain unavailable, never zero.
+
+The card is a snapshot, not a background monitor. Submit another request for
+fresh values. Copy snapshot exports the local data only after a click.
+
 ## Interactive checklist state
 
 `ChecklistArtifact` receives `completed` (an array of zero-based task indices)
@@ -98,6 +119,7 @@ Omarchy shell after changing QML if the running plugin does not pick it up.
 | `chart` | Variant, category labels, 1–4 named numeric series, unit, provenance note, optional HTTPS source | Line and grouped bar charts, or a single-series donut; exact values on hover or with arrow keys. |
 | `comparison` | 2–4 options with facts, pros, cons, price status and optional HTTPS sources | Rows share the tallest cell's height; facts match by label, missing values show `—`. At most one suggested pick and a copy action. |
 | `timeline` | Title, provenance note, 1–12 chronological entries with when, title, description, status and optional HTTPS source | A connected itinerary or milestone list with planned/current/completed markers and a copy action. |
+| `dashboard` | Provider-selected title/focus; helper-owned CPU, memory, filesystem, folder and service measurements | Local snapshot, unavailable/partial states and explicit copy. No metrics sent to AI. |
 | `checklist` | Title, note, optional HTTPS source and 1–12 tasks with titles/descriptions | User-owned checkmarks, progress bar, reset and copy. State survives closing Spotlight within the current shell session. |
 | `diagram` | Title, provenance note, optional source, 2–10 unique nodes and 1–16 directed connections | Native rounded nodes with compact grid spacing. Previous/next controls select a connection, highlight its directed route and show its full caption above the diagram. Clicking a node selects an outgoing connection. Up to three columns and six rows. No executable markup. |
 

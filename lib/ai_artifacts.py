@@ -172,5 +172,12 @@ def checklist(item):
             "retrievedAt": datetime.now(timezone.utc).isoformat(timespec="minutes") if url else ""}
 
 
+def dashboard(item):
+    if item.get("focus") not in ("all", "cpu", "memory", "storage", "services"):
+        raise ValueError("invalid dashboard focus")
+    # Provider supplies only a selector; helper-owned measurements replace all data.
+    return {"type": "dashboard", "title": text(item.get("title")), "focus": item["focus"]}
+
+
 VALIDATORS = {"palette": palette, "chart": chart, "comparison": comparison, "timeline": timeline,
-              "diagram": diagram, "checklist": checklist}
+              "diagram": diagram, "checklist": checklist, "dashboard": dashboard}

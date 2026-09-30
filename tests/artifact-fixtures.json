@@ -450,6 +450,52 @@
     ]
   },
   {
+    "type": "dashboard",
+    "title": "System snapshot",
+    "focus": "all",
+    "retrievedAt": "2026-09-30T09:00:00+00:00",
+    "cpu": {
+      "percent": 22.4,
+      "cores": 16
+    },
+    "memory": {
+      "used": 30064771072,
+      "total": 68719476736,
+      "available": 38654705664
+    },
+    "disks": [
+      {
+        "label": "System",
+        "used": 81604378624,
+        "total": 274877906944,
+        "available": 186831077376
+      }
+    ],
+    "folders": [
+      {
+        "name": ".cache",
+        "bytes": 8589934592
+      },
+      {
+        "name": "Downloads",
+        "bytes": 4294967296
+      }
+    ],
+    "foldersPartial": true,
+    "services": [
+      {
+        "scope": "user",
+        "active": 23,
+        "failed": 1,
+        "failedNames": [
+          "example.service"
+        ],
+        "partial": false
+      }
+    ],
+    "errors": []
+  },
+  {
     "type": "checklist",
     "id": "fixture-migration",
     "title": "Server migration",

@@ -26,7 +26,17 @@ Item {
       : host.artifact.type === "comparison" ? comparisonCard
       : host.artifact.type === "timeline" ? timelineCard
       : host.artifact.type === "diagram" ? diagramCard
-      : host.artifact.type === "checklist" ? checklistCard : null
+      : host.artifact.type === "checklist" ? checklistCard
+      : host.artifact.type === "dashboard" ? dashboardCard : null
+  }
+
+  Component {
+    id: dashboardCard
+    DashboardArtifact {
+      artifact: host.artifact
+      chrome: host.chrome
+      onCopyRequested: function(value) { host.copyRequested(value) }
+    }
   }
 
   Component {

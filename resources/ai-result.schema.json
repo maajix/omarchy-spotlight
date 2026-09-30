@@ -512,6 +512,37 @@
               "items"
             ],
             "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "dashboard"
+                ]
+              },
+              "title": {
+                "type": "string",
+                "maxLength": 160
+              },
+              "focus": {
+                "type": "string",
+                "enum": [
+                  "all",
+                  "cpu",
+                  "memory",
+                  "storage",
+                  "services"
+                ]
+              }
+            },
+            "required": [
+              "type",
+              "title",
+              "focus"
+            ],
+            "additionalProperties": false
           }
         ]
       },
