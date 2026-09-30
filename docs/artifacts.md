@@ -83,6 +83,7 @@ Omarchy shell after changing QML if the running plugin does not pick it up.
 | `palette` | Title, 2–8 named six-digit HEX colors | Copyable swatches and a small interface preview. |
 | `chart` | Variant, category labels, 1–4 named numeric series, unit, provenance note, optional HTTPS source | Line and grouped bar charts, or a single-series donut; exact values on hover or with arrow keys. |
 | `comparison` | 2–4 options with facts, pros, cons, price status and optional HTTPS sources | Rows share the tallest cell's height; facts match by label, missing values show `—`. At most one suggested pick and a copy action. |
+| `timeline` | Title, provenance note, 1–12 chronological entries with when, title, description, status and optional HTTPS source | A connected itinerary or milestone list with planned/current/completed markers and a copy action. |
 
 Weather requires AI web search. The helper rejects invalid or stale
 measurements and stamps the time Spotlight received the answer. A

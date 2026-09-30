@@ -100,4 +100,20 @@ def comparison(item):
             if any(option["sourceUrl"] for option in clean) else ""}
 
 
-VALIDATORS = {"palette": palette, "chart": chart, "comparison": comparison}
+def timeline(item):
+    entries = item.get("entries")
+    if not isinstance(entries, list) or not 1 <= len(entries) <= 12:
+        raise ValueError("a timeline needs 1–12 entries")
+    clean = []
+    for entry in entries:
+        if not isinstance(entry, dict) or entry.get("status") not in ("planned", "current", "done"):
+            raise ValueError("invalid timeline entry")
+        clean.append({"when": text(entry.get("when"), 60), "title": text(entry.get("title"), 100),
+                      "description": text(entry.get("description"), 240), "status": entry["status"],
+                      "sourceUrl": source(entry.get("sourceUrl"))})
+    return {"type": "timeline", "title": text(item.get("title")), "note": text(item.get("note"), 240),
+            "entries": clean, "retrievedAt": datetime.now(timezone.utc).isoformat(timespec="minutes")
+            if any(entry["sourceUrl"] for entry in clean) else ""}
+
+
+VALIDATORS = {"palette": palette, "chart": chart, "comparison": comparison, "timeline": timeline}

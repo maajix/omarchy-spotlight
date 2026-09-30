@@ -5,6 +5,18 @@ from helper_test import HELPER
 
 
 class ArtifactTests(unittest.TestCase):
+    def test_timeline_preserves_order_and_rejects_invalid_entries(self):
+        entry = {"when": "Saturday 09:00", "title": "Breakfast", "description": "Start the day slowly.",
+                 "status": "planned", "sourceUrl": ""}
+        card = {"type": "timeline", "title": "Weekend", "note": "Suggested plan", "entries": [entry]}
+        result = HELPER.ARTIFACT_VALIDATORS["timeline"](card)
+        self.assertEqual(result["entries"][0], entry)
+        for bad in ({**card, "entries": []}, {**card, "entries": [entry] * 13},
+                    {**card, "entries": [{**entry, "status": "unknown"}]},
+                    {**card, "entries": [{**entry, "sourceUrl": "file:///etc/passwd"}]}):
+            with self.assertRaises(ValueError):
+                HELPER.ARTIFACT_VALIDATORS["timeline"](bad)
+
     def test_palette_is_normalized_and_invalid_cards_keep_the_answer(self):
         artifact = {"type": "palette", "title": " Ocean ", "colors": [
             {"label": "Background", "hex": "#14283f"},

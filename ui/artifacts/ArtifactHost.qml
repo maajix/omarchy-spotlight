@@ -21,7 +21,18 @@ Item {
       : host.artifact.type === "weather" ? weatherCard
       : host.artifact.type === "palette" ? paletteCard
       : host.artifact.type === "chart" ? chartCard
-      : host.artifact.type === "comparison" ? comparisonCard : null
+      : host.artifact.type === "comparison" ? comparisonCard
+      : host.artifact.type === "timeline" ? timelineCard : null
+  }
+
+  Component {
+    id: timelineCard
+    TimelineArtifact {
+      artifact: host.artifact
+      chrome: host.chrome
+      onOpenRequested: function(url) { host.openRequested(url) }
+      onCopyRequested: function(value) { host.copyRequested(value) }
+    }
   }
 
   Component {

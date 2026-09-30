@@ -358,5 +358,34 @@
     "retrievedAt": "",
     "days": [],
     "message": "No verified weather data was returned. See the answer above for details."
+  },
+  {
+    "type": "timeline",
+    "title": "Tokyo weekend",
+    "note": "Suggested itinerary; check opening hours before visiting.",
+    "retrievedAt": "",
+    "entries": [
+      {
+        "when": "Saturday \u00b7 09:00",
+        "title": "Explore the old town",
+        "description": "Walk through quiet streets and stop for breakfast before the busiest hours.",
+        "status": "done",
+        "sourceUrl": ""
+      },
+      {
+        "when": "Saturday \u00b7 13:00",
+        "title": "Lunch and a museum",
+        "description": "Leave time for lunch and choose an exhibition that interests you.",
+        "status": "current",
+        "sourceUrl": ""
+      },
+      {
+        "when": "Sunday \u00b7 17:00",
+        "title": "Finish with a park stroll",
+        "description": "Keep the final afternoon flexible before heading back.",
+        "status": "planned",
+        "sourceUrl": "https://example.org/travel"
+      }
+    ]
   }
 ]
