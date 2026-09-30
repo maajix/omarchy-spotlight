@@ -223,8 +223,10 @@ Currency calculations also accept expressions such as `23 EUR + 43 JPY`,
 `(23 EUR + 43 JPY) * 2`, and `23 EUR + 43 JPY to USD`. Use `+` and `-` between
 currency amounts, and `*` or `/` with plain numbers. Parentheses set the order;
 without a target or configured default, the first currency sets the result
-currency. Each distinct source currency may need its own rate lookup. Enter
-while rates load copies the result once every required rate arrives.
+currency. Each distinct source currency may need its own rate lookup; required
+pairs are fetched sequentially, so expressions with several uncached pairs take
+longer to load. Enter while rates load copies the result once every required
+rate arrives.
 
 Each pair is cached for 24 hours in `~/.cache/omarchy/spotlight-currency.json` (up to
 128 pairs). Expired rates are refreshed on the next conversion. If that fails, the
