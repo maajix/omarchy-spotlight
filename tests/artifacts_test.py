@@ -5,6 +5,24 @@ from helper_test import HELPER
 
 
 class ArtifactTests(unittest.TestCase):
+    def test_diagrams_reject_overlaps_and_unknown_connections(self):
+        nodes = [{"id": "client", "label": "Client", "column": 0, "row": 0},
+                 {"id": "server", "label": "Server", "column": 0, "row": 1}]
+        edge = {"from": "client", "to": "server", "label": "Request"}
+        card = {"type": "diagram", "title": "Request", "note": "Conceptual example", "sourceUrl": "",
+                "nodes": nodes, "edges": [edge]}
+        validate = HELPER.ARTIFACT_VALIDATORS["diagram"]
+        self.assertEqual(validate(card)["edges"], [edge])
+        for bad in ({**card, "nodes": [nodes[0], {**nodes[1], "row": 0}]},
+                    {**card, "nodes": [nodes[0], {**nodes[1], "column": 3}]},
+                    {**card, "nodes": [nodes[0], {**nodes[1], "id": "client"}]},
+                    {**card, "nodes": [nodes[0], {**nodes[1], "id": 12}]},
+                    {**card, "edges": [{**edge, "to": "missing"}]},
+                    {**card, "edges": [edge, edge]},
+                    {**card, "sourceUrl": "javascript:alert(1)"}):
+            with self.assertRaises(ValueError):
+                validate(bad)
+
     def test_timeline_preserves_order_and_rejects_invalid_entries(self):
         entry = {"when": "Saturday 09:00", "title": "Breakfast", "description": "Start the day slowly.",
                  "status": "planned", "sourceUrl": ""}

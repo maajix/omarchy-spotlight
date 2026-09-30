@@ -105,6 +105,7 @@ Fenced code blocks appear as terminal cards with a **Copy** action. AI artifacts
 | `ai: chart this budget: Rent 900, Food 300, Transport 100, Savings 400 EUR` | A chart with a legend, provenance note and exact values on hover. |
 | `ai: compare scp and rsync for SSH file transfers` | Options with facts, strengths, tradeoffs and source links. |
 | `ai: plan a weekend in Tokyo` | A timeline with dates, activities, descriptions and optional source links. |
+| `ai: explain how DNS resolution works` | A diagram with connected nodes and labelled arrows. |
 | `ai: what's the weather in Tokyo this week?` | A sourced weather card with up to seven days when AI web search is enabled. |
 
 Set an optional default weather location under **Spotlight Settings → Artifacts**. A place in the question takes priority. Contributors can add card types using the [artifact guide](docs/artifacts.md).

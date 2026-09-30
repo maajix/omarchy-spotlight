@@ -116,4 +116,40 @@ def timeline(item):
             if any(entry["sourceUrl"] for entry in clean) else ""}
 
 
-VALIDATORS = {"palette": palette, "chart": chart, "comparison": comparison, "timeline": timeline}
+def diagram(item):
+    nodes, edges = item.get("nodes"), item.get("edges")
+    if (not isinstance(nodes, list) or not 2 <= len(nodes) <= 10
+            or not isinstance(edges, list) or not 1 <= len(edges) <= 16):
+        raise ValueError("a diagram needs 2–10 nodes and 1–16 connections")
+    clean_nodes, ids, positions = [], set(), set()
+    for node in nodes:
+        if (not isinstance(node, dict) or not isinstance(node.get("id"), str)
+                or not re.fullmatch(r"[A-Za-z0-9_-]{1,24}", node["id"])):
+            raise ValueError("invalid diagram node")
+        column, row = node.get("column"), node.get("row")
+        if (type(column) is not int or not 0 <= column <= 2 or type(row) is not int or not 0 <= row <= 5
+                or node["id"] in ids or (column, row) in positions):
+            raise ValueError("diagram nodes must have unique IDs and grid positions")
+        ids.add(node["id"])
+        positions.add((column, row))
+        clean_nodes.append({"id": node["id"], "label": text(node.get("label"), 60), "column": column, "row": row})
+    clean_edges, pairs = [], set()
+    for edge in edges:
+        if not isinstance(edge, dict):
+            raise ValueError("invalid diagram connection")
+        start, end, label = edge.get("from"), edge.get("to"), edge.get("label")
+        if (not isinstance(start, str) or not isinstance(end, str) or start not in ids or end not in ids
+                or start == end or (start, end) in pairs):
+            raise ValueError("invalid diagram connection")
+        if not isinstance(label, str) or len(label) > 40 or any(ord(char) < 32 for char in label):
+            raise ValueError("invalid diagram connection label")
+        pairs.add((start, end))
+        clean_edges.append({"from": start, "to": end, "label": label})
+    url = source(item.get("sourceUrl"))
+    return {"type": "diagram", "title": text(item.get("title")), "note": text(item.get("note"), 240),
+            "nodes": clean_nodes, "edges": clean_edges, "sourceUrl": url,
+            "retrievedAt": datetime.now(timezone.utc).isoformat(timespec="minutes") if url else ""}
+
+
+VALIDATORS = {"palette": palette, "chart": chart, "comparison": comparison, "timeline": timeline,
+              "diagram": diagram}

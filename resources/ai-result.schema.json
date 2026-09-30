@@ -363,6 +363,101 @@
               "entries"
             ],
             "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "diagram"
+                ]
+              },
+              "title": {
+                "type": "string",
+                "maxLength": 160
+              },
+              "note": {
+                "type": "string",
+                "maxLength": 240
+              },
+              "sourceUrl": {
+                "type": "string",
+                "maxLength": 2048
+              },
+              "nodes": {
+                "type": "array",
+                "minItems": 2,
+                "maxItems": 10,
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "maxLength": 24
+                    },
+                    "label": {
+                      "type": "string",
+                      "maxLength": 60
+                    },
+                    "column": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 2
+                    },
+                    "row": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 5
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "label",
+                    "column",
+                    "row"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "edges": {
+                "type": "array",
+                "minItems": 1,
+                "maxItems": 16,
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "from": {
+                      "type": "string",
+                      "maxLength": 24
+                    },
+                    "to": {
+                      "type": "string",
+                      "maxLength": 24
+                    },
+                    "label": {
+                      "type": "string",
+                      "maxLength": 40
+                    }
+                  },
+                  "required": [
+                    "from",
+                    "to",
+                    "label"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            },
+            "required": [
+              "type",
+              "title",
+              "note",
+              "sourceUrl",
+              "nodes",
+              "edges"
+            ],
+            "additionalProperties": false
           }
         ]
       },

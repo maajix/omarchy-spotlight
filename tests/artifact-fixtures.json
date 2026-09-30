@@ -387,5 +387,66 @@
         "sourceUrl": "https://example.org/travel"
       }
     ]
+  },
+  {
+    "type": "diagram",
+    "title": "DNS resolution",
+    "note": "Simplified conceptual flow.",
+    "sourceUrl": "",
+    "retrievedAt": "",
+    "nodes": [
+      {
+        "id": "browser",
+        "label": "Browser",
+        "column": 0,
+        "row": 0
+      },
+      {
+        "id": "resolver",
+        "label": "Recursive resolver",
+        "column": 0,
+        "row": 1
+      },
+      {
+        "id": "root",
+        "label": "Root and TLD servers",
+        "column": 1,
+        "row": 1
+      },
+      {
+        "id": "authority",
+        "label": "Authoritative server",
+        "column": 2,
+        "row": 1
+      },
+      {
+        "id": "ip",
+        "label": "Return the IP address",
+        "column": 0,
+        "row": 2
+      }
+    ],
+    "edges": [
+      {
+        "from": "browser",
+        "to": "resolver",
+        "label": "Query"
+      },
+      {
+        "from": "resolver",
+        "to": "root",
+        "label": ""
+      },
+      {
+        "from": "root",
+        "to": "authority",
+        "label": ""
+      },
+      {
+        "from": "resolver",
+        "to": "ip",
+        "label": "Answer"
+      }
+    ]
   }
 ]
