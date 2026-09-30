@@ -2563,9 +2563,8 @@ Item {
     }
 
     // A screen-fixed frame for the pointer gate to measure against. The card
-    // is the wrong reference: it animates its height and stays centred, so it
-    // slides under a stationary pointer on every rebuild and every row that
-    // maps into it reads as deliberate movement.
+    // is the wrong reference: it animates its height, so rows can slide under
+    // a stationary pointer during a rebuild.
     Item {
       id: pointerFrame
       anchors.fill: parent
@@ -2589,12 +2588,9 @@ Item {
       height: root.searchHeight
         + (hasResults ? root.hairline + root.listPadding * 2 + listHeight : 0)
         + root.hairline + root.footerHeight
-      // Centred at whatever height it currently is, not just when full. The
-      // height Behavior below drives y with it, so the panel grows and
-      // shrinks symmetrically about the middle of the screen instead of
-      // sitting high whenever a query returns only a few rows.
+      // Keep the search field fixed while results grow and shrink below it.
       anchors.horizontalCenter: parent.horizontalCenter
-      anchors.verticalCenter: parent.verticalCenter
+      y: Math.max(Style.space(24), (panel.height - root.maxCardHeight) / 2)
 
       radius: root.cardRadius
       color: root.glassBackground
