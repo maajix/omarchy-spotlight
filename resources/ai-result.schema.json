@@ -630,6 +630,60 @@
               "places"
             ],
             "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "diff"
+                ]
+              },
+              "title": {
+                "type": "string",
+                "maxLength": 160
+              },
+              "note": {
+                "type": "string",
+                "maxLength": 240
+              },
+              "files": {
+                "type": "array",
+                "minItems": 1,
+                "maxItems": 3,
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "path": {
+                      "type": "string",
+                      "maxLength": 160
+                    },
+                    "before": {
+                      "type": "string",
+                      "maxLength": 6000
+                    },
+                    "after": {
+                      "type": "string",
+                      "maxLength": 6000
+                    }
+                  },
+                  "required": [
+                    "path",
+                    "before",
+                    "after"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            },
+            "required": [
+              "type",
+              "title",
+              "note",
+              "files"
+            ],
+            "additionalProperties": false
           }
         ]
       },

@@ -1,5 +1,6 @@
 """Validate optional AI cards before their data reaches QML."""
 
+import difflib
 import hashlib
 import json
 import math
@@ -202,5 +203,50 @@ def places(item):
             if any(place["sourceUrl"] for place in clean) else ""}
 
 
+def diff(item):
+    files = item.get("files")
+    if not isinstance(files, list) or not 1 <= len(files) <= 3:
+        raise ValueError("a diff needs 1–3 files")
+    clean = []
+    for entry in files:
+        if not isinstance(entry, dict):
+            raise ValueError("invalid diff file")
+        path = text(entry.get("path"), 160) # A display label, never a filesystem path to open.
+        for field in ("before", "after"):
+            value = entry.get(field)
+            if (not isinstance(value, str) or len(value) > 6000 or len(value.splitlines()) > 120
+                    or any(len(line) > 300 for line in value.splitlines())
+                    or any(ord(char) < 32 and char not in "\n\r\t" for char in value)):
+                raise ValueError("invalid or oversized diff contents")
+        before, after = entry["before"].replace("\r\n", "\n"), entry["after"].replace("\r\n", "\n")
+        lines = list(difflib.unified_diff(before.splitlines(keepends=True), after.splitlines(keepends=True),
+                                         fromfile="a/" + path, tofile="b/" + path, lineterm=""))
+        display_lines = []
+        for index, line in enumerate(lines):
+            display_lines.append(line.rstrip("\n"))
+            if index > 1 and line[0] in " +-" and not line.endswith("\n"):
+                display_lines.append("\\ No newline at end of file")
+        lines = display_lines
+        rows, old, new = [], 0, 0
+        for line in lines[2:]:
+            if line.startswith("@@"):
+                match = re.match(r"@@ -(\d+)(?:,\d+)? \+(\d+)(?:,\d+)? @@", line)
+                old, new = int(match[1]), int(match[2])
+                rows.append({"kind": "hunk", "text": line, "old": "", "new": ""})
+            elif line.startswith("\\"):
+                rows.append({"kind": "meta", "text": line, "old": "", "new": ""})
+            else:
+                kind = "added" if line[0] == "+" else "removed" if line[0] == "-" else "context"
+                rows.append({"kind": kind, "text": line[1:], "old": "" if kind == "added" else str(old),
+                             "new": "" if kind == "removed" else str(new)})
+                if kind != "added": old += 1
+                if kind != "removed": new += 1
+        clean.append({"path": path, "before": before, "after": after, "rows": rows,
+                      "added": sum(row["kind"] == "added" for row in rows),
+                      "removed": sum(row["kind"] == "removed" for row in rows),
+                      "diff": "\n".join(lines) + ("\n" if lines else "")})
+    return {"type": "diff", "title": text(item.get("title")), "note": text(item.get("note"), 240), "files": clean}
+
+
 VALIDATORS = {"palette": palette, "chart": chart, "comparison": comparison, "timeline": timeline,
-              "diagram": diagram, "checklist": checklist, "dashboard": dashboard, "places": places}
+              "diagram": diagram, "checklist": checklist, "dashboard": dashboard, "places": places, "diff": diff}

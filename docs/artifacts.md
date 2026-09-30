@@ -59,6 +59,19 @@ This is a **source-level extension point**: adding a card currently means
 editing the plugin and reloading the shell. Users cannot drop an arbitrary QML
 file into a folder and have Spotlight load it automatically.
 
+## Configuration diff previews
+
+`diff` contains 1–3 files with display-only `path` labels and exact `before` /
+`after` strings. Each string is capped at 6,000 characters, 120 lines and 300
+characters per line. The helper uses Python's `difflib.unified_diff` to build
+context hunks, line numbers and addition/removal counts. New files and empty
+proposed contents are supported; equal contents show No changes.
+
+Copy proposed config copies the complete `after` text, not only the visible
+hunks. Copy diff copies the unified diff. Paths are never opened, configs are
+never read or written, and no apply action is available. When the user has not
+supplied a starting configuration, the provider must label it illustrative.
+
 ## Place recommendations
 
 `places` contains 1–4 venues with name, category, address, hours, summary,
@@ -134,6 +147,7 @@ Omarchy shell after changing QML if the running plugin does not pick it up.
 | `chart` | Variant, category labels, 1–4 named numeric series, unit, provenance note, optional HTTPS source | Line and grouped bar charts, or a single-series donut; exact values on hover or with arrow keys. |
 | `comparison` | 2–4 options with facts, pros, cons, price status and optional HTTPS sources | Rows share the tallest cell's height; facts match by label, missing values show `—`. At most one suggested pick and a copy action. |
 | `timeline` | Title, provenance note, 1–12 chronological entries with when, title, description, status and optional HTTPS source | A connected itinerary or milestone list with planned/current/completed markers and a copy action. |
+| `diff` | Title, provenance note and 1–3 display-labelled before/after files | Read-only unified hunks, old/new line numbers, change counts and explicit copy actions. |
 | `places` | Title, note and 1–4 venues with address, hours, summary, nullable rating/rating source and optional HTTPS source | Venue cards, explicit map/source links and copy address; unavailable ratings stay unavailable. |
 | `dashboard` | Provider-selected title/focus; helper-owned CPU, memory, filesystem, folder and service measurements | Local snapshot, unavailable/partial states and explicit copy. No metrics sent to AI. |
 | `checklist` | Title, note, optional HTTPS source and 1–12 tasks with titles/descriptions | User-owned checkmarks, progress bar, reset and copy. State survives closing Spotlight within the current shell session. |

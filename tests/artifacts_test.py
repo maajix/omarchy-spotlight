@@ -5,6 +5,29 @@ from helper_test import HELPER
 
 
 class ArtifactTests(unittest.TestCase):
+    def test_diff_line_numbers_and_limits(self):
+        file = {"path": "example.toml", "before": "size = 12\nkeep = true\n", "after": "size = 14\nkeep = true\n"}
+        card = {"type": "diff", "title": "Font size", "note": "Illustrative example", "files": [file]}
+        validate = HELPER.ARTIFACT_VALIDATORS["diff"]
+        result = validate(card)["files"][0]
+        self.assertEqual((result["added"], result["removed"]), (1, 1))
+        self.assertEqual(result["rows"][1], {"kind": "removed", "old": "1", "new": "", "text": "size = 12"})
+        self.assertEqual(result["rows"][2], {"kind": "added", "old": "", "new": "1", "text": "size = 14"})
+        self.assertEqual(result["rows"][3]["old"], "2")
+        self.assertIn("+size = 14", result["diff"])
+        newline_change = validate({**card, "files": [{**file, "before": "line\n", "after": "line"}]})["files"][0]
+        self.assertEqual((newline_change["added"], newline_change["removed"]), (1, 1))
+        self.assertIn("No newline at end of file", newline_change["diff"])
+        self.assertEqual(validate({**card, "files": [{**file, "after": file["before"]}]})["files"][0]["rows"], [])
+        self.assertEqual(validate({**card, "files": [{**file, "before": ""}]})["files"][0]["removed"], 0)
+        self.assertEqual(validate({**card, "files": [{**file, "after": ""}]})["files"][0]["added"], 0)
+        for bad in ({**card, "files": []}, {**card, "files": [file] * 4},
+                    {**card, "files": [{**file, "before": "x" * 6001}]},
+                    {**card, "files": [{**file, "before": "line\n" * 121}]},
+                    {**card, "files": [{**file, "after": "\x00"}]}):
+            with self.assertRaises(ValueError):
+                validate(bad)
+
     def test_places_bound_ratings_and_build_map_links(self):
         place = {"name": "Example Ramen", "category": "Restaurant", "address": "Example Street & Park, Tokyo",
                  "hours": "Not verified", "summary": "Illustrative example", "rating": None, "ratingSource": "", "sourceUrl": ""}

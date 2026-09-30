@@ -526,6 +526,53 @@
     ]
   },
   {
+    "type": "diff",
+    "title": "Example terminal font change",
+    "note": "Illustrative configuration; no local file was read.",
+    "files": [
+      {
+        "path": "~/.config/example-terminal/config.toml",
+        "before": "[font]\nsize = 12\nfamily = \"monospace\"\n",
+        "after": "[font]\nsize = 14\nfamily = \"monospace\"\n",
+        "rows": [
+          {
+            "kind": "hunk",
+            "text": "@@ -1,3 +1,3 @@",
+            "old": "",
+            "new": ""
+          },
+          {
+            "kind": "context",
+            "text": "[font]",
+            "old": "1",
+            "new": "1"
+          },
+          {
+            "kind": "removed",
+            "text": "size = 12",
+            "old": "2",
+            "new": ""
+          },
+          {
+            "kind": "added",
+            "text": "size = 14",
+            "old": "",
+            "new": "2"
+          },
+          {
+            "kind": "context",
+            "text": "family = \"monospace\"",
+            "old": "3",
+            "new": "3"
+          }
+        ],
+        "added": 1,
+        "removed": 1,
+        "diff": "--- a/~/.config/example-terminal/config.toml\n+++ b/~/.config/example-terminal/config.toml\n@@ -1,3 +1,3 @@\n [font]\n-size = 12\n+size = 14\n family = \"monospace\"\n"
+      }
+    ]
+  },
+  {
     "type": "checklist",
     "id": "fixture-migration",
     "title": "Server migration",

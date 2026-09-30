@@ -28,7 +28,17 @@ Item {
       : host.artifact.type === "diagram" ? diagramCard
       : host.artifact.type === "checklist" ? checklistCard
       : host.artifact.type === "dashboard" ? dashboardCard
-      : host.artifact.type === "places" ? placesCard : null
+      : host.artifact.type === "places" ? placesCard
+      : host.artifact.type === "diff" ? diffCard : null
+  }
+
+  Component {
+    id: diffCard
+    DiffArtifact {
+      artifact: host.artifact
+      chrome: host.chrome
+      onCopyRequested: function(value) { host.copyRequested(value) }
+    }
   }
 
   Component {

@@ -100,6 +100,12 @@ ShellRoot {
           var height = cards.itemAt(i).implicitHeight
           if (!isFinite(height) || height <= 0) throw new Error("Card failed to lay out: " + i)
           var host = cards.itemAt(i)
+          if (stage === 0 && host.artifact.type === "diff") {
+            root.button(host, "Copy proposed config").clicked()
+            if (host.lastCopy !== host.artifact.files[0].after) throw new Error("Diff config copy failed")
+            root.button(host, "Copy diff").clicked()
+            if (host.lastCopy !== host.artifact.files[0].diff) throw new Error("Diff copy failed")
+          }
           if (stage === 0 && host.artifact.type === "places") {
             if (host.lastOpen) throw new Error("Place card opened a link without a click")
             root.button(host, "View map ↗").clicked()

@@ -80,6 +80,8 @@ AI web search is separately disabled by default and can be enabled in Spotlight 
 When a location artifact appears, Spotlight requests a static preview from `mapmap.ai` using its coordinates and zoom. If the preview fails, the coordinates and link remain visible. Clicking **Open in OpenStreetMap** sends the location to the browser.
 Weather cards require AI web search and are built from the selected provider's answer; Spotlight makes no direct weather request. An optional saved weather location is sent to the provider only for recognized weather questions. Clicking a weather card's source opens that AI-provided HTTPS URL in the browser. Spotlight validates its shape but cannot prove the provider read it.
 
+Diff previews never open their display-labelled paths or read/write configuration files. Before/after text is bounded and rendered as plain code. Both copy actions are explicit; the user reviews and applies any proposed edits manually.
+
 Place cards make no automatic map requests. Clicking View map opens an OpenStreetMap search for the validated venue name/address; Source opens the provider-supplied HTTPS URL. Opening hours and ratings come from the provider, with provenance and unknown states shown; URL validation does not prove that the provider checked the page.
 
 System dashboards are collected locally after the AI requests a validated card. The provider cannot supply measurements and is not given the collected data. Reads of `/proc`, filesystem statistics, the existing bounded service listing, and a three-second home-folder `du` scan are read-only. Directory scans do not follow symlinks or cross filesystems. Partial and unavailable data are labelled; only an explicit Copy snapshot action exports the values to the clipboard.
