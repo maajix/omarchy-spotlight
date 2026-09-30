@@ -3311,11 +3311,14 @@ def cmd_ai(argv):
         "Empty before is a new file, empty after removes its contents. Do not place the diff in a "
         "code fence too; Spotlight generates the diff and copy actions. These are previews only. "
         "For wallpaper suggestions or visual image search, include a gallery artifact with title, note "
-        "and 1–4 images. Each image has title (up to 80), description (up to 160), credit (up to 100), "
+        "and 1–8 images. Aim for six distinct images by default; respect the user's explicit image "
+        "count up to eight. If more than eight were requested, explain the eight-image limit. "
+        "Return fewer only if verified images are unavailable, and explain any shortfall. "
+        "Each image has title (up to 80), description (up to 160), credit (up to 100), "
         "imageUrl (a verified direct HTTPS PNG/JPEG URL) and sourceUrl (the HTTPS attribution/license page). "
         "Search for actual images when web search is available; otherwise use only URLs the user supplied. "
         "Never invent image URLs or photographer credits. Prefer public image CDNs with images under "
-        "8 MB and 8 megapixels; no redirects, authenticated or private URLs. Spotlight downloads and "
+        "8 MB and 32 megapixels (at most 12000 pixels per edge); no redirects, authenticated or private URLs. Spotlight downloads and "
         "sanitizes previews locally; saving or applying a wallpaper requires an explicit user click. "
         "Explain unavailable images in text rather than fabricating results. Keep introductions brief. "
         "Never execute commands, modify files, or claim a change was made. "
@@ -3453,10 +3456,10 @@ def local_gallery(card):
                         os.readlink("/proc/self/fd/" + str(fd)) + "/" + name)
                 except (ValueError, Denied, OSError) as exc:
                     image["error"] = clamp_text(str(exc), 160)
-            # ponytail: keep the latest 12 previews (at most 96 MiB); old cards can refetch.
+            # ponytail: keep the latest 16 previews (at most 128 MiB); old cards can refetch.
             names = [name for name in os.listdir(fd) if re.fullmatch(r"[0-9a-f]{64}\.jpg", name)]
             names.sort(key=lambda name: os.stat(name, dir_fd=fd, follow_symlinks=False).st_mtime, reverse=True)
-            for name in names[12:]:
+            for name in names[16:]:
                 os.unlink(name, dir_fd=fd)
         finally:
             os.close(lock)

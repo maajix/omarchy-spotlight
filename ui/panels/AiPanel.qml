@@ -62,11 +62,16 @@ Item {
   signal copyRequested(string value)
   signal mapRequested(string url)
   signal backRequested()
+  signal cancelRequested()
+  signal dismissRequested()
   readonly property var sections: AiMarkdown.split(panel.result ? panel.result.text : "")
   readonly property real scrollY: scroll.contentY
   property bool restoringScroll: false
   property real restoreTarget: 0
-  onResultChanged: if (panel.result) scroll.contentY = 0
+  onResultChanged: if (panel.result) {
+    scroll.contentY = 0
+    if (panel.restoringScroll) panel.restoreTarget = 0
+  }
 
   readonly property SpotlightPalette chrome: SpotlightPalette {
     foreground: panel.foreground
@@ -87,7 +92,7 @@ Item {
     panel.restoreTarget = position
     restoreTimer.restart()
   }
-  Keys.onEscapePressed: panel.backRequested()
+  Keys.onEscapePressed: panel.dismissRequested()
 
   Timer {
     id: restoreTimer
@@ -97,6 +102,15 @@ Item {
         scroll.contentY = Math.max(0, Math.min(panel.restoreTarget, scroll.contentHeight - scroll.height))
       panel.restoringScroll = false
     }
+  }
+
+  ThinkingGhost {
+    anchors.centerIn: parent
+    width: Math.min(240, panel.width * 0.45)
+    height: width * 1.1
+    visible: panel.busy
+    tint: panel.accent
+    opacity: panel.progress ? 0.12 : 0.22
   }
 
   Flickable {
@@ -127,14 +141,25 @@ Item {
         onClicked: panel.backRequested()
       }
 
-      Text {
+      RowLayout {
         Layout.fillWidth: true
-        text: panel.busy ? "THINKING" : "ERROR"
         visible: panel.busy || panel.error !== ""
-        color: panel.busy ? panel.accent : Color.urgent
-        font.family: panel.fontFamily
-        font.pixelSize: Style.font.caption
-        font.bold: true
+        Text {
+          Layout.fillWidth: true
+          text: panel.busy ? "THINKING" : "ERROR"
+          color: panel.busy ? panel.accent : Color.urgent
+          font.family: panel.fontFamily
+          font.pixelSize: Style.font.caption
+          font.bold: true
+        }
+        Pill {
+          visible: panel.busy
+          chrome: panel.chrome
+          text: "Cancel"
+          Accessible.role: Accessible.Button
+          Accessible.name: "Cancel AI request"
+          onClicked: panel.cancelRequested()
+        }
       }
 
       Text {

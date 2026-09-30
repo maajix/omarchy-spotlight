@@ -90,6 +90,8 @@ Spotlight runs inside the existing `omarchy-shell` process, so there is no separ
 
 Enable **Ask AI** in the setup tour or Spotlight Settings and choose an installed, signed-in Claude or Codex CLI. Type `ai: <question>` and press Enter. Spotlight streams provider reasoning or progress when available, then shows the validated answer as readable Markdown in a scrollable panel. It asks the provider to answer in the language of your question unless you request another language. Nothing is sent while you type, and each request is independent.
 
+Submitted requests keep running when Spotlight closes. Reopen it to return to the same request, progress or completed answer. A completion notification appears when you are away; clicking it opens Spotlight. **Cancel** stops a running request; submitting a new AI question replaces the previous one. The latest request and reading position stay in memory until the shell restarts. A subtle floating ghost accompanies the thinking view.
+
 The model and thinking-level menus use the installed CLIs' local model catalogs and show only the levels listed for the chosen model. **CLI default** and **Model default** leave that choice to the CLI. If a catalog is unavailable, run its CLI once to populate the catalog, then reopen Spotlight.
 
 **AI web search** is off by default. Enable it in the setup tour or Spotlight Settings to let the selected provider search the web during an `ai:` request.

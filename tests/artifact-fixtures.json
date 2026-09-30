@@ -618,6 +618,46 @@
         "id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
         "previewUrl": "",
         "error": ""
+      },
+      {
+        "title": "Forest mist",
+        "description": "Soft mountain silhouettes for a calm desktop.",
+        "credit": "Example photographer",
+        "imageUrl": "https://example.org/image.jpg",
+        "sourceUrl": "https://example.org/license",
+        "id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "previewUrl": "",
+        "error": ""
+      },
+      {
+        "title": "Desert dusk",
+        "description": "Soft mountain silhouettes for a calm desktop.",
+        "credit": "Example photographer",
+        "imageUrl": "https://example.org/image.jpg",
+        "sourceUrl": "https://example.org/license",
+        "id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "previewUrl": "",
+        "error": ""
+      },
+      {
+        "title": "Moonlit lake",
+        "description": "Soft mountain silhouettes for a calm desktop.",
+        "credit": "Example photographer",
+        "imageUrl": "https://example.org/image.jpg",
+        "sourceUrl": "https://example.org/license",
+        "id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "previewUrl": "",
+        "error": ""
+      },
+      {
+        "title": "Snowy summit",
+        "description": "Soft mountain silhouettes for a calm desktop.",
+        "credit": "Example photographer",
+        "imageUrl": "https://example.org/image.jpg",
+        "sourceUrl": "https://example.org/license",
+        "id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "previewUrl": "",
+        "error": ""
       }
     ]
   }

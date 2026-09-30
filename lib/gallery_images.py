@@ -54,9 +54,11 @@ def normalize(original, normalized, run):
         width, height = map(int, raw.split())
     except ValueError:
         raise ValueError("Invalid image dimensions")
-    if truncated or status != 0 or not 1 <= width <= 8192 or not 1 <= height <= 8192 or width * height > 8_000_000:
+    if truncated or status != 0 or not 1 <= width <= 12000 or not 1 <= height <= 12000 or width * height > 32_000_000:
         raise ValueError("Image dimensions exceed their limit")
-    _, truncated, status = run(["magick"] + limits + [codec + ":" + original + "[0]", "-auto-orient",
+    # JPEG's native scaled decoder avoids allocating the full camera-resolution raster.
+    _, truncated, status = run(["magick"] + limits + ["-define", "jpeg:size=2560x1440",
+        codec + ":" + original + "[0]", "-auto-orient",
         "-resize", "2560x1440>", "-background", "#182a40", "-alpha", "remove", "-strip", "-quality", "90",
         "JPEG:" + normalized], 128, 4, want_status=True)
     if truncated or status != 0:

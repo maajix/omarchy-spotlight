@@ -113,7 +113,7 @@ Item {
   property string aiError: ""
   property string aiProgress: ""
   property var aiResult: null
-  property var savedAiSession: null
+  property string aiQuery: ""
   property real aiReadPosition: 0
   property int aiGeneration: 0
   property var aiProcess: null
@@ -317,7 +317,8 @@ Item {
     } catch (e) {
       initial = ""
     }
-    var resumeAi = !initial && root.savedAiSession
+    var resumeAi = (!initial || initial === root.aiQuery) && root.aiQuery !== ""
+      && (root.aiBusy || root.aiResult !== null || root.aiError !== "")
 
     root.opened = true
     root.tourActive = false
@@ -326,11 +327,11 @@ Item {
     root.armedKey = ""
     root.pendingCurrency = null
     root.rows = []
-    root.stopAi()
+    root.aiActive = false
     root.pinnedKey = ""
     // A re-summon reloads the view instead of reusing the last list.
     root.resetView("")
-    input.text = resumeAi ? root.savedAiSession.query : initial
+    input.text = resumeAi ? root.aiQuery : initial
     input.cursorPosition = input.text.length
     root.selectedIndex = 0
     root.cursorActive = true
@@ -357,10 +358,8 @@ Item {
     root.updateCurrency()
     root.rebuild()
     if (resumeAi) {
-      root.aiReadPosition = root.savedAiSession.scrollY || 0
       aiPanel.restoringScroll = true
       root.aiActive = true
-      root.aiResult = root.savedAiSession.result
       aiPanel.restoreScroll(root.aiReadPosition)
     }
     pointerGate.reset()
@@ -376,19 +375,15 @@ Item {
     // dismiss() closes before asking the shell to hide, and the shell calls
     // close() again; the second call has nothing left to stop.
     if (!root.opened) return
-    if (root.aiActive && root.aiResult)
-      root.savedAiSession = { query: root.query, result: root.aiResult, scrollY: root.aiReadPosition }
     root.opened = false
     root.armedKey = ""
     root.leaveSettingsPanel()
     root.stopQueryWork()
   }
 
-  // Nothing that was started for a query outlives the overlay it was typed
-  // into: the debounces stop, the readers are terminated, and the rows they
-  // were filling are dropped rather than left resident.
+  // Search readers belong to the visible query. An explicitly submitted AI
+  // request belongs to the shell session and can finish while Spotlight is hidden.
   function stopQueryWork() {
-    root.stopAi()
     root.pendingCurrency = null
     Currency.cancel(root.currencySession)
     currencyDebounce.stop()
@@ -843,14 +838,29 @@ Item {
     root.aiError = ""
     root.aiProgress = ""
     root.aiResult = null
+    root.aiQuery = ""
+  }
+
+  function notifyAiFinished(succeeded) {
+    if (root.opened && root.aiActive && !root.settingsActive && !root.tourActive) return
+    Util.execArgv(["omarchy", "notification", "send", "--app-name", "Spotlight", "-g", "󰊠", "-u", "low",
+      succeeded ? "Spotlight answer is ready" : "Spotlight AI could not finish",
+      succeeded ? "Open Spotlight to read your answer." : "Open Spotlight to review the error.",
+      "--exec", "omarchy-shell", "shell", "summon", root.pluginId, "{}"])
+  }
+
+  function failAi(message) {
+    root.aiBusy = false
+    root.aiError = message
+    root.notifyAiFinished(false)
   }
 
   function startAi() {
     var parsed = Query.parse(root.query)
     if (!root.settings.aiEnabled || parsed.filter !== "ai" || !parsed.text) return
-    root.savedAiSession = null
     root.aiReadPosition = 0
     root.stopAi()
+    root.aiQuery = root.query
     root.aiActive = true
     root.aiBusy = true
     var run = aiProcessComponent.createObject(root, { generation: root.aiGeneration })
@@ -873,11 +883,10 @@ Item {
   }
 
   function handleAiLine(raw, generation) {
-    if (!root.aiActive || generation !== root.aiGeneration) return
+    if (generation !== root.aiGeneration || !root.aiBusy) return false
     var reply = root.helperReply(raw)
     if (!reply) {
-      root.aiBusy = false
-      root.aiError = root.helperError(raw) || "AI did not return an answer"
+      root.failAi(root.helperError(raw) || "AI did not return an answer")
       return true
     }
     if (reply.event === "progress" && typeof reply.text === "string") {
@@ -887,6 +896,8 @@ Item {
     if (reply.event === "result" && reply.result) {
       root.aiBusy = false
       root.aiResult = reply.result
+      root.aiReadPosition = 0
+      root.notifyAiFinished(true)
       return true
     }
     return false
@@ -2104,9 +2115,7 @@ Item {
   // Query changes fan out to the async providers on a short debounce so a
   // fast typist does not spawn a process per keystroke.
   onQueryChanged: {
-    if (root.opened && root.savedAiSession && root.query !== root.savedAiSession.query)
-      root.savedAiSession = null
-    if (root.aiActive) root.stopAi()
+    if (root.query !== root.aiQuery) root.aiActive = false
     root.armedKey = ""
     root.pendingCurrency = null
     // A new query invalidates a deliberate cursor: the row it named may not
@@ -2379,10 +2388,8 @@ Item {
         }
       }
       onExited: Qt.callLater(function() {
-        if (!aiRun.delivered && root.aiActive && aiRun.generation === root.aiGeneration) {
-          root.aiBusy = false
-          root.aiError = "AI stopped before returning an answer"
-        }
+        if (!aiRun.delivered && root.aiBusy && aiRun.generation === root.aiGeneration)
+          root.failAi("AI stopped before returning an answer")
         if (root.aiProcess === aiRun) root.aiProcess = null
         aiRun.destroy()
       })
@@ -2559,6 +2566,7 @@ Item {
   // its own deadline as a backstop, but the processes are terminated here so
   // teardown does not depend on one.
   Component.onDestruction: {
+    root.stopAi()
     root.stopQueryWork()
     clipCopyProc.running = false
     remindersProc.running = false
@@ -2773,8 +2781,7 @@ Item {
             typingGuard.restart()
             if (root.aiActive) {
               if (event.key === Qt.Key_Escape) {
-                root.stopAi()
-                root.rebuild()
+                root.dismiss()
                 event.accepted = true
                 return
               }
@@ -3047,7 +3054,7 @@ Item {
 
       AiPanel {
         id: aiPanel
-        visible: root.aiActive
+        visible: root.opened && root.aiActive
         anchors {
           top: searchDivider.bottom
           left: parent.left
@@ -3064,8 +3071,10 @@ Item {
         helperCommand: root.helperArgv([])
         onCopyRequested: function(value) { Util.execArgv(["wl-copy", "--", value]) }
         onMapRequested: function(url) { root.openUrl(url) }
-        onBackRequested: { root.stopAi(); root.rebuild(); input.forceActiveFocus() }
-        onScrollYChanged: if (root.opened && root.aiActive && root.aiResult && !aiPanel.restoringScroll)
+        onBackRequested: { root.aiActive = false; root.rebuild(); input.forceActiveFocus() }
+        onDismissRequested: root.dismiss()
+        onCancelRequested: { root.stopAi(); root.rebuild(); input.forceActiveFocus() }
+        onScrollYChanged: if (root.opened && root.aiActive && (root.aiResult || root.aiBusy) && !aiPanel.restoringScroll)
           root.aiReadPosition = scrollY
       }
 

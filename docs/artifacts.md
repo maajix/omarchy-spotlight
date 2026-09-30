@@ -75,25 +75,30 @@ supplied a starting configuration, the provider must label it illustrative.
 
 ## Image galleries and explicit actions
 
-`gallery` contains a title, provenance note and 1–4 images, each with `title`,
+`gallery` contains a title, provenance note and 1–8 images, each with `title`,
 `description`, `credit`, a direct HTTPS `imageUrl` and HTTPS attribution/license
 `sourceUrl`. Prefer a CDN's bounded image size rather than a full-resolution
 original. The provider must find actual URLs using web search or use URLs
 explicitly supplied by the user; unavailable results must not be invented.
+The provider aims for six distinct images unless the user requests a count;
+explicit counts are respected up to eight. A shortfall or larger requested
+count is explained in the answer. Previews fit the entire image into a 4:3
+frame, preserving portrait artwork without cropping.
 
 After validation, `local_gallery()` uses `lib/gallery_images.py` to fetch each
 image. DNS resolution must yield only public IPs, and curl pins the connection
 to a checked IP while verifying TLS for the original hostname. Port 443 only;
 no redirects, proxies, curl configuration or credentials. Each download is
 capped at 8 MiB with an eight-second network deadline. Only PNG/JPEG inputs up
-to eight megapixels and 8,192 pixels per edge are decoded. Native ImageMagick
+to 32 megapixels and 12,000 pixels per edge are decoded. Native JPEG
+downsampling keeps large camera images within the preview size. ImageMagick
 has a 256 MiB pixel-cache limit, disables disk/map caches and limits threads/time,
 strips metadata and emits a JPEG up
 to 2,560 × 1,440. Quickshell receives only the sanitized local preview. Missing
 tools, invalid images and failed downloads show per-image unavailable states.
 
 The private cache under `~/.cache/omarchy-spotlight/gallery` retains the newest
-12 previews (at most 96 MiB). `id` and `previewUrl` are helper-owned, never
+16 previews (at most 128 MiB), enough for two full galleries. `id` and `previewUrl` are helper-owned, never
 provider fields. Expired previews require another request. Save writes the
 sanitized image to `~/Pictures/Spotlight/<hash>.jpg`; it never overwrites an
 existing changed file. Apply saves the same image and calls the fixed native
@@ -184,7 +189,7 @@ Omarchy shell after changing QML if the running plugin does not pick it up.
 | `comparison` | 2–4 options with facts, pros, cons, price status and optional HTTPS sources | Rows share the tallest cell's height; facts match by label, missing values show `—`. At most one suggested pick and a copy action. |
 | `timeline` | Title, provenance note, 1–12 chronological entries with when, title, description, status and optional HTTPS source | A connected itinerary or milestone list with planned/current/completed markers and a copy action. |
 | `diff` | Title, provenance note and 1–3 display-labelled before/after files | Read-only unified hunks, old/new line numbers, change counts and explicit copy actions. |
-| `gallery` | Title, note and 1–4 attributed direct HTTPS PNG/JPEG images | Sanitized local previews, source links, explicit Save and Apply wallpaper actions. |
+| `gallery` | Title, note and 1–8 attributed direct HTTPS PNG/JPEG images | Full-image local previews, source links, explicit Save and Apply wallpaper actions. Six images by default; explicit counts respected up to eight. |
 | `places` | Title, note and 1–4 venues with address, hours, summary, nullable rating/rating source and optional HTTPS source | Venue cards, explicit map/source links and copy address; unavailable ratings stay unavailable. |
 | `dashboard` | Provider-selected title/focus; helper-owned CPU, memory, filesystem, folder and service measurements | Local snapshot, unavailable/partial states and explicit copy. No metrics sent to AI. |
 | `checklist` | Title, note, optional HTTPS source and 1–12 tasks with titles/descriptions | User-owned checkmarks, progress bar, reset and copy. State survives closing Spotlight within the current shell session. |

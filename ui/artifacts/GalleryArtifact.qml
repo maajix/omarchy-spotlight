@@ -35,17 +35,18 @@ ArtifactCard {
           spacing: 10
           Rectangle {
             Layout.fillWidth: true
-            implicitHeight: Math.round(width * 0.58)
+            implicitHeight: Math.round(width * 0.75)
             radius: 12
             color: "#152437"
             clip: true
             Image {
               id: picture
+              objectName: "gallery-preview"
               anchors.fill: parent
               // Only the broker's sanitized local JPEG reaches Qt's image decoder.
               source: tile.modelData.previewUrl || ""
               sourceSize { width: 1280; height: 720 }
-              fillMode: Image.PreserveAspectCrop
+              fillMode: Image.PreserveAspectFit
               asynchronous: true
               visible: false
             }

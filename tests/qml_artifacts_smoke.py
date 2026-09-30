@@ -14,9 +14,12 @@ with tempfile.TemporaryDirectory(prefix="spotlight-qml-check-") as directory:
     directory = Path(directory)
     image = directory / "preview.jpg"
     subprocess.run(["magick", "-size", "320x180", "gradient:#234b68-#9be4ef", str(image)], check=True, timeout=5)
+    portrait = directory / "portrait.jpg"
+    subprocess.run(["magick", "-size", "180x320", "gradient:#234b68-#9be4ef", str(portrait)], check=True, timeout=5)
     for fixture in fixtures:
         if fixture["type"] == "gallery":
-            for entry in fixture["images"]: entry["previewUrl"] = image.as_uri()
+            for index, entry in enumerate(fixture["images"]):
+                entry["previewUrl"] = (portrait if index == 0 else image).as_uri()
     (directory / "Commons").symlink_to("/usr/share/omarchy/shell/Commons")
     (directory / "ui").symlink_to(ROOT / "ui")
     (directory / "lib").symlink_to(ROOT / "lib")
@@ -69,6 +72,17 @@ ShellRoot {
     var children = item.children || []
     for (var i = 0; i < children.length; i++) checkComparisonRows(children[i], host, positions)
   }
+  function checkGalleryPreviews(item) {
+    if (item.objectName === "gallery-preview") {
+      if (item.status !== Image.Ready) throw new Error("Gallery preview is not ready")
+      if (item.paintedWidth > item.width + 0.5 || item.paintedHeight > item.height + 0.5)
+        throw new Error("Gallery image is cropped")
+      if (String(item.source).indexOf("portrait.jpg") >= 0 && item.paintedHeight <= item.paintedWidth)
+        throw new Error("Portrait aspect ratio was not retained")
+    }
+    var children = item.children || []
+    for (var i = 0; i < children.length; i++) checkGalleryPreviews(children[i])
+  }
   Window {
     width: 714
     height: 900
@@ -93,7 +107,8 @@ ShellRoot {
       id: probe
       width: 714
       height: 700
-      visible: false
+      visible: true
+      busy: true
       result: {"kind": "answer", "text": "", "commands": [], "artifacts": [{"type": "checklist", "id": "fixture-migration", "title": "Server migration", "note": "Suggested preparation. Check off tasks as you finish them.", "sourceUrl": "", "retrievedAt": "", "items": [{"title": "Verify backups", "description": "Create a fresh backup and test restoring a small file."}, {"title": "Plan the maintenance window", "description": "Notify users and record the expected downtime."}, {"title": "Prepare rollback", "description": "Keep the old server available until verification is complete."}]}]}
     }
     Timer {
@@ -108,6 +123,7 @@ ShellRoot {
           if (!isFinite(height) || height <= 0) throw new Error("Card failed to lay out: " + i)
           var host = cards.itemAt(i)
           if (stage === 1 && host.artifact.type === "gallery") {
+            root.checkGalleryPreviews(host)
             if (host.lastAction) throw new Error("Gallery applied without a click")
             var save = root.button(host, "Save"), apply = root.button(host, "Apply")
             if (!save.enabled || !apply.enabled) throw new Error("Gallery preview did not load")

@@ -250,8 +250,8 @@ def diff(item):
 
 def gallery(item):
     images = item.get("images")
-    if not isinstance(images, list) or not 1 <= len(images) <= 4:
-        raise ValueError("a gallery needs 1–4 images")
+    if not isinstance(images, list) or not 1 <= len(images) <= 8:
+        raise ValueError("a gallery needs 1–8 images")
     clean = []
     for image in images:
         if not isinstance(image, dict):
