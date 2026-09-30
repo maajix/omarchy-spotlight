@@ -46,7 +46,7 @@ def normalize(original, normalized, run):
     codec = "PNG" if magic == b"\x89PNG\r\n\x1a\n" else "JPEG" if magic.startswith(b"\xff\xd8\xff") else ""
     if not codec:
         raise ValueError("Only PNG and JPEG images are supported")
-    limits = ["-limit", "memory", "64MiB", "-limit", "map", "128MiB", "-limit", "disk", "0",
+    limits = ["-limit", "memory", "256MiB", "-limit", "map", "0", "-limit", "disk", "0",
               "-limit", "thread", "1", "-limit", "time", "3"]
     raw, truncated, status = run(["magick", "identify"] + limits + ["-ping", "-format", "%w %h", codec + ":" + original],
                                  128, 4, want_status=True)

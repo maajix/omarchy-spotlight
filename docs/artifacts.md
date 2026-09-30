@@ -87,7 +87,8 @@ to a checked IP while verifying TLS for the original hostname. Port 443 only;
 no redirects, proxies, curl configuration or credentials. Each download is
 capped at 8 MiB with an eight-second network deadline. Only PNG/JPEG inputs up
 to eight megapixels and 8,192 pixels per edge are decoded. Native ImageMagick
-has memory, disk, thread and time limits, strips metadata and emits a JPEG up
+has a 256 MiB pixel-cache limit, disables disk/map caches and limits threads/time,
+strips metadata and emits a JPEG up
 to 2,560 × 1,440. Quickshell receives only the sanitized local preview. Missing
 tools, invalid images and failed downloads show per-image unavailable states.
 

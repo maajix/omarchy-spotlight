@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Layouts
+import QtQuick.Effects
 import qs.Commons
 import "../components"
 
@@ -46,7 +47,21 @@ ArtifactCard {
               sourceSize { width: 1280; height: 720 }
               fillMode: Image.PreserveAspectCrop
               asynchronous: true
-              visible: status === Image.Ready
+              visible: false
+            }
+            Rectangle {
+              id: imageMask
+              anchors.fill: parent
+              radius: 12
+              layer.enabled: true
+              visible: false
+            }
+            MultiEffect {
+              anchors.fill: parent
+              source: picture
+              maskEnabled: true
+              maskSource: imageMask
+              visible: picture.status === Image.Ready
             }
             ArtifactText {
               anchors { fill: parent; margins: 16 }

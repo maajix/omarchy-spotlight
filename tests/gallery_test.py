@@ -39,7 +39,7 @@ class GalleryTests(unittest.TestCase):
     def test_native_decoder_and_oversized_inputs(self):
         with tempfile.TemporaryDirectory() as directory:
             original, output = str(Path(directory) / "input.png"), str(Path(directory) / "output.jpg")
-            _, truncated, status = HELPER.run_bounded(["magick", "-size", "32x24", "gradient:#234b68-#9be4ef", original], 128, 4, want_status=True)
+            _, truncated, status = HELPER.run_bounded(["magick", "-size", "3200x2000", "gradient:#234b68-#9be4ef", original], 128, 4, want_status=True)
             self.assertEqual((truncated, status), (False, 0))
             self.assertTrue(normalize(original, output, HELPER.run_bounded).startswith(b"\xff\xd8\xff"))
             with self.assertRaises(ValueError): normalize(original, output, lambda *a, **k: (b"8192 8192", False, 0))
