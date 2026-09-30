@@ -20,9 +20,19 @@ import QtQuick
 import QtQuick.Window
 import "ui/artifacts"
 import "ui/components"
+import "ui/panels"
 ShellRoot {
   id: root
   property SpotlightPalette chrome: SpotlightPalette {}
+  function checklist(item) {
+    if (typeof item.toggleItem === "function") return item
+    var children = item.children || []
+    for (var i = 0; i < children.length; i++) {
+      var found = checklist(children[i])
+      if (found) return found
+    }
+    return null
+  }
   function checkComparisonRows(item, host, positions) {
     if (typeof item.selectNext === "function") {
       item.selectNext(-1)
@@ -59,8 +69,18 @@ ShellRoot {
         chrome: root.chrome
       }
     }
+    AiPanel {
+      id: probe
+      width: 714
+      height: 700
+      visible: false
+      result: {"kind": "answer", "text": "", "commands": [], "artifacts": [{"type": "checklist", "id": "fixture-migration", "title": "Server migration", "note": "Suggested preparation. Check off tasks as you finish them.", "sourceUrl": "", "retrievedAt": "", "items": [{"title": "Verify backups", "description": "Create a fresh backup and test restoring a small file."}, {"title": "Plan the maintenance window", "description": "Notify users and record the expected downtime."}, {"title": "Prepare rollback", "description": "Keep the old server available until verification is complete."}]}]}
+    }
     Timer {
-      interval: 400
+      property int stage: 0
+      property var saved: null
+      interval: 100
+      repeat: true
       running: true
       onTriggered: {
         for (var i = 0; i < cards.count; i++) {
@@ -69,8 +89,32 @@ ShellRoot {
           if (["comparison", "diagram"].indexOf(cards.itemAt(i).artifact.type) >= 0)
             root.checkComparisonRows(cards.itemAt(i), cards.itemAt(i), {})
         }
-        console.log("ARTIFACT_SMOKE_OK", cards.count)
-        Qt.quit()
+        if (stage === 0) {
+          var taskCard = root.checklist(probe)
+          if (!taskCard) throw new Error("Checklist not rendered in AI panel")
+          taskCard.toggleItem(0)
+          if (taskCard.completed.indexOf(0) < 0 || taskCard.copyText().indexOf("[x]") < 0)
+            throw new Error("Checklist toggle/copy failed")
+          saved = probe.result
+          probe.result = null // Spotlight closes and destroys its result delegates.
+          stage = 1
+        } else if (stage === 1) {
+          if (root.checklist(probe)) throw new Error("Checklist delegate was not destroyed")
+          probe.result = saved // Reopening restores the saved AI result.
+          stage = 2
+        } else {
+          var restored = root.checklist(probe)
+          if (!restored || restored.completed.indexOf(0) < 0) throw new Error("Checklist progress was lost on reopen")
+          restored.toggleItem(0)
+          if (restored.completed.length) throw new Error("Checklist uncheck failed")
+          restored.toggleItem(1)
+          restored.progressRequested([])
+          if (restored.completed.length) throw new Error("Checklist reset failed")
+          for (var n = 0; n < 40; n++) probe.setChecklistProgress("fixture-" + n, [0])
+          if (Object.keys(probe.checklistProgress).length !== 32) throw new Error("Checklist state is unbounded")
+          console.log("ARTIFACT_SMOKE_OK", cards.count)
+          Qt.quit()
+        }
       }
     }
   }

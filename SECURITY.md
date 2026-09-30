@@ -80,6 +80,8 @@ AI web search is separately disabled by default and can be enabled in Spotlight 
 When a location artifact appears, Spotlight requests a static preview from `mapmap.ai` using its coordinates and zoom. If the preview fails, the coordinates and link remain visible. Clicking **Open in OpenStreetMap** sends the location to the browser.
 Weather cards require AI web search and are built from the selected provider's answer; Spotlight makes no direct weather request. An optional saved weather location is sent to the provider only for recognized weather questions. Clicking a weather card's source opens that AI-provided HTTPS URL in the browser. Spotlight validates its shape but cannot prove the provider read it.
 
+Checklist checkmarks are held in the shell's memory, separately from AI output, for up to 32 checklists. They survive closing Spotlight but reset on shell restart. Progress is not written to disk or sent to the provider; only explicit user actions check or reset tasks.
+
 `bin/spotlight-helper` acts as the primary boundary for file access and subprocess execution. Security issues involving this boundary, especially those involving command execution, file validation, paths, permissions, or untrusted input, are particularly important.
 
 Spotlight does not intentionally include telemetry, analytics, or a background network service.

@@ -448,5 +448,27 @@
         "label": "Answer"
       }
     ]
+  },
+  {
+    "type": "checklist",
+    "id": "fixture-migration",
+    "title": "Server migration",
+    "note": "Suggested preparation. Check off tasks as you finish them.",
+    "sourceUrl": "",
+    "retrievedAt": "",
+    "items": [
+      {
+        "title": "Verify backups",
+        "description": "Create a fresh backup and test restoring a small file."
+      },
+      {
+        "title": "Plan the maintenance window",
+        "description": "Notify users and record the expected downtime."
+      },
+      {
+        "title": "Prepare rollback",
+        "description": "Keep the old server available until verification is complete."
+      }
+    ]
   }
 ]

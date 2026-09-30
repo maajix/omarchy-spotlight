@@ -5,6 +5,21 @@ from helper_test import HELPER
 
 
 class ArtifactTests(unittest.TestCase):
+    def test_checklist_identity_is_stable_and_progress_is_user_owned(self):
+        card = {"type": "checklist", "title": "Server migration", "note": "Suggested plan", "sourceUrl": "",
+                "items": [{"title": "Check backups", "description": "Try a restore."}]}
+        validate = HELPER.ARTIFACT_VALIDATORS["checklist"]
+        clean = validate(card)
+        self.assertEqual(validate({**card, "note": "Another note"})["id"], clean["id"])
+        self.assertNotEqual(validate({**card, "title": "Another plan"})["id"], clean["id"])
+        self.assertNotIn("checked", validate({**card, "checked": [0]}))
+        self.assertNotIn("checked", validate({**card, "items": [{**card["items"][0], "checked": True}]})["items"][0])
+        for bad in ({**card, "items": []}, {**card, "items": card["items"] * 13},
+                    {**card, "items": ["wrong shape"]}, {**card, "items": [{"title": "x" * 101, "description": "Test"}]},
+                    {**card, "sourceUrl": "file:///etc/passwd"}):
+            with self.assertRaises(ValueError):
+                validate(bad)
+
     def test_diagrams_reject_overlaps_and_unknown_connections(self):
         nodes = [{"id": "client", "label": "Client", "column": 0, "row": 0},
                  {"id": "server", "label": "Server", "column": 0, "row": 1}]

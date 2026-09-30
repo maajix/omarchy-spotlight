@@ -1,5 +1,7 @@
 """Validate optional AI cards before their data reaches QML."""
 
+import hashlib
+import json
 import math
 import re
 from datetime import datetime, timezone
@@ -151,5 +153,24 @@ def diagram(item):
             "retrievedAt": datetime.now(timezone.utc).isoformat(timespec="minutes") if url else ""}
 
 
+def checklist(item):
+    items = item.get("items")
+    if not isinstance(items, list) or not 1 <= len(items) <= 12:
+        raise ValueError("a checklist needs 1–12 tasks")
+    clean = []
+    for entry in items:
+        if not isinstance(entry, dict):
+            raise ValueError("invalid checklist task")
+        clean.append({"title": text(entry.get("title"), 100),
+                      "description": text(entry.get("description"), 240)})
+    title = text(item.get("title"))
+    # Only user actions set progress; provider fields cannot mark tasks done.
+    identity = json.dumps([title, clean], ensure_ascii=False, sort_keys=True).encode()
+    url = source(item.get("sourceUrl"))
+    return {"type": "checklist", "id": hashlib.sha256(identity).hexdigest()[:32],
+            "title": title, "note": text(item.get("note"), 240), "items": clean, "sourceUrl": url,
+            "retrievedAt": datetime.now(timezone.utc).isoformat(timespec="minutes") if url else ""}
+
+
 VALIDATORS = {"palette": palette, "chart": chart, "comparison": comparison, "timeline": timeline,
-              "diagram": diagram}
+              "diagram": diagram, "checklist": checklist}

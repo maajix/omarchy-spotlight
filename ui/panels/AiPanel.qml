@@ -14,6 +14,15 @@ Item {
   property string error: ""
   property string progress: ""
   property var result: null
+  // ponytail: remember up to 32 checklists in this shell session. Add disk
+  // persistence only when progress must survive a shell restart.
+  property var checklistProgress: ({})
+  function setChecklistProgress(id, completed) {
+    var next = {}, keys = Object.keys(checklistProgress).filter(function(key) { return key !== id }).slice(-31)
+    keys.forEach(function(key) { next[key] = panel.checklistProgress[key] })
+    next[id] = completed.slice()
+    checklistProgress = next
+  }
   signal copyRequested(string value)
   signal mapRequested(string url)
   signal backRequested()
@@ -177,6 +186,8 @@ Item {
           required property var modelData
           Layout.fillWidth: true
           artifact: modelData
+          checklistCompleted: panel.checklistProgress[modelData.id] || []
+          onChecklistProgressRequested: function(completed) { panel.setChecklistProgress(modelData.id, completed) }
           chrome: panel.chrome
           onOpenRequested: function(url) { panel.mapRequested(url) }
           onCopyRequested: function(value) { panel.copyRequested(value) }

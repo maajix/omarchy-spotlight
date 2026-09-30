@@ -41,7 +41,7 @@ field into the `artifacts` list in `ai_result()`.
    `artifact` data and a `SpotlightPalette` named `chrome`, reports its
    `implicitHeight`, and emits `openRequested(url)` for user-clicked links.
    Emit `copyRequested(value)` for clipboard actions. Register the type once in
-   `ArtifactHost.qml`; `AiPanel.qml` needs no change.
+   `ArtifactHost.qml`; display-only cards need no `AiPanel.qml` change.
 4. Tell the provider when to return this object in `cmd_ai()`. For an optional
    card, a short instruction in the shared prompt is enough. For a required
    card, also wire the request flag, schema, result field and unavailable case.
@@ -58,6 +58,20 @@ provider. Weather's saved location is an example.
 This is a **source-level extension point**: adding a card currently means
 editing the plugin and reloading the shell. Users cannot drop an arbitrary QML
 file into a folder and have Spotlight load it automatically.
+
+## Interactive checklist state
+
+`ChecklistArtifact` receives `completed` (an array of zero-based task indices)
+and emits `progressRequested(completed)`. `ArtifactHost` forwards that event to
+`AiPanel`, which owns the state outside the card delegates. The helper derives
+a stable ID from the validated title and tasks; providers cannot set progress.
+
+The panel keeps the 32 most recently changed checklists in memory. Closing and
+reopening Spotlight recreates the card with its saved checkmarks. Progress
+resets when the shell restarts; no checklist data is written to disk or sent
+to the AI. Reset clears the card's progress, and Copy includes `[x]` / `[ ]`
+markers. Stateful cards should keep state outside delegates so hiding or
+recreating a card does not discard it.
 
 ## Check the change
 
@@ -84,6 +98,7 @@ Omarchy shell after changing QML if the running plugin does not pick it up.
 | `chart` | Variant, category labels, 1–4 named numeric series, unit, provenance note, optional HTTPS source | Line and grouped bar charts, or a single-series donut; exact values on hover or with arrow keys. |
 | `comparison` | 2–4 options with facts, pros, cons, price status and optional HTTPS sources | Rows share the tallest cell's height; facts match by label, missing values show `—`. At most one suggested pick and a copy action. |
 | `timeline` | Title, provenance note, 1–12 chronological entries with when, title, description, status and optional HTTPS source | A connected itinerary or milestone list with planned/current/completed markers and a copy action. |
+| `checklist` | Title, note, optional HTTPS source and 1–12 tasks with titles/descriptions | User-owned checkmarks, progress bar, reset and copy. State survives closing Spotlight within the current shell session. |
 | `diagram` | Title, provenance note, optional source, 2–10 unique nodes and 1–16 directed connections | Native rounded nodes with compact grid spacing. Previous/next controls select a connection, highlight its directed route and show its full caption above the diagram. Clicking a node selects an outgoing connection. Up to three columns and six rows. No executable markup. |
 
 Weather requires AI web search. The helper rejects invalid or stale

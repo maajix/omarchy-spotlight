@@ -10,6 +10,8 @@ Item {
   required property SpotlightPalette chrome
   signal openRequested(string url)
   signal copyRequested(string value)
+  property var checklistCompleted: []
+  signal checklistProgressRequested(var completed)
 
   implicitHeight: card.item ? card.item.implicitHeight : 0
 
@@ -23,7 +25,20 @@ Item {
       : host.artifact.type === "chart" ? chartCard
       : host.artifact.type === "comparison" ? comparisonCard
       : host.artifact.type === "timeline" ? timelineCard
-      : host.artifact.type === "diagram" ? diagramCard : null
+      : host.artifact.type === "diagram" ? diagramCard
+      : host.artifact.type === "checklist" ? checklistCard : null
+  }
+
+  Component {
+    id: checklistCard
+    ChecklistArtifact {
+      artifact: host.artifact
+      chrome: host.chrome
+      completed: host.checklistCompleted
+      onProgressRequested: function(completed) { host.checklistProgressRequested(completed) }
+      onOpenRequested: function(url) { host.openRequested(url) }
+      onCopyRequested: function(value) { host.copyRequested(value) }
+    }
   }
 
   Component {
