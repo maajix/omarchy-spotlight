@@ -2,6 +2,7 @@ const assert = require("node:assert/strict")
 const fs = require("node:fs")
 const path = require("node:path")
 const test = require("node:test")
+const vm = require("node:vm")
 const Commands = require("../lib/Commands.js")
 
 const helper = fs.readFileSync(path.join(__dirname, "..", "bin", "spotlight-helper"), "utf8")
@@ -49,4 +50,70 @@ test("argvId collapses the menu spelling of a command onto the catalogue one", (
     Commands.argvId(["omarchy", "audio", "output", "volume", "mute-toggle"]))
   assert.equal(Commands.argvId(null), "")
   assert.equal(Commands.argvId([]), "")
+})
+
+test("fromPlugins keeps curated entries, skips itself and deduplicates plugin IDs", () => {
+  const plugins = [
+    { id: "test.panel", name: "Zebra Panel" },
+    { id: "test.menu", name: "Alpha Menu" },
+    { id: "test.panel", name: "Duplicate" },
+    { id: "omarchy.emojis", name: "Curated" },
+    { id: "io.github.maajix.spotlight", name: "Spotlight" },
+    { id: "constructor", name: "Prototype Name" }
+  ]
+  const entries = Commands.fromPlugins(plugins, "io.github.maajix.spotlight")
+  assert.deepEqual(entries.map(c => c.id), ["test.menu", "constructor", "test.panel"])
+  const panel = entries[2]
+  assert.equal(panel.kind, "summon")
+  assert.equal(panel.icon, "🧩")
+  assert.equal(panel.image, undefined)
+  assert.ok(panel.keywords.includes("test panel"))
+  assert.deepEqual(Commands.fromPlugins(null), [])
+  assert.deepEqual(Commands.fromPlugins({}), [])
+})
+
+test("QML discovers and launches plugins without a host registry or cross-plugin API", () => {
+  const pluginsProc = { running: false }, pluginSummonProc = { running: false }
+  let rebuilds = 0, dismissed = false
+  const root = {
+    // This is the installed third-party facade: no pluginRegistry property,
+    // and cross-plugin calls are forbidden.
+    shell: { summon: () => assert.fail("scoped summon used"),
+      toggle: () => assert.fail("scoped toggle used") },
+    pluginId: "io.github.maajix.spotlight", opened: true,
+    pluginCommands: [{ id: "old.plugin" }], menuCommands: [],
+    maxHelperPayloadChars: 524288, maxAppCandidates: 512, usage: {},
+    helperArgv: args => ["python3", "/helper"].concat(args),
+    rebuild: () => { rebuilds++ }, row: r => r,
+    bumpUsage: () => {}, dismiss: () => { dismissed = true }
+  }
+  const context = vm.createContext({ root, pluginsProc, pluginSummonProc, Commands,
+    Fuzzy: require("../lib/Fuzzy.js"), Frecency: require("../lib/Frecency.js"),
+    Query: require("../lib/Query.js") })
+  for (const name of ["helperReply", "refreshPluginCommands", "loadPluginCommands", "commandRows", "activate"]) {
+    const source = qml.match(new RegExp("  function " + name + "\\([^]*?\n  \\}"))[0]
+    vm.runInContext(source, context)
+    root[name] = context[name]
+  }
+  root.refreshPluginCommands()
+  assert.equal(root.pluginCommands.length, 0)
+  assert.equal(pluginsProc.running, true)
+  assert.deepEqual(Array.from(pluginsProc.command), ["python3", "/helper", "read-plugins"])
+  root.loadPluginCommands(JSON.stringify({ ok: true, plugins: [
+    { id: "test.panel", name: "My Panel" }, { id: root.pluginId, name: "Spotlight" }
+  ] }))
+  assert.equal(rebuilds, 1)
+  root.rows = root.commandRows("my panel", false, false)
+  assert.equal(root.rows.length, 1)
+  assert.equal(root.rows[0].accessory, "Plugin")
+  assert.equal(root.rows[0].primaryLabel, "Open")
+  root.activate(0, false)
+  assert.equal(dismissed, true)
+  assert.equal(pluginSummonProc.running, true)
+  assert.deepEqual(Array.from(pluginSummonProc.command),
+    ["python3", "/helper", "summon-plugin", "test.panel"])
+  root.loadPluginCommands('{"ok":false,"error":"offline"}')
+  assert.equal(root.pluginCommands.length, 0)
+  root.loadPluginCommands("not JSON")
+  assert.equal(root.pluginCommands.length, 0)
 })

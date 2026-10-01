@@ -36,6 +36,7 @@ Item {
   onShellChanged: {
     root.refreshHides()
     root.refreshMenuCommands()
+    root.refreshPluginCommands()
   }
   property var manifest: null
 
@@ -146,6 +147,9 @@ Item {
   // merges the two without needing to know one came from a different
   // source.
   property var menuCommands: []
+
+  // Enabled panels, overlays and menus discovered through shell IPC.
+  property var pluginCommands: []
 
   // Live state of every toggle the helper could actually read, as
   // { stateId: bool }. An id the probe could not answer is absent rather than
@@ -307,6 +311,7 @@ Item {
     root.pendingCurrency = null
     root.rows = []
     root.pinnedKey = ""
+    root.refreshPluginCommands()
     // A re-summon reloads the view instead of reusing the last list.
     root.resetView("")
     input.text = initial
@@ -446,6 +451,19 @@ Item {
       })
     }
     root.menuCommands = out
+  }
+
+  function refreshPluginCommands() {
+    root.pluginCommands = []
+    pluginsProc.running = false
+    pluginsProc.command = root.helperArgv(["read-plugins"])
+    pluginsProc.running = true
+  }
+
+  function loadPluginCommands(raw) {
+    var reply = root.helperReply(raw)
+    root.pluginCommands = Commands.fromPlugins(reply ? reply.plugins : [], root.pluginId)
+    if (root.opened) root.rebuild()
   }
 
   function refreshReminders() {
@@ -1071,7 +1089,7 @@ Item {
   }
 
   function commandRows(q, actionsOnly, learnedOnly) {
-    var catalogue = Commands.commands().concat(Commands.quicklinks()).concat(root.menuCommands)
+    var catalogue = Commands.commands().concat(Commands.quicklinks()).concat(root.menuCommands).concat(root.pluginCommands)
     if (actionsOnly) catalogue = catalogue.filter(function(c) { return c.kind !== "url" })
     if (learnedOnly) catalogue = catalogue.filter(function(c) {
       return c.kind !== "url" && Frecency.hasItem(root.usage, "action:" + c.key)
@@ -1082,13 +1100,14 @@ Item {
     for (var j = 0; j < ranked.length && j < root.maxAppCandidates; j++) {
       var c = ranked[j]
       var isWeb = c.kind === "url"
+      var isPlugin = c.kind === "summon" && c.key.indexOf("plugin:") === 0
       out.push(root.row({
         key: "cmd:" + c.key,
         kind: c.kind,
         title: c.title, subtitle: c.subtitle,
-        accessory: isWeb ? "Web" : "Action",
+        accessory: isWeb ? "Web" : (isPlugin ? "Plugin" : "Action"),
         icon: c.icon,
-        primaryLabel: isWeb ? "Open in browser" : "Run",
+        primaryLabel: isWeb ? "Open in browser" : (isPlugin ? "Open" : "Run"),
         secondaryLabel: c.secondaryLabel,
         confirm: c.confirm === true,
         keywords: c.keywords,
@@ -1683,8 +1702,9 @@ Item {
 
     case "summon":
       root.dismiss()
-      if (root.shell && typeof root.shell.summon === "function")
-        root.shell.summon(r.payload.id, "{}")
+      pluginSummonProc.running = false
+      pluginSummonProc.command = root.helperArgv(["summon-plugin", r.payload.id])
+      pluginSummonProc.running = true
       break
 
     case "copy":
@@ -2306,6 +2326,26 @@ Item {
   }
 
   Process {
+    id: pluginsProc
+    stdout: StdioCollector {
+      waitForEnd: true
+      onStreamFinished: root.loadPluginCommands(text)
+    }
+  }
+
+  Process {
+    id: pluginSummonProc
+    stdout: StdioCollector {
+      waitForEnd: true
+      onStreamFinished: {
+        if (!root.helperReply(text))
+          Util.execArgv(["notify-send", "Spotlight could not open plugin",
+            root.helperError(text) || "The shell did not confirm the launch."])
+      }
+    }
+  }
+
+  Process {
     id: usageReadProc
     stdout: StdioCollector {
       waitForEnd: true
@@ -2427,6 +2467,8 @@ Item {
     settingsProc.running = false
     hidesProc.running = false
     menuCommandsProc.running = false
+    pluginsProc.running = false
+    pluginSummonProc.running = false
     usageReadProc.running = false
     usageWriteProc.running = false
     icsProc.running = false
