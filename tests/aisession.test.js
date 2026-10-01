@@ -16,7 +16,7 @@ const root = {
   setupPending: () => false, clipboardSearchTarget: () => null, fileSearchTarget: () => null,
   helperArgv: args => ['python3', 'spotlight-helper', ...args]
 };
-for (const name of ['leaveSettingsPanel', 'stopCurrencyProcess', 'resetView', 'updateCurrency', 'syncView',
+for (const name of ['leaveSettingsPanel', 'stopCurrencyProcess', 'resetView', 'updateCurrency', 'syncView', 'refreshPluginCommands',
     'rebuild', 'refreshSettings', 'refreshReminders', 'refreshToggleStates', 'resumeTour']) root[name] = noop;
 const context = vm.createContext({root, Query: require('../lib/Query.js'), Currency: require('../lib/Currency.js'),
   WeatherIntent: require('../lib/WeatherIntent.js'),

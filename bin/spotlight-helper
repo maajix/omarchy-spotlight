@@ -169,6 +169,13 @@ TOGGLE_DEADLINE = 1.0
 REMINDER_COUNT = 50
 REMINDER_FIELD_CHARS = 200
 
+PLUGINS_BYTES = 256 * 1024
+PLUGINS_DEADLINE = 3.0
+# ponytail: first 200 eligible plugins; add paging if installations exceed this.
+PLUGINS_COUNT = 200
+PLUGIN_NAME_CHARS = 200
+PLUGIN_ID_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9._+-]{0,127}")
+
 TLDR_BYTES = 64 * 1024
 # The first lookup of a page downloads it, so this is generous for a launcher.
 TLDR_DEADLINE = 4.0
@@ -1497,6 +1504,78 @@ def cmd_read_hides():
 
 def cmd_read_menu_commands():
     emit({"commands": _menu_commands()})
+
+
+def cmd_read_plugins():
+    raw, _ = view_output(["omarchy-shell", "shell", "listPlugins"],
+                         PLUGINS_BYTES, PLUGINS_DEADLINE, "plugin list unavailable")
+    try:
+        plugins = json.loads(raw)
+    except ValueError:
+        raise Denied("invalid plugin list")
+    if not isinstance(plugins, list):
+        raise Denied("invalid plugin list")
+    rows = []
+    seen = set()
+    panel_config = None
+    for plugin in plugins:
+        if not isinstance(plugin, dict):
+            continue
+        plugin_id = plugin.get("id")
+        kinds = plugin.get("kinds")
+        if not isinstance(plugin_id, str) or not PLUGIN_ID_RE.fullmatch(plugin_id) \
+                or plugin_id in seen or not isinstance(kinds, list):
+            continue
+        # listPlugins cannot distinguish a panel widget from a display-only one.
+        # Add bar-widget-only plugins when the host exposes an openability flag.
+        if not any(kind in kinds for kind in ("panel", "overlay", "menu")):
+            continue
+        enabled = plugin.get("enabled") is True
+        if "bar-widget" in kinds and "bar" not in kinds:
+            # For hybrids, listPlugins.enabled means inBar(), not isEnabled().
+            if panel_config is None:
+                raw, _ = view_output(["omarchy-shell", "shell", "listShellConfig"],
+                                     PLUGINS_BYTES, PLUGINS_DEADLINE,
+                                     "panel configuration unavailable")
+                try:
+                    panel_config = json.loads(raw)
+                except ValueError:
+                    raise Denied("invalid panel configuration")
+                if not isinstance(panel_config, dict):
+                    raise Denied("invalid panel configuration")
+            entries = panel_config.get("plugins", [])
+            entries = entries if isinstance(entries, list) else []
+            disabled = panel_config.get("disabledPlugins", [])
+            disabled = disabled if isinstance(disabled, list) else []
+            bar = panel_config.get("bar", {})
+            bar = bar if isinstance(bar, dict) else {}
+            enabled = plugin_id not in disabled and (
+                plugin.get("firstParty") is True or enabled or bar.get("id") == plugin_id
+                or any(isinstance(entry, dict) and entry.get("id") == plugin_id
+                       for entry in entries))
+        if not enabled:
+            continue
+        name = plugin.get("name")
+        if not isinstance(name, str):
+            name = plugin_id
+        name = " ".join("".join(
+            " " if unicodedata.category(ch) in ("Cc", "Cf") else ch
+            for ch in name[:PLUGIN_NAME_CHARS]).split()) or plugin_id
+        rows.append({"id": plugin_id, "name": name})
+        seen.add(plugin_id)
+        if len(rows) >= PLUGINS_COUNT:
+            break
+    emit({"plugins": rows})
+
+
+def cmd_summon_plugin(argv):
+    if len(argv) != 1 or not PLUGIN_ID_RE.fullmatch(argv[0]):
+        raise Denied("invalid plugin id")
+    raw, _ = view_output(["omarchy-shell", "shell", "summon", argv[0], "{}"],
+                         4096, PLUGINS_DEADLINE, "plugin launch unavailable")
+    if raw.strip() != b"ok":
+        raise Denied("plugin could not be opened")
+    emit({"opened": True})
 
 
 def cmd_read_usage():
@@ -2960,6 +3039,8 @@ COMMANDS = {
     "read-usage": (cmd_read_usage, False),
     "read-hides": (cmd_read_hides, False),
     "read-menu-commands": (cmd_read_menu_commands, False),
+    "read-plugins": (cmd_read_plugins, False),
+    "summon-plugin": (cmd_summon_plugin, True),
     "write-usage": (cmd_write_usage, False),
     "read-clipboard": (cmd_read_clipboard, False),
     "clipboard-copy": (cmd_clipboard_copy, True),

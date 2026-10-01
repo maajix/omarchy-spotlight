@@ -72,6 +72,12 @@ From two characters onward, Spotlight searches enabled local providers together 
 
 Spotlight runs inside the existing `omarchy-shell` process, so there is no separate launcher or cold start. Late file and web results also cannot steal the current selection while you type.
 
+Enabled shell panels, overlays, and menus are searchable by name and plugin ID.
+The list refreshes when Spotlight opens, and curated entries keep their titles
+and icons. Plugins with only a `bar-widget` kind are excluded because the shell
+does not report whether a widget has an openable panel. Discovered entries use
+a default plugin icon; a failed launch produces a desktop notification.
+
 ## Features
 
 - Unified search across apps, windows, actions, files, clipboard history, and the web
@@ -255,6 +261,15 @@ Choose **Default currency** on the setup tour’s **What should Spotlight search
 explicit target. Shorthand currency codes must be uppercase (`23 USD`); aliases
 such as `23 dollars` and symbols such as `$23` also work. Bare numbers and
 non-currency units do not trigger currency lookup.
+
+Currency calculations also accept expressions such as `23 EUR + 43 JPY`,
+`(23 EUR + 43 JPY) * 2`, and `23 EUR + 43 JPY to USD`. Use `+` and `-` between
+currency amounts, and `*` or `/` with plain numbers. Parentheses set the order;
+without a target or configured default, the first currency sets the result
+currency. Each distinct source currency may need its own rate lookup; required
+pairs are fetched sequentially, so expressions with several uncached pairs take
+longer to load. Enter while rates load copies the result once every required
+rate arrives.
 
 Each pair is cached for 24 hours in `~/.cache/omarchy/spotlight-currency.json` (up to
 128 pairs). Expired rates are refreshed on the next conversion. If that fails, the
