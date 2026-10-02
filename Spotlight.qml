@@ -2715,9 +2715,8 @@ Item {
     }
 
     // A screen-fixed frame for the pointer gate to measure against. The card
-    // is the wrong reference: it animates its height and stays centred, so it
-    // slides under a stationary pointer on every rebuild and every row that
-    // maps into it reads as deliberate movement.
+    // is the wrong reference: it animates its height, so rows can slide under
+    // a stationary pointer during a rebuild.
     Item {
       id: pointerFrame
       anchors.fill: parent
@@ -2734,22 +2733,21 @@ Item {
       // from the search input while the tour or the settings panel is up.
       visible: !root.tourActive && !root.settingsActive
 
-      readonly property int listHeight: Math.min(root.maxListHeight, root.contentHeight)
+      readonly property int availableBodyHeight: Math.max(0, panel.height - y - Style.space(24)
+        - root.searchHeight - root.footerHeight - root.hairline * 2 - root.listPadding * 2)
+      readonly property int listHeight: Math.min(root.maxListHeight, root.contentHeight, availableBodyHeight)
       readonly property bool hasResults: !root.aiActive && displayModel.count > 0
       readonly property int bodyHeight: root.aiActive
-        ? Math.min(root.maxListHeight, Math.max(Style.space(180), panel.height - Style.space(180)))
+        ? Math.min(root.maxListHeight, availableBodyHeight)
         : listHeight
 
       width: Math.min(Style.space(750), panel.width - Style.space(48))
       height: root.searchHeight
         + (hasResults || root.aiActive ? root.hairline + root.listPadding * 2 + bodyHeight : 0)
         + root.hairline + root.footerHeight
-      // Centred at whatever height it currently is, not just when full. The
-      // height Behavior below drives y with it, so the panel grows and
-      // shrinks symmetrically about the middle of the screen instead of
-      // sitting high whenever a query returns only a few rows.
+      // Keep the search field fixed while results grow and shrink below it.
       anchors.horizontalCenter: parent.horizontalCenter
-      anchors.verticalCenter: parent.verticalCenter
+      y: Math.max(Style.space(24), (panel.height - root.maxCardHeight) / 2)
 
       radius: root.cardRadius
       color: root.glassBackground
