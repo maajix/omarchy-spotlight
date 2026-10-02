@@ -24,6 +24,7 @@ the ownership check. File components are opened O_NOFOLLOW and must be regular
 files owned by us, which is what keeps a planted symlink, FIFO or device out.
 """
 
+from contextlib import nullcontext
 import errno
 import fcntl
 import glob
@@ -42,6 +43,7 @@ import stat
 import subprocess
 import sys
 import time
+import tempfile
 import unicodedata
 from datetime import date, datetime, timezone
 from urllib.parse import quote, urlsplit
@@ -3314,7 +3316,7 @@ def cmd_ai(argv):
     if not query or len(query) > 512:
         raise Denied("AI query must be 1–512 characters")
     schema_name = "ai-weather-result.schema.json" if weather_request else "ai-result.schema.json"
-    schema_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "resources", schema_name)
+    schema_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "resources", schema_name)
     with open(schema_path, encoding="utf-8") as schema_file:
         schema = schema_file.read()
     language_rule = (
@@ -3456,6 +3458,7 @@ def cmd_ai(argv):
             command += ["--effort", effort]
     else:
         command = ["codex", "exec", "--ephemeral", "--ignore-user-config",
+                   "-c", "project_doc_max_bytes=0",
                    "--json",
                    "--skip-git-repo-check", "--sandbox", "read-only",
                    "--disable", "shell_tool", "--disable", "unified_exec",
@@ -3494,8 +3497,13 @@ def cmd_ai(argv):
             emit({"event": "progress", "text": progress})
             sys.stdout.flush()
 
-    raw, truncated, status = run_bounded(command, AI_OUTPUT_BYTES, AI_DEADLINE,
-                                          instruction.encode("utf-8"), want_status=True, on_line=on_line)
+    # Keep Codex away from the shell's cwd and its inherited project instructions.
+    with (tempfile.TemporaryDirectory(prefix="spotlight-ai-", dir="/tmp")
+          if provider == "codex" else nullcontext()) as directory:
+        if directory is not None:
+            command += ["--cd", directory]
+        raw, truncated, status = run_bounded(command, AI_OUTPUT_BYTES, AI_DEADLINE,
+                                            instruction.encode("utf-8"), want_status=True, on_line=on_line)
     if truncated:
         raise Denied("AI response exceeded its time or size limit")
     if status != 0:

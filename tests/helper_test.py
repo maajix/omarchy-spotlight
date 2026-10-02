@@ -453,6 +453,32 @@ class HelperTests(unittest.TestCase):
             with self.assertRaises(HELPER.Denied):
                 HELPER.cmd_ports()
 
+    def test_codex_uses_an_empty_private_directory_and_cleans_it_up(self):
+        directories = []
+        cwd = os.getcwd()
+        def fake_run(argv, *args, **kwargs):
+            directory = Path(argv[argv.index("--cd") + 1])
+            directories.append(directory)
+            self.assertEqual(directory.parent, Path("/tmp"))
+            self.assertEqual(list(directory.iterdir()), [])
+            self.assertEqual(stat.S_IMODE(directory.stat().st_mode), 0o700)
+            self.assertEqual(os.getcwd(), cwd)
+            self.assertIn("project_doc_max_bytes=0", argv)
+            self.assertTrue(Path(argv[argv.index("--output-schema") + 1]).is_absolute())
+            if len(directories) == 2:
+                raise HELPER.Denied("provider failed")
+            result = {"kind": "answer", "text": "Hello", "commands": []}
+            kwargs["on_line"](json.dumps({"type": "item.completed", "item": {
+                "type": "agent_message", "text": json.dumps(result)}}).encode())
+            return b"", False, 0
+        with mock.patch.object(HELPER.shutil, "which", return_value="/usr/bin/codex"), \
+             mock.patch.object(HELPER, "run_bounded", side_effect=fake_run):
+            run(HELPER.cmd_ai, ["codex", "", "", "false"], b"hello")
+            with self.assertRaises(HELPER.Denied):
+                run(HELPER.cmd_ai, ["codex", "", "", "false"], b"hello")
+        self.assertNotEqual(*directories)
+        self.assertTrue(all(not directory.exists() for directory in directories))
+
     def test_ai_only_returns_bounded_suggestions(self):
         result = {"kind": "command", "text": "Run this yourself.",
                   "commands": [{"command": "scp ~/Downloads/photo.png host:/tmp/",
