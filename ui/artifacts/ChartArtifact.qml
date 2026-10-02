@@ -220,7 +220,7 @@ ArtifactCard {
     Layout.fillWidth: true
     text: chartCard.selected < 0 ? "Hover or use ← → for exact values"
       : chartCard.artifact.labels[chartCard.selected] + "  ·  " + chartCard.artifact.series.map(function(entry) {
-        return entry.label + ": " + chartCard.valueText(entry.values[chartCard.selected])
+        return entry.label + ": " + String(entry.values[chartCard.selected]) + (chartCard.artifact.unit ? " " + chartCard.artifact.unit : "")
       }).join("   ·   ")
     color: chartCard.selected < 0 ? chartCard.mutedText : "#d8ecff"
     font.pixelSize: Style.font.body

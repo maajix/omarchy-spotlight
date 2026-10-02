@@ -836,9 +836,9 @@ Item {
       }
       root.rebuild()
     }
+    if (oldAi && !root.settings.aiEnabled) root.stopAi()
     if (root.opened && (oldAi !== root.settings.aiEnabled
         || oldAiProvider !== root.settings.aiProvider)) {
-      if (!root.settings.aiEnabled) root.stopAi()
       root.rebuild()
     }
   }

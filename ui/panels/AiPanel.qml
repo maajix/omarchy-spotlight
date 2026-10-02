@@ -165,6 +165,7 @@ Item {
       Text {
         Layout.fillWidth: true
         text: panel.busy ? (panel.progress || "Starting…") : panel.error
+        textFormat: Text.PlainText
         visible: panel.busy || panel.error !== ""
         color: panel.error ? Color.urgent : panel.bodyColor
         font.family: "sans-serif"

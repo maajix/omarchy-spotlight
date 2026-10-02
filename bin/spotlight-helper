@@ -184,6 +184,8 @@ TLDR_FIELD_CHARS = 512
 AI_OUTPUT_BYTES = 512 * 1024
 AI_DEADLINE = 120.0
 AI_TEXT_CHARS = 16384
+AI_REPLY_CHARS = 524288  # Must match Spotlight.maxHelperPayloadChars (UTF-16 units).
+AI_GALLERY_DEADLINE = 10.0
 AI_MODEL_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:/@-]{0,191}$")
 AI_EFFORTS = {"low", "medium", "high", "xhigh", "max", "ultra"}
 TLDR_PAGE_RE = re.compile(r"^[a-z0-9][a-z0-9._+-]{0,63}$")
@@ -3166,6 +3168,9 @@ def ai_result(raw, provider, allow_weather=False, weather_request=False):
         body = body[:AI_TEXT_CHARS] + "…"
     if "\n" not in body and "\\n" in body:
         body = body.replace("\\n", "\n")
+    if any((ord(char) < 32 and char not in "\n\r\t") or 127 <= ord(char) <= 159
+           or unicodedata.category(char) == "Cf" for char in body):
+        raise Denied("AI returned unsafe control characters in answer text")
     clean = []
     for item in commands:
         if not isinstance(item, dict):
@@ -3500,6 +3505,7 @@ def cmd_ai(argv):
     encoded = (json.dumps({"structured_output": final}) if provider == "claude"
                else final if isinstance(final, str) else json.dumps(final)).encode()
     result = ai_result(encoded, provider, web_search == "true", weather_request)
+    gallery_deadline = time.monotonic() + AI_GALLERY_DEADLINE
     for index, card in enumerate(result.get("artifacts", [])):
         if card["type"] == "dashboard":
             emit({"event": "progress", "text": "\nCollecting local system snapshot…"})
@@ -3509,18 +3515,36 @@ def cmd_ai(argv):
             emit({"event": "progress", "text": "\nLoading image previews…"})
             sys.stdout.flush()
             try:
-                result["artifacts"][index] = local_gallery(card)
+                result["artifacts"][index] = local_gallery(card, gallery_deadline)
             except (OSError, Denied) as exc:
                 for image in card["images"]:
                     image.update({"id": "", "previewUrl": "", "error": clamp_text(str(exc), 160)})
-    emit({"event": "result", "result": result})
+    emit_ai_result(result)
+
+
+def emit_ai_result(result):
+    payload = {"ok": True, "event": "result", "result": result}
+    def wire_size(value):
+        return len(json.dumps(value, ensure_ascii=False, separators=(",", ":")).encode("utf-16-le")) // 2
+    while wire_size(payload) + 1 > AI_REPLY_CHARS and result["artifacts"]:
+        largest = max(range(len(result["artifacts"])), key=lambda index: wire_size(result["artifacts"][index]))
+        card = result["artifacts"].pop(largest)
+        result.setdefault("artifactWarnings", []).append(card["type"].capitalize() + " card exceeded the answer size limit and was omitted.")
+    emit(payload)
 
 
 def gallery_cache():
     return walk([".cache", "omarchy-spotlight", "gallery"], create=True)
 
 
-def local_gallery(card):
+def local_gallery(card, deadline=None):
+    if deadline is None:
+        deadline = time.monotonic() + AI_GALLERY_DEADLINE
+    def gallery_run(argv, cap, timeout, **kwargs):
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            raise Denied("Image preview deadline reached")
+        return run_bounded(argv, cap, min(timeout, remaining), **kwargs)
     fd = gallery_cache()
     try:
         lock = lock_at(fd, "lock", blocking=False)
@@ -3528,7 +3552,9 @@ def local_gallery(card):
             for image in card["images"]:
                 image.update({"id": "", "previewUrl": "", "error": ""})
                 try:
-                    data = fetch_gallery_image(image["imageUrl"], run_bounded)
+                    if time.monotonic() >= deadline:
+                        raise Denied("Image preview deadline reached")
+                    data = fetch_gallery_image(image["imageUrl"], gallery_run)
                     identity = hashlib.sha256(data).hexdigest()
                     name = identity + ".jpg"
                     write_atomic(fd, name, data)

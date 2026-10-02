@@ -31,6 +31,14 @@ SPEC.loader.exec_module(HELPER)
 
 
 class HelperTests(unittest.TestCase):
+    def test_answer_text_rejects_hidden_controls_but_keeps_code_whitespace(self):
+        text = "Example\n```bash\necho ok\n\tprintf 'hello'\n```"
+        payload = {"kind": "answer", "text": text, "commands": []}
+        self.assertEqual(HELPER.ai_result(json.dumps(payload).encode(), "codex")["text"], text)
+        for char in "\x00\x1b\x7f\u0085\u009b\u202e\u200b":
+            with self.assertRaises(HELPER.Denied):
+                HELPER.ai_result(json.dumps({**payload, "text": text.replace("ok", "o" + char + "k")}).encode(), "codex")
+
     def test_wifi_lists_unique_networks_and_rejects_newlines_in_ssids(self):
         raw = (b':436166653a4775657374:65:WPA2\n:486f6d65:95:WPA2\n'
                b'*:486f6d65:72:WPA2\n:536166650a203a4576696c:99:WPA2\n'

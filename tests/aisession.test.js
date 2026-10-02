@@ -19,7 +19,7 @@ const root = {
 for (const name of ['leaveSettingsPanel', 'stopCurrencyProcess', 'resetView', 'updateCurrency', 'syncView', 'refreshPluginCommands',
     'rebuild', 'refreshSettings', 'refreshReminders', 'refreshToggleStates', 'resumeTour']) root[name] = noop;
 const context = vm.createContext({root, Query: require('../lib/Query.js'), Currency: require('../lib/Currency.js'),
-  WeatherIntent: require('../lib/WeatherIntent.js'),
+  WeatherIntent: require('../lib/WeatherIntent.js'), Web: require('../lib/Web.js'),
   Qt: {callLater: fn => fn()}, Util: {execArgv: argv => notifications.push(Array.from(argv))},
   tour: {started: false}, pointerGate: {reset: noop}, resultList: {positionViewAtBeginning: noop},
   aiPanel: {restoringScroll: false, restoreScroll(position) { this.restored = position; }},
@@ -31,7 +31,7 @@ for (const name of ['currencyDebounce', 'suggestDebounce', 'fileDebounce', 'clip
   context[name] = {stop: noop, restart: noop};
 for (const name of ['suggestProc', 'fileProc', 'clipboardProc', 'tldrProc']) context[name] = {running: false};
 for (const name of ['open', 'close', 'stopQueryWork', 'stopAi', 'startAi', 'handleAiLine', 'notifyAiFinished',
-    'failAi', 'helperReply', 'helperError']) {
+    'failAi', 'helperReply', 'helperError', 'loadSettings']) {
   const match = source.match(new RegExp('^  function ' + name + '\\((.*?)\\) \\{\\n([\\s\\S]*?)^  \\}', 'm'));
   assert.ok(match, 'Missing QML lifecycle function ' + name);
   root[name] = vm.runInContext('(function(' + match[1] + ') {' + match[2] + '})', context);
@@ -109,3 +109,14 @@ assert.equal(root.aiResult, null);
 assert.equal(root.aiQuery, '');
 assert.equal(notifications.length, 2);
 console.log('AI requests survive hiding, reopening and other searches; completion, errors and cancellation are retained correctly');
+
+root.settings.aiEnabled = true;
+context.input.text = 'ai: background disable test';
+root.startAi();
+const disabledProcess = root.aiProcess, disabledGeneration = root.aiGeneration;
+root.close();
+root.loadSettings(JSON.stringify({ok: true, settings: {aiEnabled: false, aiProvider: 'codex'}}));
+assert.equal(disabledProcess.running, false, 'Disabling AI cancels even while hidden');
+assert.equal(root.aiBusy, false);
+event('result', {result: {text: 'Disabled response'}}, disabledGeneration);
+assert.equal(root.aiResult, null);

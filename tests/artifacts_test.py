@@ -1,3 +1,5 @@
+import contextlib
+import io
 import json
 import unittest
 
@@ -5,6 +7,27 @@ from helper_test import HELPER
 
 
 class ArtifactTests(unittest.TestCase):
+    def test_final_wire_budget_keeps_answer_and_warns_about_expanded_diff(self):
+        for char in ("a", "😀"):
+            contents = (char * 49 + "\n") * 120
+            card = {"type": "diff", "title": "Example", "note": "Example", "files": [
+                {"path": "a.txt", "before": contents, "after": contents.replace(char, "🦊" if char == "😀" else "b")}
+            ] * 3}
+            response = {"kind": "answer", "text": char * HELPER.AI_TEXT_CHARS, "commands": [], "artifacts": [card, card]}
+            raw = json.dumps(response, ensure_ascii=False).encode()
+            self.assertLess(len(raw), HELPER.AI_OUTPUT_BYTES)
+            result = HELPER.ai_result(raw, "codex")
+            output = io.StringIO()
+            with contextlib.redirect_stdout(output): HELPER.emit_ai_result(result)
+            self.assertLessEqual(len(output.getvalue().encode("utf-16-le")) // 2, HELPER.AI_REPLY_CHARS)
+            reply = json.loads(output.getvalue())
+            self.assertEqual(reply["result"]["text"], response["text"])
+            if char == "😀":
+                self.assertLess(len(reply["result"]["artifacts"]), 2)
+                self.assertIn("omitted", reply["result"]["artifactWarnings"][0])
+            else:
+                self.assertEqual(len(reply["result"]["artifacts"]), 2)
+
     def test_diff_line_numbers_and_limits(self):
         file = {"path": "example.toml", "before": "size = 12\nkeep = true\n", "after": "size = 14\nkeep = true\n"}
         card = {"type": "diff", "title": "Font size", "note": "Illustrative example", "files": [file]}

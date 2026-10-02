@@ -13,6 +13,27 @@ from gallery_images import fetch, normalize, public_addresses
 
 
 class GalleryTests(unittest.TestCase):
+    def test_galleries_share_one_deadline_across_all_subprocesses(self):
+        image = {"imageUrl": "https://example.org/image.jpg"}
+        now, timeouts = [100.0], []
+        def bounded(argv, cap, timeout, **kwargs):
+            timeouts.append(timeout)
+            now[0] += timeout
+            return b"", True, -9
+        def fetch(url, run):
+            for timeout in (2, 9, 4, 4):
+                run(["preview"], 128, timeout, want_status=True)
+        with tempfile.TemporaryDirectory() as directory, mock.patch.dict(os.environ, HOME=directory), \
+             mock.patch.object(HELPER.time, "monotonic", side_effect=lambda: now[0]), \
+             mock.patch.object(HELPER, "run_bounded", side_effect=bounded), \
+             mock.patch.object(HELPER, "fetch_gallery_image", side_effect=fetch) as fetching:
+            for _ in range(2):
+                card = HELPER.local_gallery({"images": [dict(image) for _ in range(8)]}, 110.0)
+                self.assertTrue(all("deadline" in image["error"] for image in card["images"]))
+                self.assertTrue(all(image["previewUrl"] == "" for image in card["images"]))
+            self.assertEqual(timeouts, [2, 8])
+            self.assertEqual(fetching.call_count, 1)
+
     def test_public_https_pinning_and_redirect_limits(self):
         for addresses in (b"127.0.0.1 STREAM x", b"10.0.0.1 STREAM x", b"::1 STREAM x",
                           b"169.254.169.254 STREAM x", b"93.184.216.34 STREAM x\n192.168.1.1 STREAM x", b""):

@@ -25,3 +25,16 @@ test("markdown links get a readable color without changing their target", () => 
   assert.equal(AiMarkdown.highlightInlineCode("Quelle: [WetterOnline](https://example.org/a?x=1&y=2)"),
     'Quelle: <a href="https://example.org/a?x=1&amp;y=2" style="color:#a6d2ff; text-decoration:underline">WetterOnline</a>')
 })
+
+test("provider images and HTML cannot trigger automatic requests", () => {
+  for (const input of [
+    '![x](https://example.org/a "title")', '![x](<https://example.org/a>)',
+    '![x](HTTPS://example.org/a)', '![x][ref]\n\n[ref]: https://example.org/a',
+    '![x][]', '![x]', String.raw`\![x](https://example.org/a)`,
+    '`![x](https://example.org/a)`', '<img src="https://example.org/a">',
+    '<IMG SRC="file:///etc/passwd">', '## `![x](https://example.org/a)`'
+  ]) {
+    const output = AiMarkdown.highlightInlineCode(input)
+    assert.doesNotMatch(output, /!\[|<img/i, input)
+  }
+})

@@ -26,6 +26,7 @@ Rectangle {
       Text {
         Layout.fillWidth: true
         text: "󰆍  " + card.label
+        textFormat: Text.PlainText
         color: "#b5bac1"
         font.family: "monospace"
         font.pixelSize: Style.font.caption
