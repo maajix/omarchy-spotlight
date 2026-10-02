@@ -18,8 +18,8 @@ test("a named target rewrites the DeepL language pair and drops the tail", () =>
 })
 
 test("the declared source is never the target, or DeepL swaps the pair back", () => {
-  const url = Web.searchUrl("wie geht es dir to english", "tr")
-  assert.equal(url, "https://www.deepl.com/translator#de/en/wie%20geht%20es%20dir")
+  const url = Web.searchUrl("hello there to english", "tr")
+  assert.equal(url, "https://www.deepl.com/translator#de/en/hello%20there")
   for (const name of ["german", "english", "french", "pt-br", "zh-hant"]) {
     const [source, target] = Web.searchUrl("x to " + name, "tr").split("#")[1].split("/")
     assert.notEqual(source, target)
@@ -49,7 +49,7 @@ test("a trailing word that is not a language stays part of the text", () => {
 })
 
 test("the last target wins and matching ignores case", () => {
-  assert.equal(Web.translation("von hier to spanish to GERMAN").code, "de")
+  assert.equal(Web.translation("from here to spanish to GERMAN").code, "de")
   assert.equal(Web.translation("hola TO Spanish").name, "Spanish")
 })
 

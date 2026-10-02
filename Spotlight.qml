@@ -5,6 +5,8 @@ import Quickshell.Io
 import Quickshell.Wayland
 import qs.Commons
 import qs.Ui
+import "ui/components"
+import "ui/panels"
 import "lib/Calc.js" as Calc
 import "lib/Units.js" as Units
 import "lib/Currency.js" as Currency
@@ -20,6 +22,7 @@ import "lib/Views.js" as Views
 import "lib/Ranking.js" as Ranking
 import "lib/Chord.js" as Chord
 import "lib/SettingsQueue.js" as SettingsQueue
+import "lib/WeatherIntent.js" as WeatherIntent
 
 // Spotlight — a Raycast-shaped command palette for Omarchy.
 //
@@ -106,6 +109,15 @@ Item {
   // the display fields; the payload stays here and is read back by index, so
   // ListModel never has to hold a nested object.
   property var rows: []
+  property bool aiActive: false
+  property bool aiBusy: false
+  property string aiError: ""
+  property string aiProgress: ""
+  property var aiResult: null
+  property string aiQuery: ""
+  property real aiReadPosition: 0
+  property int aiGeneration: 0
+  property var aiProcess: null
 
   // Async provider caches. Each is refreshed by its own Process and triggers a
   // rebuild when it lands, so a slow provider never blocks the fast ones.
@@ -208,6 +220,12 @@ Item {
     clipboardSearch: true,
     clipboardSearchAlways: true,
     learningEnabled: true,
+    aiEnabled: false,
+    aiProvider: "claude",
+    aiModel: "",
+    aiEffort: "",
+    aiWebSearch: false,
+    artifactSettings: ({ weather: { defaultLocation: "" } }),
     maxResults: 20,
     maxApps: 8,
     maxSuggestions: 4,
@@ -233,6 +251,7 @@ Item {
   // ------------------------------------------------------- settings panel
   // The panel paints settings; this file writes them.
   property bool settingsActive: false
+  property var aiModels: ({ claude: [], codex: [] })
   property var settingsWrites: SettingsQueue.create()
   // Set by a saved write: a read started before it must not undo it.
   property bool settingsReadStale: false
@@ -302,6 +321,8 @@ Item {
     } catch (e) {
       initial = ""
     }
+    var resumeAi = (!initial || initial === root.aiQuery) && root.aiQuery !== ""
+      && (root.aiBusy || root.aiResult !== null || root.aiError !== "")
 
     root.opened = true
     root.tourActive = false
@@ -310,11 +331,12 @@ Item {
     root.armedKey = ""
     root.pendingCurrency = null
     root.rows = []
+    root.aiActive = false
     root.pinnedKey = ""
     root.refreshPluginCommands()
     // A re-summon reloads the view instead of reusing the last list.
     root.resetView("")
-    input.text = initial
+    input.text = resumeAi ? root.aiQuery : initial
     input.cursorPosition = input.text.length
     root.selectedIndex = 0
     root.cursorActive = true
@@ -340,6 +362,11 @@ Item {
     root.syncView(Query.parse(root.query).filter)
     root.updateCurrency()
     root.rebuild()
+    if (resumeAi) {
+      aiPanel.restoringScroll = true
+      root.aiActive = true
+      aiPanel.restoreScroll(root.aiReadPosition)
+    }
     pointerGate.reset()
     if (root.setupPending() || (tour.started && !tour.singleStep)) root.resumeTour()
     Qt.callLater(function() {
@@ -359,9 +386,8 @@ Item {
     root.stopQueryWork()
   }
 
-  // Nothing that was started for a query outlives the overlay it was typed
-  // into: the debounces stop, the readers are terminated, and the rows they
-  // were filling are dropped rather than left resident.
+  // Search readers belong to the visible query. An explicitly submitted AI
+  // request belongs to the shell session and can finish while Spotlight is hidden.
   function stopQueryWork() {
     root.pendingCurrency = null
     Currency.cancel(root.currencySession)
@@ -755,9 +781,12 @@ Item {
   // are checked here against the catalogs used by their providers.
   function loadSettings(raw) {
     var reply = root.helperReply(raw)
+    if (reply && reply.aiModels) root.aiModels = reply.aiModels
     var parsed = (reply && reply.settings) ? reply.settings : {}
     var oldCurrency = root.settings.defaultCurrency
     var oldRates = root.settings.currencyRates
+    var oldAi = root.settings.aiEnabled === true
+    var oldAiProvider = root.settings.aiProvider === "codex" ? "codex" : "claude"
     root.settings = {
       webSuggestions: parsed.webSuggestions === true,
       currencyRates: parsed.currencyRates !== false,
@@ -768,6 +797,12 @@ Item {
       clipboardSearch: parsed.clipboardSearch !== false,
       clipboardSearchAlways: parsed.clipboardSearchAlways !== false,
       learningEnabled: parsed.learningEnabled !== false,
+      aiEnabled: parsed.aiEnabled === true,
+      aiProvider: parsed.aiProvider === "codex" ? "codex" : "claude",
+      aiModel: typeof parsed.aiModel === "string" ? parsed.aiModel : "",
+      aiEffort: typeof parsed.aiEffort === "string" ? parsed.aiEffort : "",
+      aiWebSearch: parsed.aiWebSearch === true,
+      artifactSettings: parsed.artifactSettings || ({ weather: { defaultLocation: "" } }),
       maxResults: isFinite(parsed.maxResults)
         ? Util.clamp(parsed.maxResults, 8, root.maxGlobalResults) : 20,
       maxApps: isFinite(parsed.maxApps)
@@ -801,10 +836,89 @@ Item {
       }
       root.rebuild()
     }
+    if (oldAi && !root.settings.aiEnabled) root.stopAi()
+    if (root.opened && (oldAi !== root.settings.aiEnabled
+        || oldAiProvider !== root.settings.aiProvider)) {
+      root.rebuild()
+    }
   }
 
   function currencyQuery(text) {
     return Currency.parse(text, root.settings.defaultCurrency)
+  }
+
+  function stopAi() {
+    root.aiGeneration += 1
+    if (root.aiProcess) root.aiProcess.running = false
+    root.aiProcess = null
+    root.aiActive = false
+    root.aiBusy = false
+    root.aiError = ""
+    root.aiProgress = ""
+    root.aiResult = null
+    root.aiQuery = ""
+  }
+
+  function notifyAiFinished(succeeded) {
+    if (root.opened && root.aiActive && !root.settingsActive && !root.tourActive) return
+    Util.execArgv(["omarchy", "notification", "send", "--app-name", "Spotlight", "-g", "󰊠", "-u", "low",
+      succeeded ? "Spotlight answer is ready" : "Spotlight AI could not finish",
+      succeeded ? "Open Spotlight to read your answer." : "Open Spotlight to review the error.",
+      "--exec", "omarchy-shell", "shell", "summon", root.pluginId, "{}"])
+  }
+
+  function failAi(message) {
+    root.aiBusy = false
+    root.aiError = message
+    root.notifyAiFinished(false)
+  }
+
+  function startAi() {
+    var parsed = Query.parse(root.query)
+    if (!root.settings.aiEnabled || parsed.filter !== "ai" || !parsed.text) return
+    root.aiReadPosition = 0
+    root.stopAi()
+    root.aiQuery = root.query
+    root.aiActive = true
+    root.aiBusy = true
+    var run = aiProcessComponent.createObject(root, { generation: root.aiGeneration })
+    if (!run) {
+      root.aiBusy = false
+      root.aiError = "Could not start AI"
+      return
+    }
+    root.aiProcess = run
+    run.stdinEnabled = true
+    var weatherRequest = WeatherIntent.isWeather(parsed.text)
+    var weatherLocation = root.settings.aiWebSearch && weatherRequest
+      ? ((root.settings.artifactSettings || {}).weather || {}).defaultLocation || "" : ""
+    run.command = root.helperArgv(["ai", root.settings.aiProvider,
+      root.settings.aiModel, root.settings.aiEffort, root.settings.aiWebSearch ? "true" : "false",
+      weatherLocation, weatherRequest ? "true" : "false"])
+    run.running = true
+    run.write(parsed.text)
+    run.stdinEnabled = false
+  }
+
+  function handleAiLine(raw, generation) {
+    if (generation !== root.aiGeneration || !root.aiBusy) return false
+    var reply = root.helperReply(raw)
+    if (!reply) {
+      root.failAi(root.helperError(raw) || "AI did not return an answer")
+      return true
+    }
+    if (reply.event === "progress" && typeof reply.text === "string") {
+      root.aiProgress = (root.aiProgress + reply.text).slice(-2400)
+      return false
+    }
+    if (reply.event === "result" && reply.result) {
+      root.aiBusy = false
+      root.aiResult = reply.result
+      root.aiReadPosition = 0
+      root.notifyAiFinished(true)
+      return true
+    }
+    return false
   }
 
   // ------------------------------------------------------------- providers
@@ -1421,7 +1535,16 @@ Item {
     function push(list) { for (var i = 0; i < list.length; i++) next.push(list[i]) }
 
     var view = Query.isView(parsed.filter)
-    if (view) {
+    if (parsed.filter === "ai") {
+      next.push(root.row({
+        key: "ai.ask", kind: !root.settings.aiEnabled ? "spotlight-settings" : parsed.empty ? "noop" : "ai",
+        title: root.settings.aiEnabled
+          ? (parsed.empty ? "Ask AI…" : "Ask " + (root.settings.aiProvider === "codex" ? "Codex" : "Claude"))
+          : "Enable AI in Spotlight Settings",
+        subtitle: root.settings.aiEnabled ? parsed.text : "",
+        accessory: "AI", icon: "󰚩", primaryLabel: root.settings.aiEnabled ? "Ask AI" : "Open settings"
+      }))
+    } else if (view) {
       push(root.viewResultRows(parsed.filter, parsed.text))
     } else if (parsed.filter === "window") {
       // Like a view: `w:` lists every window and typing narrows it down.
@@ -1672,6 +1795,9 @@ Item {
     }
 
     switch (r.kind) {
+    case "ai":
+      root.startAi()
+      break
     case "view":
       root.completeView(r)
       break
@@ -2015,6 +2141,7 @@ Item {
   // Query changes fan out to the async providers on a short debounce so a
   // fast typist does not spawn a process per keystroke.
   onQueryChanged: {
+    if (root.query !== root.aiQuery) root.aiActive = false
     root.armedKey = ""
     root.pendingCurrency = null
     // A new query invalidates a deliberate cursor: the row it named may not
@@ -2275,6 +2402,26 @@ Item {
     }
   }
 
+  Component {
+    id: aiProcessComponent
+    Process {
+      id: aiRun
+      required property int generation
+      property bool delivered: false
+      stdout: SplitParser {
+        onRead: function(line) {
+          if (root.handleAiLine(line, aiRun.generation)) aiRun.delivered = true
+        }
+      }
+      onExited: Qt.callLater(function() {
+        if (!aiRun.delivered && root.aiBusy && aiRun.generation === root.aiGeneration)
+          root.failAi("AI stopped before returning an answer")
+        if (root.aiProcess === aiRun) root.aiProcess = null
+        aiRun.destroy()
+      })
+    }
+  }
+
   Process { id: clipCopyProc }
 
   Process {
@@ -2305,7 +2452,11 @@ Item {
     id: settingsProc
     stdout: StdioCollector {
       waitForEnd: true
-      onStreamFinished: if (!root.settingsReadStale) root.loadSettings(text)
+      onStreamFinished: {
+        var reply = root.helperReply(text)
+        if (reply && reply.aiModels) root.aiModels = reply.aiModels
+        if (!root.settingsReadStale) root.loadSettings(text)
+      }
     }
   }
 
@@ -2461,6 +2612,7 @@ Item {
   // its own deadline as a backstop, but the processes are terminated here so
   // teardown does not depend on one.
   Component.onDestruction: {
+    root.stopAi()
     root.stopQueryWork()
     clipCopyProc.running = false
     remindersProc.running = false
@@ -2584,11 +2736,14 @@ Item {
       readonly property int availableBodyHeight: Math.max(0, panel.height - y - Style.space(24)
         - root.searchHeight - root.footerHeight - root.hairline * 2 - root.listPadding * 2)
       readonly property int listHeight: Math.min(root.maxListHeight, root.contentHeight, availableBodyHeight)
-      readonly property bool hasResults: displayModel.count > 0
+      readonly property bool hasResults: !root.aiActive && displayModel.count > 0
+      readonly property int bodyHeight: root.aiActive
+        ? Math.min(root.maxListHeight, availableBodyHeight)
+        : listHeight
 
       width: Math.min(Style.space(750), panel.width - Style.space(48))
       height: root.searchHeight
-        + (hasResults ? root.hairline + root.listPadding * 2 + listHeight : 0)
+        + (hasResults || root.aiActive ? root.hairline + root.listPadding * 2 + bodyHeight : 0)
         + root.hairline + root.footerHeight
       // Keep the search field fixed while results grow and shrink below it.
       anchors.horizontalCenter: parent.horizontalCenter
@@ -2670,6 +2825,25 @@ Item {
           Keys.priority: Keys.BeforeItem
           Keys.onPressed: function(event) {
             typingGuard.restart()
+            if (root.aiActive) {
+              if (event.key === Qt.Key_Escape) {
+                root.dismiss()
+                event.accepted = true
+                return
+              }
+              if (event.key === Qt.Key_Tab || event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
+                if (event.key === Qt.Key_Tab) aiPanel.focusFirst()
+                event.accepted = true
+                return
+              }
+              if (event.key === Qt.Key_Down || event.key === Qt.Key_PageDown
+                  || event.key === Qt.Key_Up || event.key === Qt.Key_PageUp) {
+                aiPanel.scrollBy((event.key === Qt.Key_Down ? 1 : event.key === Qt.Key_Up ? -1
+                  : event.key === Qt.Key_PageDown ? 6 : -6) * root.rowHeight)
+                event.accepted = true
+                return
+              }
+            }
             if (event.key === Qt.Key_Escape) {
               if (input.text.length > 0) input.text = ""
               else root.dismiss()
@@ -2721,7 +2895,7 @@ Item {
         anchors.rightMargin: root.listPadding
         height: root.hairline
         color: root.dividerColor
-        visible: card.hasResults
+        visible: card.hasResults || root.aiActive
       }
 
       // ------------------------------------------------------- results
@@ -2924,6 +3098,32 @@ Item {
         }
       }
 
+      AiPanel {
+        id: aiPanel
+        visible: root.opened && root.aiActive
+        anchors {
+          top: searchDivider.bottom
+          left: parent.left
+          right: parent.right
+        }
+        height: card.bodyHeight + root.listPadding * 2
+        foreground: root.foreground
+        accent: root.accent
+        fontFamily: root.fontFamily
+        busy: root.aiBusy
+        error: root.aiError
+        progress: root.aiProgress
+        result: root.aiResult
+        helperCommand: root.helperArgv([])
+        onCopyRequested: function(value) { Util.execArgv(["wl-copy", "--", value]) }
+        onMapRequested: function(url) { root.openUrl(url) }
+        onBackRequested: { root.aiActive = false; root.rebuild(); input.forceActiveFocus() }
+        onDismissRequested: root.dismiss()
+        onCancelRequested: { root.stopAi(); root.rebuild(); input.forceActiveFocus() }
+        onScrollYChanged: if (root.opened && root.aiActive && (root.aiResult || root.aiBusy) && !aiPanel.restoringScroll)
+          root.aiReadPosition = scrollY
+      }
+
       // ------------------------------------------------------- footer
       Rectangle {
         anchors { bottom: footer.top; left: parent.left; right: parent.right }
@@ -2962,7 +3162,7 @@ Item {
           Text {
             readonly property var sel: root.selectedRow()
             text: sel && sel.primaryLabel ? "↵  " + root.primaryLabelFor(sel) : ""
-            visible: text.length > 0
+            visible: !root.aiActive && text.length > 0
             textFormat: Text.PlainText
             color: root.foreground
             opacity: 0.55
@@ -2973,7 +3173,7 @@ Item {
           Text {
             readonly property var sel: root.selectedRow()
             text: sel && sel.secondaryLabel ? "⇧↵  " + sel.secondaryLabel : ""
-            visible: text.length > 0
+            visible: !root.aiActive && text.length > 0
             textFormat: Text.PlainText
             color: root.foreground
             opacity: 0.4
@@ -2983,7 +3183,7 @@ Item {
 
           Text {
             text: root.copyPathTarget() !== "" ? "⌃C  Copy path" : ""
-            visible: text.length > 0
+            visible: !root.aiActive && text.length > 0
             textFormat: Text.PlainText
             color: root.foreground
             opacity: 0.4
@@ -3012,6 +3212,7 @@ Item {
       bindingManaged: root.tourBinding.managed
       boundChords: root.tourBinding.bound
       bindingState: root.bindingState
+      aiModels: root.aiModels
       onBindingRequested: function(chord) { root.writeBinding(chord) }
       onRevertRequested: root.revertBinding()
       onFinished: function(patch) { root.finishTour(patch) }
@@ -3031,6 +3232,7 @@ Item {
       surfaceRadius: root.cardRadius
       rowRadius: root.rowRadius
       settings: root.settings
+      aiModels: root.aiModels
       pendingSettings: Object.assign({}, root.settingsWrites.active, root.settingsWrites.pending)
       saveFailed: root.settingsSaveFailed
       saveError: root.settingsSaveError

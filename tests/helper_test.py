@@ -31,6 +31,14 @@ SPEC.loader.exec_module(HELPER)
 
 
 class HelperTests(unittest.TestCase):
+    def test_answer_text_rejects_hidden_controls_but_keeps_code_whitespace(self):
+        text = "Example\n```bash\necho ok\n\tprintf 'hello'\n```"
+        payload = {"kind": "answer", "text": text, "commands": []}
+        self.assertEqual(HELPER.ai_result(json.dumps(payload).encode(), "codex")["text"], text)
+        for char in "\x00\x1b\x7f\u0085\u009b\u202e\u200b":
+            with self.assertRaises(HELPER.Denied):
+                HELPER.ai_result(json.dumps({**payload, "text": text.replace("ok", "o" + char + "k")}).encode(), "codex")
+
     def test_wifi_lists_unique_networks_and_rejects_newlines_in_ssids(self):
         raw = (b':436166653a4775657374:65:WPA2\n:486f6d65:95:WPA2\n'
                b'*:486f6d65:72:WPA2\n:536166650a203a4576696c:99:WPA2\n'
@@ -445,8 +453,237 @@ class HelperTests(unittest.TestCase):
             with self.assertRaises(HELPER.Denied):
                 HELPER.cmd_ports()
 
+    def test_codex_uses_an_empty_private_directory_and_cleans_it_up(self):
+        directories = []
+        cwd = os.getcwd()
+        def fake_run(argv, *args, **kwargs):
+            directory = Path(argv[argv.index("--cd") + 1])
+            directories.append(directory)
+            self.assertEqual(directory.parent, Path("/tmp"))
+            self.assertEqual(list(directory.iterdir()), [])
+            self.assertEqual(stat.S_IMODE(directory.stat().st_mode), 0o700)
+            self.assertEqual(os.getcwd(), cwd)
+            self.assertIn("project_doc_max_bytes=0", argv)
+            self.assertTrue(Path(argv[argv.index("--output-schema") + 1]).is_absolute())
+            if len(directories) == 2:
+                raise HELPER.Denied("provider failed")
+            result = {"kind": "answer", "text": "Hello", "commands": []}
+            kwargs["on_line"](json.dumps({"type": "item.completed", "item": {
+                "type": "agent_message", "text": json.dumps(result)}}).encode())
+            return b"", False, 0
+        with mock.patch.object(HELPER.shutil, "which", return_value="/usr/bin/codex"), \
+             mock.patch.object(HELPER, "run_bounded", side_effect=fake_run):
+            run(HELPER.cmd_ai, ["codex", "", "", "false"], b"hello")
+            with self.assertRaises(HELPER.Denied):
+                run(HELPER.cmd_ai, ["codex", "", "", "false"], b"hello")
+        self.assertNotEqual(*directories)
+        self.assertTrue(all(not directory.exists() for directory in directories))
+
+    def test_ai_only_returns_bounded_suggestions(self):
+        result = {"kind": "command", "text": "Run this yourself.",
+                  "commands": [{"command": "scp ~/Downloads/photo.png host:/tmp/",
+                                "explanation": "Copy the photo"}]}
+        for provider in ("claude", "codex"):
+            events = ([{"type": "stream_event", "event": {"delta": {"type": "thinking_delta", "thinking": "Checking…"}}},
+                       {"type": "result", "structured_output": result}]
+                      if provider == "claude" else
+                      [{"type": "item.completed", "item": {"type": "reasoning", "text": "Checking…"}},
+                       {"type": "item.completed", "item": {"type": "agent_message", "text": json.dumps(result)}}])
+            def fake_run(*args, **kwargs):
+                for event in events:
+                    kwargs["on_line"](json.dumps(event).encode())
+                return b"", False, 0
+            with mock.patch.object(HELPER.shutil, "which", return_value="/usr/bin/agent"), \
+                 mock.patch.object(HELPER, "run_bounded", side_effect=fake_run) as bounded:
+                reply = run(HELPER.cmd_ai, [provider, "test-model", "high", "true"], b"show me an scp command")
+            self.assertEqual(reply["result"], {**result, "artifacts": []})
+            argv, cap, deadline, prompt = bounded.call_args.args
+            self.assertEqual(argv[0], provider)
+            self.assertIn(b"Never execute commands", prompt)
+            self.assertIn(b"User request: show me an scp command", prompt)
+            self.assertIn(b"Response language:", prompt)
+            self.assertIn(b"Do not switch languages because of web pages", prompt)
+            self.assertEqual(cap, HELPER.AI_OUTPUT_BYTES)
+            self.assertEqual(deadline, HELPER.AI_DEADLINE)
+            if provider == "claude":
+                self.assertEqual(argv[argv.index("--tools") + 1], "WebSearch,WebFetch")
+                self.assertIn("--append-system-prompt", argv)
+                self.assertIn("every natural-language result field",
+                              argv[argv.index("--append-system-prompt") + 1])
+                self.assertIn("--allowedTools", argv)
+                self.assertEqual(argv[argv.index("--effort") + 1], "high")
+            else:
+                self.assertIn("read-only", argv)
+                self.assertIn("shell_tool", argv)
+                self.assertIn('model_reasoning_effort="high"', argv)
+                self.assertIn('web_search="live"', argv)
+            self.assertEqual(argv[argv.index("--model") + 1], "test-model")
+        for args in (["claude", "-evil", "high", "false"], ["claude", "opus", "ultra", "false"],
+                     ["codex", "gpt-6-sol", "bogus", "false"], ["claude", "", "", "yes"]):
+            with self.assertRaises(HELPER.Denied):
+                run(HELPER.cmd_ai, args, b"test")
+        for command in ("echo ok\nrm -rf ~", "echo \x1b[5n", "echo \u202eevil", "", "x" * 2049):
+            broken = {"kind": "command", "text": "", "commands": [{"command": command, "explanation": ""}]}
+            with self.assertRaises(HELPER.Denied):
+                HELPER.ai_result(json.dumps(broken).encode(), "codex")
+        escaped = {"kind": "answer", "text": "First\\n\\nSecond", "commands": []}
+        self.assertEqual(HELPER.ai_result(json.dumps(escaped).encode(), "codex")["text"], "First\n\nSecond")
+        with_map = {"kind": "answer", "text": "Here", "commands": [], "artifacts": [
+            {"type": "map", "title": "Berlin", "latitude": 52.52, "longitude": 13.405, "zoom": 12}]}
+        self.assertEqual(HELPER.ai_result(json.dumps(with_map).encode(), "codex")["artifacts"][0]["title"], "Berlin")
+        self.assertEqual(HELPER.ai_result(json.dumps(with_map).encode(), "codex", True, True)["artifacts"][0]["variant"], "unavailable")
+        with_map["artifacts"][0]["latitude"] = 0
+        with_map["artifacts"][0]["longitude"] = 0
+        self.assertEqual(HELPER.ai_result(json.dumps(with_map).encode(), "codex")["artifacts"], [])
+        with_map["artifacts"][0]["latitude"] = float("nan")
+        self.assertEqual(HELPER.ai_result(json.dumps(with_map).encode(), "codex")["artifacts"], [])
+        def fake_off(command, *args, **kwargs):
+            self.assertIn('web_search="disabled"', command)
+            kwargs["on_line"](json.dumps({"type": "item.completed", "item": {
+                "type": "agent_message", "text": json.dumps({"kind": "answer", "text": "ok", "commands": []})
+            }}).encode())
+            return b"", False, 0
+        with mock.patch.object(HELPER.shutil, "which", return_value="/usr/bin/codex"), \
+             mock.patch.object(HELPER, "run_bounded", side_effect=fake_off):
+            run(HELPER.cmd_ai, ["codex", "", "", "false"], b"hello")
+
+    def test_weather_artifacts_require_web_search_and_complete_sourced_values(self):
+        from datetime import date, timedelta
+        today = date.today()
+        day = {"date": today.isoformat(), "summary": "Cloudy", "temperatureC": 18,
+               "lowC": 12, "highC": 20, "rainPercent": 35}
+        answer = {"kind": "answer", "text": "Weather details", "commands": []}
+        tomorrow = {**day, "date": (today + timedelta(days=1)).isoformat()}
+        for variant, days in (("current", [day]), ("rain", [day, tomorrow]),
+                              ("forecast", [day, tomorrow])):
+            artifact = {"type": "weather", "variant": variant, "location": "Tokyo",
+                        "sourceUrl": "https://example.org/weather/tokyo", "days": days}
+            payload = {**answer, "weather": artifact}
+            encoded = json.dumps(payload).encode()
+            disabled = HELPER.ai_result(encoded, "codex", False, True)["artifacts"][0]
+            self.assertEqual(disabled["variant"], "unavailable")
+            self.assertIn("Enable AI web search", disabled["message"])
+            card = HELPER.ai_result(encoded, "codex", True, True)["artifacts"][0]
+            self.assertEqual(card["variant"], variant)
+            self.assertEqual(card["location"], "Tokyo")
+            self.assertIn("retrievedAt", card)
+            for broken in ({**artifact, "sourceUrl": "javascript:alert(1)"},
+                           {**artifact, "days": [{**day, "rainPercent": 101}]},
+                           {**artifact, "days": []}):
+                payload["weather"] = broken
+                rejected = HELPER.ai_result(json.dumps(payload).encode(), "codex", True, True)["artifacts"][0]
+                self.assertEqual(rejected["variant"], "unavailable")
+                self.assertIn("could not be validated", rejected["message"])
+        week_days = [{**day, "date": (today + timedelta(days=i)).isoformat()} for i in range(7)]
+        weekly = {**answer, "weather": {**artifact, "variant": "forecast", "days": week_days}}
+        self.assertEqual(len(HELPER.ai_result(json.dumps(weekly).encode(), "codex", True, True)["artifacts"][0]["days"]), 7)
+        weekly["weather"]["days"] = week_days[:3]
+        self.assertEqual(len(HELPER.ai_result(json.dumps(weekly).encode(), "codex", True, True)["artifacts"][0]["days"]), 3)
+        weekly["weather"]["days"] = [day, {**tomorrow, "lowC": None},
+                                      {**week_days[2], "lowC": None, "highC": None}]
+        partial = HELPER.ai_result(json.dumps(weekly).encode(), "codex", True, True)["artifacts"][0]
+        self.assertEqual(len(partial["days"]), 2)
+        self.assertIsNone(partial["days"][1]["lowC"])
+        self.assertEqual(partial["days"][1]["highC"], 20)
+        weekly["weather"]["days"] = [{**day, "highC": None, "lowC": None}]
+        self.assertEqual(HELPER.ai_result(json.dumps(weekly).encode(), "codex", True, True)["artifacts"][0]["variant"], "unavailable")
+        weekly["weather"]["days"] = week_days + [{**day, "date": (today + timedelta(days=7)).isoformat()}]
+        self.assertEqual(HELPER.ai_result(json.dumps(weekly).encode(), "codex", True, True)["artifacts"][0]["variant"], "unavailable")
+        unavailable = {**answer, "weather": {"type": "unavailable"}}
+        card = HELPER.ai_result(json.dumps(unavailable).encode(), "codex", True, True)["artifacts"][0]
+        self.assertEqual(card["variant"], "unavailable")
+        self.assertEqual(card["days"], [])
+
+    def test_weather_default_location_is_only_in_weather_prompt(self):
+        from datetime import date
+        weather = {"type": "weather", "variant": "forecast", "location": "Tokyo",
+                   "sourceUrl": "https://example.org/tokyo", "days": [{
+                       "date": date.today().isoformat(), "summary": "Sunny", "temperatureC": None,
+                       "lowC": 9, "highC": 26, "rainPercent": None}]}
+        answer = {"kind": "answer", "text": "Sunny today.", "commands": [], "weather": weather}
+        def fake_run(command, size, deadline, prompt, **kwargs):
+            self.assertIn(b'"Tokyo"', prompt)
+            self.assertIn(b"WEATHER REQUEST", prompt)
+            self.assertIn(b"required weather field", prompt)
+            self.assertIn(b"up to seven days", prompt)
+            self.assertIn(b"A partial forecast is a valid result", prompt)
+            self.assertIn(b"Current UTC date and time:", prompt)
+            if command[0] == "codex":
+                self.assertTrue(command[command.index("--output-schema") + 1]
+                                .endswith("ai-weather-result.schema.json"))
+                event = {"type": "item.completed", "item": {"type": "agent_message", "text": json.dumps(answer)}}
+            else:
+                self.assertIn('"weather"', command[command.index("--json-schema") + 1])
+                event = {"type": "result", "structured_output": answer}
+            kwargs["on_line"](json.dumps(event).encode())
+            return b"", False, 0
+        for provider in ("codex", "claude"):
+            with mock.patch.object(HELPER.shutil, "which", return_value="/usr/bin/agent"), \
+                 mock.patch.object(HELPER, "run_bounded", side_effect=fake_run):
+                reply = run(HELPER.cmd_ai, [provider, "", "", "true", "Tokyo", "true"], b"weather today")
+            self.assertEqual(reply["result"]["artifacts"][0]["variant"], "forecast")
+
+    def test_ai_model_catalogs_follow_local_cli_options(self):
+        with tempfile.TemporaryDirectory() as home:
+            codex = Path(home, ".codex")
+            claude = Path(home, ".claude", "cache", "model-catalog")
+            codex.mkdir()
+            claude.mkdir(parents=True)
+            (codex / "models_cache.json").write_text(json.dumps({"models": [
+                {"slug": "gpt-6-sol", "display_name": "GPT-6 Sol", "visibility": "list",
+                 "supported_reasoning_levels": [{"effort": "low"}, {"effort": "ultra"}]},
+                {"slug": "hidden", "display_name": "Hidden", "visibility": "hide"}]}))
+            (claude / "catalog.json").write_text(json.dumps({"catalog": {"config": {"models": [
+                {"id": "claude-opus-5-5", "name": "Opus 5.5",
+                 "thinking": {"effort_options": [{"id": "medium"}, {"id": "max"}]}},
+                {"id": "-bad", "name": "Bad"}]}}}))
+            with mock.patch.dict(os.environ, {"HOME": home}):
+                catalogs = HELPER.ai_catalogs()
+        self.assertEqual(catalogs["codex"], [
+            {"id": "gpt-6-sol", "name": "GPT-6 Sol", "efforts": ["low", "ultra"]}])
+        self.assertEqual(catalogs["claude"], [
+            {"id": "claude-opus-5-5", "name": "Opus 5.5", "efforts": ["medium", "max"]}])
+
+    def test_ai_stream_reads_progress_and_final_result(self):
+        lines = [
+            b'{"type":"stream_event","event":{"delta":{"type":"thinking_delta","thinking":"Checking"}}}',
+            b'{"type":"result","structured_output":{"kind":"answer","text":"Done","commands":[]}}',
+        ]
+        seen = []
+        raw, truncated, status = HELPER.run_bounded(
+            [sys.executable, "-c", "import sys; sys.stdout.buffer.write(" + repr(b"\n".join(lines) + b"\n") + ")"],
+            4096, 3, on_line=seen.append, want_status=True)
+        self.assertEqual((truncated, status), (False, 0))
+        self.assertEqual(seen, lines)
+        self.assertIn(b"structured_output", raw)
+        self.assertEqual(HELPER.ai_stream_event(seen[0], "claude"), ("Checking", None))
+        delta = b'{"type":"stream_event","event":{"delta":{"type":"text_delta","text":"Explaining"}}}'
+        self.assertEqual(HELPER.ai_stream_event(delta, "claude"), ("Explaining", None))
+        self.assertEqual(HELPER.ai_partial_text('{"kind":"answer","text":"Line\\nwith \\"quotes\\"'),
+                         'Line\nwith "quotes"')
+        self.assertEqual(HELPER.ai_stream_event(seen[1], "claude")[1]["text"], "Done")
+        codex = b'{"type":"item.completed","item":{"type":"reasoning","text":"Inspecting"}}'
+        self.assertEqual(HELPER.ai_stream_event(codex, "codex"), ("Inspecting", None))
+
     def test_settings_are_private_by_default_and_bounded(self):
         defaults = HELPER.normalize_settings({})
+        self.assertFalse(defaults["aiEnabled"])
+        self.assertEqual(defaults["aiProvider"], "claude")
+        self.assertEqual(defaults["aiModel"], "")
+        self.assertEqual(defaults["aiEffort"], "")
+        self.assertFalse(defaults["aiWebSearch"])
+        self.assertEqual(defaults["artifactSettings"], {"weather": {"defaultLocation": ""}})
+        self.assertEqual(HELPER.normalize_settings({"artifactSettings": {
+            "weather": {"defaultLocation": "Tokyo"}}})["artifactSettings"]["weather"]["defaultLocation"], "Tokyo")
+        self.assertEqual(HELPER.normalize_settings({"artifactSettings": {
+            "weather": {"defaultLocation": "bad\nplace"}}})["artifactSettings"]["weather"]["defaultLocation"], "")
+        self.assertTrue(HELPER.normalize_settings({"aiWebSearch": True})["aiWebSearch"])
+        self.assertFalse(HELPER.normalize_settings({"aiWebSearch": "yes"})["aiWebSearch"])
+        self.assertEqual(HELPER.normalize_settings({"aiEnabled": True, "aiProvider": "codex"})["aiProvider"], "codex")
+        self.assertEqual(HELPER.normalize_settings({"aiModel": "gpt-6-sol", "aiEffort": "high"})["aiEffort"], "high")
+        self.assertEqual(HELPER.normalize_settings({"aiProvider": "claude", "aiEffort": "ultra"})["aiEffort"], "")
+        self.assertEqual(HELPER.normalize_settings({"aiModel": "-evil", "aiEffort": []})["aiModel"], "")
+        self.assertFalse(HELPER.normalize_settings({"aiEnabled": "yes"})["aiEnabled"])
         self.assertFalse(defaults["webSuggestions"])
         self.assertTrue(defaults["currencyRates"])
         self.assertTrue(defaults["fileSearchAlways"])
@@ -858,7 +1095,7 @@ def run(handler, argv=None, stdin=b""):
     with mock.patch("sys.stdin", io.TextIOWrapper(io.BytesIO(stdin))):
         with contextlib.redirect_stdout(buf):
             handler(argv) if argv is not None else handler()
-    return json.loads(buf.getvalue())
+    return json.loads(buf.getvalue().splitlines()[-1])
 
 
 def read_until(proc, marker, timeout=5):
@@ -916,6 +1153,15 @@ EXPECTED_AFTER_WRITE = LUA_FIXTURE.replace(
 
 
 class SettingsWriteTests(unittest.TestCase):
+    def test_weather_location_survives_unrelated_settings_updates(self):
+        with fake_home():
+            patch = {"artifactSettings": {"weather": {"defaultLocation": "Tokyo"}}}
+            reply = run(HELPER.cmd_write_settings, stdin=json.dumps(patch).encode())
+            self.assertEqual(reply["settings"]["artifactSettings"]["weather"]["defaultLocation"], "Tokyo")
+            run(HELPER.cmd_write_settings, stdin=b'{"aiWebSearch":true}')
+            reply = run(HELPER.cmd_read_settings)
+            self.assertEqual(reply["settings"]["artifactSettings"]["weather"]["defaultLocation"], "Tokyo")
+
     def test_default_currency_is_optional_and_normalizes_code_spelling(self):
         self.assertEqual(HELPER.normalize_settings({})["defaultCurrency"], "")
         self.assertEqual(HELPER.normalize_settings({"defaultCurrency": " eur "})["defaultCurrency"], "EUR")

@@ -21,6 +21,7 @@ ShellRoot {
     width: 1920; height: 580
     property bool tourActive: false
     property bool settingsActive: false
+    property bool aiActive: false
     property int contentHeight: 456
     ''' + dimensions + '''
     QtObject { id: displayModel; property int count: 10 }
@@ -52,7 +53,9 @@ ShellRoot {
         if (frame === 20) { displayModel.count = 10; root.contentHeight = 1000 }
         if (frame === 30) { root.height = 1080; top = -1 }
         if (frame === 32) { root.height = 540; top = -1 }
-        if (frame === 40) root.contentHeight = 36
+        if (frame === 36) root.aiActive = true
+        if (frame === 44) root.aiActive = false
+        if (frame === 46) root.contentHeight = 36
         if (frame === 50) { console.log("POSITION_SMOKE_OK"); Qt.quit() }
         } catch (error) { console.error(error); Qt.quit() }
       }

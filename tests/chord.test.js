@@ -86,7 +86,7 @@ test("loadBinding only auto-binds when the helper explicitly knows the chord is 
 })
 
 test("the tour warns before replacing a binding even without a description", () => {
-  const qml = fs.readFileSync(path.join(__dirname, "..", "SetupTour.qml"), "utf8")
+  const qml = fs.readFileSync(path.join(__dirname, "..", "ui", "panels", "SetupTour.qml"), "utf8")
   for (const [boundChords, currentBinding, shouldReplace] of [
     [{ "ALT + SPACE": "" }, "", true],
     [{ "ALT + SPACE": "Launcher" }, "", true],
