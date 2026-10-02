@@ -18,3 +18,12 @@ test("ambiguous technical terms do not select the weather contract", () => {
     "Temperatur heute", "Wie ist die Temperatur in Berlin?"])
     assert.equal(WeatherIntent.isWeather(query), true, query)
 })
+
+test("rain instruments and programming questions stay general", () => {
+  for (const query of ["rain gauge arduino code", "how does a rain gauge work?",
+    "write a script for a rain sensor", "build a weather API", "Arduino rain forecast display"])
+    assert.equal(WeatherIntent.isWeather(query), false, query)
+  for (const query of ["Will it rain tomorrow?", "rain in Berlin", "rain forecast",
+    "Is it raining outside?", "Regnet es morgen?", "weather in Berlin"])
+    assert.equal(WeatherIntent.isWeather(query), true, query)
+})

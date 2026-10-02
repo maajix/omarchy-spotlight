@@ -120,3 +120,17 @@ assert.equal(disabledProcess.running, false, 'Disabling AI cancels even while hi
 assert.equal(root.aiBusy, false);
 event('result', {result: {text: 'Disabled response'}}, disabledGeneration);
 assert.equal(root.aiResult, null);
+
+root.settings.aiEnabled = true;
+root.settings.aiWebSearch = true;
+root.settings.artifactSettings = {weather: {defaultLocation: 'Berlin'}};
+for (const [query, location, weather] of [
+  ['rain gauge arduino code', '', 'false'],
+  ['Will it rain tomorrow?', 'Berlin', 'true']
+]) {
+  context.input.text = 'ai: ' + query;
+  root.startAi();
+  assert.deepEqual(Array.from(root.aiProcess.command).slice(-2), [location, weather],
+    'Only weather requests may send the saved location and select the weather schema');
+  root.stopAi();
+}
