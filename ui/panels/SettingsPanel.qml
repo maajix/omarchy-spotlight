@@ -2,7 +2,8 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 import qs.Commons
-import "lib/Web.js" as Web
+import "../components"
+import "../../lib/Web.js" as Web
 
 // Spotlight.qml owns persistence; draft keeps controls responsive during writes.
 FocusScope {
@@ -19,6 +20,7 @@ FocusScope {
   property int surfaceRadius: 12
   property int rowRadius: 8
   property var settings: ({})
+  property var aiModels: ({ claude: [], codex: [] })
   property var pendingSettings: ({})
   property bool saveFailed: false
   property string saveError: ""
@@ -33,6 +35,7 @@ FocusScope {
   property bool resetArmed: false
   // Set by Spotlight.qml once the helper confirms the reset.
   property bool resetDone: false
+  property string activeTab: "general"
 
   // out
   signal changed(var patch)
@@ -51,6 +54,7 @@ FocusScope {
 
   function open() {
     currencyCodeField.revert()
+    panel.activeTab = "general"
     panel.resetArmed = false
     panel.resetDone = false
     // After the layout has settled: the rows are still being sized when open()
@@ -66,6 +70,11 @@ FocusScope {
   }
 
   function toggle(key) { panel.set(key, panel.draft[key] !== true) }
+
+  function showTab(tab) {
+    if (panel.activeTab === "artifacts") artifactSettingsPage.commit()
+    panel.activeTab = tab
+  }
 
   function focusPanel() {
     Qt.callLater(function() {
@@ -96,6 +105,7 @@ FocusScope {
   // the field at that point, and nothing was written for it, so the field is
   // put back on the stored value instead of leaving the two disagreeing.
   function finish() {
+    if (panel.activeTab === "artifacts") artifactSettingsPage.commit()
     currencyCodeField.revert()
     panel.closed()
   }
@@ -104,7 +114,10 @@ FocusScope {
   // focus, and a panel that closed on a stray Enter from a stepper or a menu
   // would swallow the edit the user was in the middle of.
   Keys.onPressed: function(event) {
-    if (event.key === Qt.Key_Escape) { panel.finish(); event.accepted = true }
+    if (event.key === Qt.Key_Escape) {
+      panel.finish()
+      event.accepted = true
+    }
   }
 
   // ------------------------------------------------------------- pieces
@@ -119,7 +132,7 @@ FocusScope {
 
   // ------------------------------------------------------------- surface
   width: Math.min(Style.space(620), (parent ? parent.width : Style.space(800)) - Style.space(48))
-  height: Math.min(panel.availableHeight, column.implicitHeight + Style.space(48))
+  height: panel.availableHeight
 
   // Where focus goes on open. The scope itself would hand it back to the
   // control focused last time, scroll to it and let a stray Space press it.
@@ -202,8 +215,30 @@ FocusScope {
       }
     }
 
+    RowLayout {
+      Layout.fillWidth: true
+      spacing: Style.space(8)
+
+      Pill {
+        chrome: panel.chrome
+        text: "General"
+        selected: panel.activeTab === "general"
+        onClicked: panel.showTab("general")
+      }
+
+      Pill {
+        chrome: panel.chrome
+        text: "Artifacts"
+        selected: panel.activeTab === "artifacts"
+        onClicked: panel.showTab("artifacts")
+      }
+
+      Item { Layout.fillWidth: true }
+    }
+
     Flickable {
       id: flick
+      visible: panel.activeTab === "general"
       Layout.fillWidth: true
       Layout.fillHeight: true
       Layout.preferredHeight: content.implicitHeight
@@ -295,6 +330,17 @@ FocusScope {
             options: Web.engineOptions()
             onChanged: function(v) { panel.set("searchEngine", v) }
           }
+        }
+
+        GroupLabel { text: "AI" }
+
+        AiSettings {
+          Layout.fillWidth: true
+          chrome: panel.chrome
+          bounds: panel
+          draft: panel.draft
+          aiModels: panel.aiModels
+          onChanged: function(patch) { panel.changed(patch) }
         }
 
         GroupLabel { text: "CURRENCY" }
@@ -446,6 +492,16 @@ FocusScope {
           }
         }
       }
+    }
+
+    ArtifactSettingsPage {
+      id: artifactSettingsPage
+      visible: panel.activeTab === "artifacts"
+      Layout.fillWidth: true
+      Layout.fillHeight: true
+      chrome: panel.chrome
+      artifactSettings: panel.draft.artifactSettings || ({ weather: { defaultLocation: "" } })
+      onChanged: function(patch) { panel.changed(patch) }
     }
 
     RowLayout {

@@ -68,6 +68,7 @@ From two characters onward, Spotlight searches enabled local providers together 
 | `tr what is this to german` | Translate into the named language |
 | `example.com` | Open a URL directly |
 | Anything else | Offer a web search |
+| `ai: how does scp work?` | Ask the selected Claude or Codex CLI inside Spotlight |
 
 Spotlight runs inside the existing `omarchy-shell` process, so there is no separate launcher or cold start. Late file and web results also cannot steal the current selection while you type.
 
@@ -91,6 +92,41 @@ a default plugin icon; a failed launch produces a desktop notification.
 - Confirmation before logout, restart, or shutdown, including with Shift+Enter
 - No telemetry or analytics
 
+### Ask AI
+
+Enable **Ask AI** in the setup tour or Spotlight Settings and choose an installed, signed-in Claude or Codex CLI. Type `ai: <question>` and press Enter. Spotlight streams provider reasoning or progress when available, then shows the validated answer as readable Markdown in a scrollable panel. It asks the provider to answer in the language of your question unless you request another language. Nothing is sent while you type, and each request is independent.
+
+Submitted requests keep running when Spotlight closes. Reopen it to return to the same request, progress or completed answer. A completion notification appears when you are away; clicking it opens Spotlight. **Cancel** stops a running request; submitting a new AI question replaces the previous one. The latest request and reading position stay in memory until the shell restarts. A subtle floating ghost accompanies the thinking view.
+
+The model and thinking-level menus use the installed CLIs' local model catalogs and show only the levels listed for the chosen model. **CLI default** and **Model default** leave that choice to the CLI. If a catalog is unavailable, run its CLI once to populate the catalog, then reopen Spotlight.
+
+**AI web search** is off by default. Enable it in the setup tour or Spotlight Settings to let the selected provider search the web during an `ai:` request.
+
+For requests that need a terminal command, Spotlight shows the exact command with a **Copy** action. Multi-step tasks show up to six commands in order. The AI never executes them or changes your desktop directly. If it cannot provide a reliable command or lacks a capability, it should explain that in its answer. Review generated commands before running them.
+
+Fenced code blocks appear as terminal cards with a **Copy** action. AI artifacts add visual cards to an answer:
+
+| Try | Spotlight shows |
+| --- | --- |
+| `ai: show me Tokyo on a map` | A dark map preview with a marker and an OpenStreetMap link. |
+| `ai: create a palette for a dark ocean theme` | Named color swatches, an interface preview and copyable HEX values. |
+| `ai: chart this budget: Rent 900, Food 300, Transport 100, Savings 400 EUR` | A chart with a legend, provenance note and exact values on hover. |
+| `ai: compare scp and rsync for SSH file transfers` | Options with facts, strengths, tradeoffs and source links. |
+| `ai: plan a weekend in Tokyo` | A timeline with dates, activities, descriptions and optional source links. |
+| `ai: show my CPU, memory, storage and service status in a dashboard` | A measured local snapshot with usage bars and service health. |
+| `ai: find two ramen restaurants in Tokyo with opening hours and ratings` | Place cards with addresses, ratings, sources and map links. |
+| `ai: preview changing font size from 12 to 14 in this config: size = 12` | A diff preview with additions, removals, line numbers and copy actions. |
+| `ai: help me prepare for a server migration` | An interactive checklist with progress, reset and copy actions. |
+| `ai: explain how DNS resolution works` | Connected nodes with selectable connections and readable captions. |
+| `ai: suggest two minimalist mountain wallpapers` | Image previews with attribution, source links and separate Save / Apply actions. |
+| `ai: what's the weather in Tokyo this week?` | A sourced weather card with up to seven days when AI web search is enabled. |
+
+Set an optional default weather location under **Spotlight Settings → Artifacts**. A place in the question takes priority. Contributors can add card types using the [artifact guide](docs/artifacts.md).
+
+For an event page, try `ai: extract the schedule from <event URL> and show a timeline`. A fictional demo prompt: `ai: show a timeline for Future Summit: 09:00 registration, 10:00 keynote, 12:00 lunch, 14:00 workshops`.
+
+Gallery previews require the native `curl` and ImageMagick (`magick`) tools. Save keeps the sanitized image in **Pictures/Spotlight**; Apply saves it and sets it as your wallpaper. Source links let you check image attribution and licensing.
+
 ## Keyboard shortcuts
 
 | Key | Action |
@@ -110,7 +146,7 @@ Settings that are on or off show their live state instead of a generic action la
 
 Most of the time, just type. Applications are listed from the first character. Use a filter when you want results from one provider only:
 
-Typing the start of `ports`, `ssh`, `docker`, `services`, `mounts`, `audio`, `wifi`, or `bluetooth` shows matching views
+Typing the start of `ai`, `ports`, `ssh`, `docker`, `services`, `mounts`, `audio`, `wifi`, or `bluetooth` shows matching views
 above normal results. When a view is the selected row, Tab or Enter fills in its
 colon filter (for example, `moun` becomes `mounts:`). An app still gets the first
 Enter when its name is exactly what you typed, or when it starts with what you
@@ -131,6 +167,7 @@ view unless an app has exactly that name.
 | `reminder:` | Reminders |
 | `calendar:` or `event:` | Calendar events |
 | `man:` or `tldr:` | Command help from tldr pages |
+| `ai:` | Ask the selected AI provider |
 | `ports:` | Local listening TCP and UDP ports |
 | `ssh:` | Saved SSH aliases and visible hosts from `~/.ssh/known_hosts` |
 | `docker:` | Running and stopped Docker containers |
@@ -287,6 +324,12 @@ Everything the panel writes lives at `~/.config/omarchy/spotlight.json`, which S
   "clipboardSearch": true,
   "clipboardSearchAlways": true,
   "learningEnabled": true,
+  "aiEnabled": false,
+  "aiProvider": "claude",
+  "aiModel": "",
+  "aiEffort": "",
+  "aiWebSearch": false,
+  "artifactSettings": { "weather": { "defaultLocation": "" } },
   "maxResults": 20,
   "maxApps": 8,
   "maxSuggestions": 4,
@@ -347,6 +390,8 @@ Spotlight has no telemetry, analytics, or background network service. Almost eve
 | `nmcli` | After you connect to a network from `wifi:` |
 | Docker daemon | When opening `docker:` or following container logs; the daemon may be remote in the active Docker context |
 | tldr-pages (GitHub) | First lookup of a command not yet in `~/.cache/tldr`, via the `tldr` client |
+| Claude or Codex | Only after you submit an `ai:` query with Enter while **Ask AI** is enabled; the selected CLI sends the query to its provider. It may search the web when **AI web search** is enabled |
+| `mapmap.ai` | When a map artifact appears; its coordinates and zoom are sent to render the map preview |
 
 Live web suggestions are disabled by default. Normal web searches do not send the query anywhere until you activate the result.
 
@@ -397,11 +442,14 @@ rm -f ~/.local/state/omarchy/spotlight-usage.json
 ## Development
 
 ```text
-Spotlight.qml          UI and actions
-SetupTour.qml          first-run shortcut setup
-PillSwitch.qml         live toggle control
-lib/                   parsers and ranking logic
+Spotlight.qml          manifest entry point, UI state and actions
+ui/components/         reusable QML controls and palette
+ui/panels/             search, AI, setup and settings views
+ui/artifacts/          registered AI cards and their host
+lib/                   parsers, settings queue and ranking logic
 bin/spotlight-helper   bounded interface to files and subprocesses
+resources/             AI result schema
+docs/artifacts.md      card contract and contributor guide
 tests/                 JavaScript and Python checks
 ```
 
@@ -412,7 +460,7 @@ omarchy plugin validate .
 python3 -m unittest discover -s tests -p '*_test.py'
 for file in tests/*.test.js; do node "$file"; done
 python3 -m py_compile bin/spotlight-helper
-/usr/lib/qt6/bin/qmlformat -n Spotlight.qml SetupTour.qml PillSwitch.qml >/dev/null
+/usr/lib/qt6/bin/qmlformat -n Spotlight.qml ui/{components,panels,artifacts}/*.qml >/dev/null
 for file in lib/*.js; do node --check "$file"; done
 ```
 

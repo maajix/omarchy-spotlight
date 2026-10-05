@@ -36,3 +36,18 @@ test("a failed write stays pending until retry, with newer edits taking priority
   state = Queue.retry(state)
   assert.deepEqual(Queue.take(state).patch, { fileSearch: true, maxApps: 10, maxResults: 30 })
 })
+
+test("the tour initializes the saved AI web-search setting", () => {
+  const fs = require("node:fs")
+  const vm = require("node:vm")
+  const qml = fs.readFileSync(require.resolve("../ui/panels/SetupTour.qml"), "utf8")
+  const context = vm.createContext({
+    Web: { hasEngine: () => true }, Currency: { defaultCode: () => "EUR" },
+    currencyCodeField: { revert() {} }, focusStep() {}
+  })
+  vm.runInContext(qml.slice(qml.indexOf("  function start("), qml.indexOf("  function set(")), context)
+  for (const aiWebSearch of [true, false]) {
+    context.start({ aiWebSearch }, 3, false)
+    assert.equal(context.draft.aiWebSearch, aiWebSearch)
+  }
+})

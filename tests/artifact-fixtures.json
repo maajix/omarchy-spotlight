@@ -1,0 +1,664 @@
+[
+  {
+    "type": "palette",
+    "title": "Ocean",
+    "colors": [
+      {
+        "label": "Navy",
+        "hex": "#14283F"
+      },
+      {
+        "label": "Mint",
+        "hex": "#79D7EB"
+      }
+    ]
+  },
+  {
+    "type": "chart",
+    "variant": "bar",
+    "title": "Example sales",
+    "labels": [
+      "Jan",
+      "Feb",
+      "Mar",
+      "Apr"
+    ],
+    "series": [
+      {
+        "label": "Sales",
+        "values": [
+          12,
+          18,
+          9,
+          24
+        ]
+      }
+    ],
+    "unit": "EUR",
+    "note": "Illustrative data",
+    "sourceUrl": "",
+    "retrievedAt": ""
+  },
+  {
+    "type": "chart",
+    "variant": "line",
+    "title": "Example trends",
+    "labels": [
+      "Mon",
+      "Tue",
+      "Wed",
+      "Thu"
+    ],
+    "series": [
+      {
+        "label": "A",
+        "values": [
+          -2,
+          4,
+          3,
+          8
+        ]
+      },
+      {
+        "label": "B",
+        "values": [
+          3,
+          1,
+          6,
+          4
+        ]
+      }
+    ],
+    "unit": "",
+    "note": "Illustrative data",
+    "sourceUrl": "",
+    "retrievedAt": ""
+  },
+  {
+    "type": "chart",
+    "variant": "donut",
+    "title": "Example budget",
+    "labels": [
+      "Rent",
+      "Food",
+      "Travel",
+      "Savings"
+    ],
+    "series": [
+      {
+        "label": "Budget",
+        "values": [
+          900,
+          300,
+          100,
+          400
+        ]
+      }
+    ],
+    "unit": "EUR",
+    "note": "Illustrative data",
+    "sourceUrl": "",
+    "retrievedAt": ""
+  },
+  {
+    "type": "comparison",
+    "title": "SSH transfer tools",
+    "note": "Conceptual comparison; no prices apply",
+    "retrievedAt": "",
+    "options": [
+      {
+        "name": "SCP",
+        "price": "Not applicable",
+        "summary": "Simple remote copies over SSH.",
+        "pros": [
+          "Short commands",
+          "Widely installed"
+        ],
+        "cons": [
+          "No transfer resume"
+        ],
+        "facts": [
+          {
+            "label": "Best for",
+            "value": "One-off transfers"
+          }
+        ],
+        "recommended": false,
+        "sourceUrl": ""
+      },
+      {
+        "name": "Rsync",
+        "price": "Not applicable",
+        "summary": "Efficient repeat copies and synchronization.",
+        "pros": [
+          "Incremental copies",
+          "Resumable transfers"
+        ],
+        "cons": [
+          "More options to learn"
+        ],
+        "facts": [
+          {
+            "label": "Best for",
+            "value": "Repeated synchronization"
+          }
+        ],
+        "recommended": true,
+        "sourceUrl": ""
+      }
+    ]
+  },
+  {
+    "type": "comparison",
+    "title": "Uneven comparison rows",
+    "note": "Conceptual comparison; no prices apply",
+    "retrievedAt": "",
+    "options": [
+      {
+        "name": "SCP",
+        "price": "Not applicable",
+        "summary": "A deliberately longer description that wraps across several lines so the following fact and bullet rows must remain aligned with the shorter right column.",
+        "pros": [
+          "A longer benefit that needs more than one line of space and should expand the matching row for the other option as well.",
+          "Second benefit"
+        ],
+        "cons": [
+          "No transfer resume"
+        ],
+        "facts": [
+          {
+            "label": "Memory",
+            "value": "32 GB"
+          },
+          {
+            "label": "Platform",
+            "value": "Linux"
+          }
+        ],
+        "recommended": false,
+        "sourceUrl": ""
+      },
+      {
+        "name": "Rsync",
+        "price": "Not applicable",
+        "summary": "Short description.",
+        "pros": [
+          "Short benefit"
+        ],
+        "cons": [
+          "More options to learn"
+        ],
+        "facts": [
+          {
+            "label": "Platform",
+            "value": "Linux and Windows"
+          },
+          {
+            "label": "Memory",
+            "value": "16 GB"
+          },
+          {
+            "label": "Bandwidth",
+            "value": "500 GB/s"
+          }
+        ],
+        "recommended": true,
+        "sourceUrl": ""
+      }
+    ]
+  },
+  {
+    "type": "comparison",
+    "title": "Four uneven options",
+    "note": "Conceptual comparison; no prices apply",
+    "retrievedAt": "",
+    "options": [
+      {
+        "name": "SCP",
+        "price": "Not applicable",
+        "summary": "A deliberately longer description that wraps across several lines so the following fact and bullet rows must remain aligned with the shorter right column.",
+        "pros": [
+          "A longer benefit that needs more than one line of space and should expand the matching row for the other option as well.",
+          "Second benefit"
+        ],
+        "cons": [
+          "No transfer resume"
+        ],
+        "facts": [
+          {
+            "label": "Memory",
+            "value": "32 GB"
+          },
+          {
+            "label": "Platform",
+            "value": "Linux"
+          }
+        ],
+        "recommended": false,
+        "sourceUrl": ""
+      },
+      {
+        "name": "Rsync",
+        "price": "Not applicable",
+        "summary": "Short description.",
+        "pros": [
+          "Short benefit"
+        ],
+        "cons": [
+          "More options to learn"
+        ],
+        "facts": [
+          {
+            "label": "Platform",
+            "value": "Linux and Windows"
+          },
+          {
+            "label": "Memory",
+            "value": "16 GB"
+          },
+          {
+            "label": "Bandwidth",
+            "value": "500 GB/s"
+          }
+        ],
+        "recommended": true,
+        "sourceUrl": ""
+      },
+      {
+        "name": "SCP",
+        "price": "Not applicable",
+        "summary": "A deliberately longer description that wraps across several lines so the following fact and bullet rows must remain aligned with the shorter right column.",
+        "pros": [
+          "A longer benefit that needs more than one line of space and should expand the matching row for the other option as well.",
+          "Second benefit"
+        ],
+        "cons": [
+          "No transfer resume"
+        ],
+        "facts": [
+          {
+            "label": "Memory",
+            "value": "32 GB"
+          },
+          {
+            "label": "Platform",
+            "value": "Linux"
+          }
+        ],
+        "recommended": false,
+        "sourceUrl": ""
+      },
+      {
+        "name": "Rsync",
+        "price": "Not applicable",
+        "summary": "Short description.",
+        "pros": [
+          "Short benefit"
+        ],
+        "cons": [
+          "More options to learn"
+        ],
+        "facts": [
+          {
+            "label": "Platform",
+            "value": "Linux and Windows"
+          },
+          {
+            "label": "Memory",
+            "value": "16 GB"
+          },
+          {
+            "label": "Bandwidth",
+            "value": "500 GB/s"
+          }
+        ],
+        "recommended": true,
+        "sourceUrl": ""
+      }
+    ]
+  },
+  {
+    "type": "weather",
+    "variant": "forecast",
+    "location": "Tokyo",
+    "sourceUrl": "https://example.org/weather/tokyo",
+    "retrievedAt": "2026-09-30T08:00+00:00",
+    "days": [
+      {
+        "date": "2026-09-30",
+        "summary": "Cloudy",
+        "temperatureC": null,
+        "lowC": 18,
+        "highC": 24,
+        "rainPercent": 30
+      },
+      {
+        "date": "2026-10-01",
+        "summary": "Rain",
+        "temperatureC": null,
+        "lowC": 17,
+        "highC": 22,
+        "rainPercent": 70
+      },
+      {
+        "date": "2026-10-02",
+        "summary": "Sunny",
+        "temperatureC": null,
+        "lowC": null,
+        "highC": 25,
+        "rainPercent": 10
+      }
+    ]
+  },
+  {
+    "type": "weather",
+    "variant": "unavailable",
+    "location": "Weather",
+    "sourceUrl": "",
+    "retrievedAt": "",
+    "days": [],
+    "message": "No verified weather data was returned. See the answer above for details."
+  },
+  {
+    "type": "timeline",
+    "title": "Tokyo weekend",
+    "note": "Suggested itinerary; check opening hours before visiting.",
+    "retrievedAt": "",
+    "entries": [
+      {
+        "when": "Saturday \u00b7 09:00",
+        "title": "Explore the old town",
+        "description": "Walk through quiet streets and stop for breakfast before the busiest hours.",
+        "status": "done",
+        "sourceUrl": ""
+      },
+      {
+        "when": "Saturday \u00b7 13:00",
+        "title": "Lunch and a museum",
+        "description": "Leave time for lunch and choose an exhibition that interests you.",
+        "status": "current",
+        "sourceUrl": ""
+      },
+      {
+        "when": "Sunday \u00b7 17:00",
+        "title": "Finish with a park stroll",
+        "description": "Keep the final afternoon flexible before heading back.",
+        "status": "planned",
+        "sourceUrl": "https://example.org/travel"
+      }
+    ]
+  },
+  {
+    "type": "diagram",
+    "title": "DNS resolution",
+    "note": "Simplified conceptual flow.",
+    "sourceUrl": "",
+    "retrievedAt": "",
+    "nodes": [
+      {
+        "id": "browser",
+        "label": "Browser",
+        "column": 0,
+        "row": 0
+      },
+      {
+        "id": "resolver",
+        "label": "Recursive resolver",
+        "column": 0,
+        "row": 1
+      },
+      {
+        "id": "root",
+        "label": "Root and TLD servers",
+        "column": 1,
+        "row": 1
+      },
+      {
+        "id": "authority",
+        "label": "Authoritative server",
+        "column": 2,
+        "row": 1
+      },
+      {
+        "id": "ip",
+        "label": "Return the IP address",
+        "column": 0,
+        "row": 2
+      }
+    ],
+    "edges": [
+      {
+        "from": "browser",
+        "to": "resolver",
+        "label": "Query"
+      },
+      {
+        "from": "resolver",
+        "to": "root",
+        "label": ""
+      },
+      {
+        "from": "root",
+        "to": "authority",
+        "label": ""
+      },
+      {
+        "from": "resolver",
+        "to": "ip",
+        "label": "Answer"
+      }
+    ]
+  },
+  {
+    "type": "dashboard",
+    "title": "System snapshot",
+    "focus": "all",
+    "retrievedAt": "2026-09-30T09:00:00+00:00",
+    "cpu": {
+      "percent": 22.4,
+      "cores": 16
+    },
+    "memory": {
+      "used": 30064771072,
+      "total": 68719476736,
+      "available": 38654705664
+    },
+    "disks": [
+      {
+        "label": "System",
+        "used": 81604378624,
+        "total": 274877906944,
+        "available": 186831077376
+      }
+    ],
+    "folders": [
+      {
+        "name": ".cache",
+        "bytes": 8589934592
+      },
+      {
+        "name": "Downloads",
+        "bytes": 4294967296
+      }
+    ],
+    "foldersPartial": true,
+    "services": [
+      {
+        "scope": "user",
+        "active": 23,
+        "failed": 1,
+        "failedNames": [
+          "example.service"
+        ],
+        "partial": false
+      }
+    ],
+    "errors": []
+  },
+  {
+    "type": "places",
+    "title": "Example Tokyo places",
+    "note": "Fictional showcase data, not real venues.",
+    "retrievedAt": "",
+    "places": [
+      {
+        "name": "Moonlight Ramen",
+        "category": "Ramen restaurant",
+        "address": "Example Street 12, Tokyo, Japan",
+        "hours": "Example hours: 11:00\u201321:00",
+        "summary": "A fictional small restaurant with a quiet counter.",
+        "rating": 4.5,
+        "ratingSource": "Illustrative example",
+        "sourceUrl": "https://example.org/venues",
+        "mapUrl": "https://www.openstreetmap.org/search?query=Tokyo"
+      },
+      {
+        "name": "Cloud Garden",
+        "category": "Public garden",
+        "address": "Example Avenue 4, Tokyo, Japan",
+        "hours": "Not verified",
+        "summary": "An illustrative garden card with unavailable rating data.",
+        "rating": null,
+        "ratingSource": "",
+        "sourceUrl": "",
+        "mapUrl": "https://www.openstreetmap.org/search?query=Tokyo"
+      }
+    ]
+  },
+  {
+    "type": "diff",
+    "title": "Example terminal font change",
+    "note": "Illustrative configuration; no local file was read.",
+    "files": [
+      {
+        "path": "~/.config/example-terminal/config.toml",
+        "before": "[font]\nsize = 12\nfamily = \"monospace\"\n",
+        "after": "[font]\nsize = 14\nfamily = \"monospace\"\n",
+        "rows": [
+          {
+            "kind": "hunk",
+            "text": "@@ -1,3 +1,3 @@",
+            "old": "",
+            "new": ""
+          },
+          {
+            "kind": "context",
+            "text": "[font]",
+            "old": "1",
+            "new": "1"
+          },
+          {
+            "kind": "removed",
+            "text": "size = 12",
+            "old": "2",
+            "new": ""
+          },
+          {
+            "kind": "added",
+            "text": "size = 14",
+            "old": "",
+            "new": "2"
+          },
+          {
+            "kind": "context",
+            "text": "family = \"monospace\"",
+            "old": "3",
+            "new": "3"
+          }
+        ],
+        "added": 1,
+        "removed": 1,
+        "diff": "--- a/~/.config/example-terminal/config.toml\n+++ b/~/.config/example-terminal/config.toml\n@@ -1,3 +1,3 @@\n [font]\n-size = 12\n+size = 14\n family = \"monospace\"\n"
+      }
+    ]
+  },
+  {
+    "type": "checklist",
+    "id": "fixture-migration",
+    "title": "Server migration",
+    "note": "Suggested preparation. Check off tasks as you finish them.",
+    "sourceUrl": "",
+    "retrievedAt": "",
+    "items": [
+      {
+        "title": "Verify backups",
+        "description": "Create a fresh backup and test restoring a small file."
+      },
+      {
+        "title": "Plan the maintenance window",
+        "description": "Notify users and record the expected downtime."
+      },
+      {
+        "title": "Prepare rollback",
+        "description": "Keep the old server available until verification is complete."
+      }
+    ]
+  },
+  {
+    "type": "gallery",
+    "title": "Mountain wallpapers",
+    "note": "Illustrative fixture; no image hosts are contacted.",
+    "images": [
+      {
+        "title": "Alpine morning",
+        "description": "Soft mountain silhouettes for a calm desktop.",
+        "credit": "Example photographer",
+        "imageUrl": "https://example.org/image.jpg",
+        "sourceUrl": "https://example.org/license",
+        "id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "previewUrl": "",
+        "error": ""
+      },
+      {
+        "title": "Blue horizon",
+        "description": "A spacious sky with cool ocean tones.",
+        "credit": "Example photographer",
+        "imageUrl": "https://example.org/image.jpg",
+        "sourceUrl": "https://example.org/license",
+        "id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "previewUrl": "",
+        "error": ""
+      },
+      {
+        "title": "Forest mist",
+        "description": "Soft mountain silhouettes for a calm desktop.",
+        "credit": "Example photographer",
+        "imageUrl": "https://example.org/image.jpg",
+        "sourceUrl": "https://example.org/license",
+        "id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "previewUrl": "",
+        "error": ""
+      },
+      {
+        "title": "Desert dusk",
+        "description": "Soft mountain silhouettes for a calm desktop.",
+        "credit": "Example photographer",
+        "imageUrl": "https://example.org/image.jpg",
+        "sourceUrl": "https://example.org/license",
+        "id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "previewUrl": "",
+        "error": ""
+      },
+      {
+        "title": "Moonlit lake",
+        "description": "Soft mountain silhouettes for a calm desktop.",
+        "credit": "Example photographer",
+        "imageUrl": "https://example.org/image.jpg",
+        "sourceUrl": "https://example.org/license",
+        "id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "previewUrl": "",
+        "error": ""
+      },
+      {
+        "title": "Snowy summit",
+        "description": "Soft mountain silhouettes for a calm desktop.",
+        "credit": "Example photographer",
+        "imageUrl": "https://example.org/image.jpg",
+        "sourceUrl": "https://example.org/license",
+        "id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "previewUrl": "",
+        "error": ""
+      }
+    ]
+  }
+]

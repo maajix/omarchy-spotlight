@@ -1,7 +1,7 @@
 import QtQuick
 import QtQuick.Controls
 import qs.Commons
-import "lib/Currency.js" as Currency
+import "../../lib/Currency.js" as Currency
 
 // Default-currency input shared by the tour and the settings panel. An
 // unfinished code is never reported: only what Currency accepts, or blank,

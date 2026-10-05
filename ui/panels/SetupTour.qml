@@ -1,9 +1,10 @@
 import QtQuick
 import QtQuick.Layouts
 import qs.Commons
-import "lib/Chord.js" as Chord
-import "lib/Web.js" as Web
-import "lib/Currency.js" as Currency
+import "../components"
+import "../../lib/Chord.js" as Chord
+import "../../lib/Web.js" as Web
+import "../../lib/Currency.js" as Currency
 
 // First-run tour, and the standalone shortcut chooser (singleStep). Pure UI:
 // Spotlight.qml owns every read and write and feeds the results back through
@@ -29,6 +30,7 @@ FocusScope {
   property string previousBinding: ""
   property bool bindingManaged: false
   property var boundChords: ({})
+  property var aiModels: ({ claude: [], codex: [] })
   property string bindingState: ""   // "" | busy | ok | reverted | error | reloadError
 
   // owned
@@ -48,11 +50,12 @@ FocusScope {
   readonly property var presets: ["ALT + SPACE", "SUPER + SPACE", "CTRL + ALT + SPACE"]
   readonly property var examples: [["firefox", "open an app"], ["f invoice", "find a file"], ["12*1.19", "calculate"],
     ["5 km in mi", "convert units"], ["remind me tomorrow 9am standup", "set a reminder"], ["tr hallo welt en", "translate"]]
-  readonly property var titles: ["Welcome to Spotlight", "Choose your shortcut", "What should Spotlight search?", "You're all set"]
+  readonly property var titles: ["Welcome to Spotlight", "Choose your shortcut", "What should Spotlight search?", "Ask AI", "You're all set"]
   readonly property var subtitles: [
-    "One search box for apps, files, your clipboard, quick calculations and the web. Four short steps, skip any of them.",
+    "One search box for apps, files, your clipboard, quick calculations and the web. Five short steps, skip any of them.",
     "This key combination opens Spotlight from anywhere. Pick a preset or press your own.",
     "You can change all of this later under Spotlight Settings.",
+    "AI is optional. Each ai: request is sent to your selected provider only after you press Enter.",
     "Open Spotlight and start typing. A few things to try:"
   ]
   readonly property bool sameAsCurrent: selected !== "" && selected === currentBinding
@@ -67,7 +70,7 @@ FocusScope {
       : "Free to use."
   readonly property string primaryText: step === 0 ? "Get started"
       : step === 1 ? (selected === "" ? (singleStep ? "Done" : "Continue") : occupied ? "Replace and set" : "Set shortcut")
-      : step === 2 ? "Continue" : "Finish"
+      : step < 4 ? "Continue" : "Finish"
   readonly property bool primaryEnabled: step === 2 ? currencyCodeField.valid
       : step !== 1 || (!sameAsCurrent && bindingState !== "busy")
   readonly property string statusText: bindingState === "busy" ? "Saving..."
@@ -97,7 +100,12 @@ FocusScope {
       currencyRates: current.currencyRates !== false,
       searchEngine: Web.hasEngine(current.searchEngine) ? current.searchEngine : "g",
       defaultCurrency: Currency.defaultCode(current.defaultCurrency),
-      learningEnabled: current.learningEnabled !== false
+      learningEnabled: current.learningEnabled !== false,
+      aiEnabled: current.aiEnabled === true,
+      aiWebSearch: current.aiWebSearch === true,
+      aiProvider: current.aiProvider === "codex" ? "codex" : "claude",
+      aiModel: current.aiModel || "",
+      aiEffort: current.aiEffort || ""
     }
     selected = ""
     currencyCodeField.revert()
@@ -124,7 +132,7 @@ FocusScope {
     if (!primaryEnabled) return
     if (step === 1 && selected !== "") { bindingRequested(selected); return }
     if (step === 1 && singleStep) { finished({}); return }
-    if (step === 3) { finished(completed(draft)); return }
+    if (step === 4) { finished(completed(draft)); return }
     step += 1
   }
 
@@ -243,7 +251,7 @@ FocusScope {
         spacing: Style.space(6)
 
         Repeater {
-          model: 4
+          model: 5
 
           Rectangle {
             required property int index
@@ -265,8 +273,8 @@ FocusScope {
         id: skipBtn
         chrome: tour.chrome
         text: "Skip tour"
-        opacity: tour.step < 3 ? 1 : 0
-        enabled: tour.step < 3
+        opacity: tour.step < 4 ? 1 : 0
+        enabled: tour.step < 4
         onClicked: tour.skip()
       }
     }
@@ -600,7 +608,17 @@ FocusScope {
         }
       }
 
-      // ------------------------------------------------------- 4 done
+      // ------------------------------------------------------- 4 AI
+      AiSettings {
+        spacing: Style.space(14)
+        chrome: tour.chrome
+        bounds: tour
+        draft: tour.draft
+        aiModels: tour.aiModels
+        onChanged: function(patch) { tour.draft = Object.assign({}, tour.draft, patch) }
+      }
+
+      // ------------------------------------------------------- 5 done
       ColumnLayout {
         spacing: Style.space(14)
 
@@ -677,7 +695,7 @@ FocusScope {
       PrimaryButton {
         chrome: tour.chrome
         text: tour.primaryText
-        glyph: tour.step === 3 || tour.singleStep ? "󰄬" : "󰁔"
+        glyph: tour.step === 4 || tour.singleStep ? "󰄬" : "󰁔"
         enabled: tour.primaryEnabled
         onClicked: tour.primary()
       }
