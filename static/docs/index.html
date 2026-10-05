@@ -555,9 +555,9 @@ rm -f ~/.cache/omarchy/spotlight-currency.json ~/.cache/omarchy/spotlight-curren
 <p>The whole list stops at <b class="ui">Results shown</b> (20 by default, 8 to 50), and so do filtered lists such as <code class="q">f:</code> and <code class="q">cb:</code>. System views are the exception. Because the lower sections come last, a short, broad query that matches many apps and commands can push windows, clipboard entries and the web search row off the end. Type a little more, use a filter, or raise the limit in <a href="?p=settings#results">Settings</a> (<a href="?p=settings-reference#max-results"><code>maxResults</code></a>).</p>
 
 </article>
-<article data-group="Get started" data-slug="settings" data-title="Settings" data-desc="Change the shortcut, search sources, AI and behavior from the settings panel or spotlight.json.">
+<article data-group="Get started" data-slug="settings" data-title="Settings" data-desc="Change the shortcut, search sources, AI and behavior; configure transparency and background blur.">
 
-<p>Every setting has a control in the settings panel, and every control writes to <code>~/.config/omarchy/spotlight.json</code> for you. <a href="?p=settings-reference">Settings reference</a> describes each key in detail.</p>
+<p>Search, AI and behavior controls in the settings panel write to <code>~/.config/omarchy/spotlight.json</code> for you. <a href="?p=settings-reference">Settings reference</a> describes each key in detail. For Spotlight's translucent appearance and Hyprland blur, see <a href="#transparency-and-blur">Transparency and background blur</a>.</p>
 
 <h2 id="open-the-panel">Open the panel</h2>
 <p>Open Spotlight, type <code class="q">spotlight settings</code> and press <kbd>Enter</kbd> on <b class="ui">Spotlight Settings</b>. Changes save as you make them, and anything still pending is saved when you leave. Press <kbd>Esc</kbd> or <b class="ui">Done</b> to go back to an empty search field.</p>
@@ -675,8 +675,10 @@ rm -f ~/.cache/omarchy/spotlight-currency.json ~/.cache/omarchy/spotlight-curren
 <h2 id="when-a-save-fails">When a save fails</h2>
 <p>If Spotlight cannot write the file, the panel subtitle changes to <b class="ui">Settings not saved:</b> followed by the reason, and the search footer shows <b class="ui">Settings not saved</b>. If the panel was already closed, a desktop notification appears instead. Your change stays queued. Fix the cause, which is usually one of the file rules above, then open <b class="ui">Spotlight Settings</b> and press <b class="ui">Retry save</b>. <b class="ui">Edit file</b> still opens the file while saves are failing.</p>
 
-<h2 id="frosted-glass">Frosted glass</h2>
-<p>Spotlight takes its colors from your Omarchy theme and is translucent by default. To blur what is behind it, turn on Hyprland blur and add a layer rule in <code>~/.config/hypr/looknfeel.lua</code>:</p>
+<span id="frosted-glass"></span>
+<h2 id="transparency-and-blur">Transparency and background blur</h2>
+<p>Spotlight takes its colors from your Omarchy theme. Its card background uses 62% opacity, so it is translucent by default. There is no opacity slider or transparency key in <code>spotlight.json</code>. The <b class="ui">Toggle Window Transparency</b> command affects the focused application window, not Spotlight's overlay.</p>
+<p>For the optional frosted-glass effect, enable Hyprland blur and add a layer rule in <code>~/.config/hypr/looknfeel.lua</code>. Merge the blur options into your existing <code>decoration</code> configuration if you already have one:</p>
 <pre class="code" data-title="Lua"><code>hl.config({
   decoration = {
     blur = {
@@ -696,6 +698,7 @@ hl.layer_rule({
   ignore_alpha = 0.4,
 })</code></pre>
 <p>Keep <code>ignore_alpha</code>: Spotlight draws on a fullscreen surface, and the threshold limits the blur to the card. Run <code>hyprctl reload</code> to apply it.</p>
+<p>To remove the background blur, remove this Spotlight layer rule and reload Hyprland. The card remains translucent.</p>
 
 </article>
 <article data-group="Features" data-slug="apps-windows-files" data-title="Apps, windows and files" data-desc="Launch apps, jump to open windows and find files and folders.">
@@ -1877,6 +1880,7 @@ hl.layer_rule({
 <article data-group="Reference" data-slug="settings-reference" data-title="Settings reference" data-desc="Every key in spotlight.json with its type, default and effect.">
 
 <p>Spotlight keeps its settings in <code>~/.config/omarchy/spotlight.json</code>. The file holds a JSON object; artifact preferences live in the nested <code>artifactSettings</code> object. Most of them also have a control in the settings panel; see <a href="?p=settings">Settings</a> for how to use it. The keyboard shortcut is not stored here: it lives in <code>~/.config/hypr/bindings.lua</code>.</p>
+<p>Transparency and background blur are not JSON settings. See <a href="?p=settings#transparency-and-blur">Transparency and background blur</a> for Spotlight's default opacity and the Hyprland configuration.</p>
 
 <h2 id="example-file">Full example</h2>
 <p>This is the file with every key at its default, exactly as <b class="ui">Edit spotlight.json</b> creates it. Leave out any key to use its default.</p>
