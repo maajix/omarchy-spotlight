@@ -5,14 +5,20 @@ import hashlib
 import json
 import math
 import re
+import unicodedata
 from datetime import datetime, timezone
 from urllib.parse import quote, urlsplit
+
+
+def unsafe(char):
+    # Card text reaches copy buttons too, so it gets the guard commands[] has.
+    return ord(char) < 32 or 127 <= ord(char) <= 159 or unicodedata.category(char) == "Cf"
 
 
 def text(value, limit=160):
     if not isinstance(value, str) or not 1 <= len(value.strip()) <= limit:
         raise ValueError("text must contain 1–" + str(limit) + " characters")
-    if any(ord(char) < 32 for char in value):
+    if any(unsafe(char) for char in value):
         raise ValueError("invalid artifact text")
     return value.strip()
 
@@ -62,7 +68,7 @@ def chart(item):
         clean.append({"label": text(entry.get("label"), 48), "values": values})
     url = source(item.get("sourceUrl"))
     unit = item.get("unit")
-    if not isinstance(unit, str) or len(unit) > 20 or any(ord(char) < 32 for char in unit):
+    if not isinstance(unit, str) or len(unit) > 20 or any(unsafe(char) for char in unit):
         raise ValueError("invalid chart unit")
     return {"type": "chart", "title": text(item.get("title")), "variant": variant,
             "labels": [text(label, 48) for label in labels], "series": clean, "unit": unit,
@@ -144,7 +150,7 @@ def diagram(item):
         if (not isinstance(start, str) or not isinstance(end, str) or start not in ids or end not in ids
                 or start == end or (start, end) in pairs):
             raise ValueError("invalid diagram connection")
-        if not isinstance(label, str) or len(label) > 40 or any(ord(char) < 32 for char in label):
+        if not isinstance(label, str) or len(label) > 40 or any(unsafe(char) for char in label):
             raise ValueError("invalid diagram connection label")
         pairs.add((start, end))
         clean_edges.append({"from": start, "to": end, "label": label})
@@ -216,7 +222,7 @@ def diff(item):
             value = entry.get(field)
             if (not isinstance(value, str) or len(value) > 6000 or len(value.splitlines()) > 120
                     or any(len(line) > 300 for line in value.splitlines())
-                    or any(ord(char) < 32 and char not in "\n\r\t" for char in value)):
+                    or any(unsafe(char) and char not in "\n\r\t" for char in value)):
                 raise ValueError("invalid or oversized diff contents")
         before, after = entry["before"].replace("\r\n", "\n"), entry["after"].replace("\r\n", "\n")
         lines = list(difflib.unified_diff(before.splitlines(keepends=True), after.splitlines(keepends=True),

@@ -7,6 +7,40 @@ from helper_test import HELPER
 
 
 class ArtifactTests(unittest.TestCase):
+    def test_copyable_artifact_fields_reject_hidden_controls_and_keep_safe_text(self):
+        checklist = {"type": "checklist", "items": [{"title": "Check", "description": "Backups"}]}
+        diff = {"type": "diff", "files": [{"path": "example.txt", "before": "old\r\n\tline\n", "after": "new\r\n\tline\n"}]}
+        diagram = {"type": "diagram", "nodes": [
+            {"id": "a", "label": "Client", "column": 0, "row": 0},
+            {"id": "b", "label": "Server", "column": 1, "row": 0}],
+            "edges": [{"from": "a", "to": "b", "label": ""}]}
+        chart = {"type": "chart", "variant": "bar", "unit": "", "labels": ["A", "B"],
+                 "series": [{"label": "Usage", "values": [1, 2]}]}
+        cases = [(checklist, checklist, "title"),
+                 (checklist, checklist["items"][0], "description"),
+                 (diff, diff["files"][0], "path"),
+                 (diff, diff["files"][0], "before"), (diff, diff["files"][0], "after"),
+                 (diagram, diagram["nodes"][0], "label"),
+                 (diagram, diagram["edges"][0], "label"), (chart, chart, "unit")]
+        for card in (checklist, diff, diagram, chart):
+            card.update(title="Example", note="Example", sourceUrl="")
+        for card, entry, field in cases:
+            response = {"kind": "answer", "text": "Keep this answer.", "commands": [], "artifacts": [card]}
+            original = entry[field]
+            self.assertEqual(len(HELPER.ai_result(json.dumps(response).encode(), "codex")["artifacts"]), 1)
+            for char in "\x00\x1b\x7f\u0085\u009b\u202e\u200b\u200d":
+                with self.subTest(artifact=card["type"], field=field, char=repr(char)):
+                    entry[field] = "Safe" + char + "Text"
+                    result = HELPER.ai_result(json.dumps(response).encode(), "codex")
+                    self.assertEqual(result["artifacts"], [])
+                    self.assertEqual(result["text"], response["text"])
+                    self.assertTrue(result["artifactWarnings"])
+            entry[field] = "Café 中😀"
+            self.assertEqual(len(HELPER.ai_result(json.dumps(response).encode(), "codex")["artifacts"]), 1)
+            entry[field] = original
+        result = HELPER.ARTIFACT_VALIDATORS["diff"](diff)["files"][0]
+        self.assertEqual(result["after"], "new\n\tline\n")
+
     def test_final_wire_budget_keeps_answer_and_warns_about_expanded_diff(self):
         for char in ("a", "😀"):
             contents = (char * 49 + "\n") * 120

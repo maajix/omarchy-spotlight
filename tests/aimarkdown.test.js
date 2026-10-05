@@ -26,6 +26,15 @@ test("markdown links get a readable color without changing their target", () => 
     'Quelle: <a href="https://example.org/a?x=1&amp;y=2" style="color:#a6d2ff; text-decoration:underline">WetterOnline</a>')
 })
 
+test("links preserve exclamation marks and still escape HTML attributes", () => {
+  for (const prefix of ["Quelle: ", "## "]) {
+    const output = AiMarkdown.highlightInlineCode(prefix + '[Maps](https://maps.google.com/data=!3m1!4b1?x=1&y="two")![x](https://example.org/image)')
+    assert.ok(output.includes('href="https://maps.google.com/data=!3m1!4b1?x=1&amp;y=&quot;two&quot;"'))
+    assert.ok(output.includes('&#33;<a href="https://example.org/image"'))
+    assert.doesNotMatch(output, /!\[|<img/i)
+  }
+})
+
 test("provider images and HTML cannot trigger automatic requests", () => {
   for (const input of [
     '![x](https://example.org/a "title")', '![x](<https://example.org/a>)',
