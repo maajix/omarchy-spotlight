@@ -3,6 +3,7 @@ import hashlib
 import io
 import json
 import os
+import shutil
 from pathlib import Path
 import tempfile
 import unittest
@@ -57,7 +58,8 @@ class GalleryTests(unittest.TestCase):
             with self.assertRaises(ValueError): fetch("https://example.org/photo.jpg", lambda *a, **k: (b"302", False, 0) if a[0][0] == "curl" else (b"93.184.216.34 STREAM x", False, 0))
             decode.assert_not_called()
 
-    def test_native_decoder_and_oversized_inputs(self):
+    @unittest.skipUnless(shutil.which("magick"), "native decoder test requires ImageMagick 7")
+    def test_native_decoder(self):
         with tempfile.TemporaryDirectory() as directory:
             original, output = str(Path(directory) / "input.png"), str(Path(directory) / "output.jpg")
             _, truncated, status = HELPER.run_bounded(["magick", "-size", "3200x2000", "gradient:#234b68-#9be4ef", original], 128, 4, want_status=True)
@@ -71,8 +73,14 @@ class GalleryTests(unittest.TestCase):
                 normalize(photo, output, HELPER.run_bounded)
                 raw, truncated, status = HELPER.run_bounded(["magick", "identify", "-format", "%w %h", output], 128, 4, want_status=True)
                 self.assertEqual((raw, truncated, status), (expected, False, 0))
-            with self.assertRaises(ValueError): normalize(original, output, lambda *a, **k: (b"8192 8192", False, 0))
-            with self.assertRaises(ValueError): normalize(original, output, lambda *a, **k: (b"12001 100", False, 0))
+
+    def test_decoder_rejects_oversized_inputs_and_unsupported_formats(self):
+        with tempfile.TemporaryDirectory() as directory:
+            original, output = str(Path(directory) / "input"), str(Path(directory) / "output.jpg")
+            Path(original).write_bytes(b"\x89PNG\r\n\x1a\n")
+            for dimensions in (b"8192 8192", b"12001 100"):
+                with self.subTest(dimensions=dimensions), self.assertRaises(ValueError):
+                    normalize(original, output, lambda *a, **k: (dimensions, False, 0))
             Path(original).write_text("<svg>not a JPEG or PNG</svg>")
             with self.assertRaises(ValueError): normalize(original, output, HELPER.run_bounded)
 
