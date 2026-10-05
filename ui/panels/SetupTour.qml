@@ -5,7 +5,6 @@ import "../components"
 import "../../lib/Chord.js" as Chord
 import "../../lib/Web.js" as Web
 import "../../lib/Currency.js" as Currency
-import "../../lib/AiOptions.js" as AiOptions
 
 // First-run tour, and the standalone shortcut chooser (singleStep). Pure UI:
 // Spotlight.qml owns every read and write and feeds the results back through
@@ -103,6 +102,7 @@ FocusScope {
       defaultCurrency: Currency.defaultCode(current.defaultCurrency),
       learningEnabled: current.learningEnabled !== false,
       aiEnabled: current.aiEnabled === true,
+      aiWebSearch: current.aiWebSearch === true,
       aiProvider: current.aiProvider === "codex" ? "codex" : "claude",
       aiModel: current.aiModel || "",
       aiEffort: current.aiEffort || ""
@@ -609,75 +609,13 @@ FocusScope {
       }
 
       // ------------------------------------------------------- 4 AI
-      ColumnLayout {
+      AiSettings {
         spacing: Style.space(14)
-
-        SettingRow {
-          chrome: tour.chrome
-          glyph: "󰚩"
-          title: "Ask AI from Spotlight"
-          description: "Use ai: for answers and command suggestions. Your query goes to the selected provider. No command runs until you press Enter in a terminal."
-          checked: tour.draft.aiEnabled === true
-          onToggled: tour.set("aiEnabled", !tour.draft.aiEnabled)
-        }
-
-        SettingRow {
-          chrome: tour.chrome
-          glyph: "󰒊"
-          switchable: false
-          title: "AI provider"
-          description: "Choose an installed and signed-in Claude or Codex CLI."
-          trailing: ChoiceMenu {
-            chrome: tour.chrome
-            bounds: tour
-            value: tour.draft.aiProvider || "claude"
-            options: [{ value: "claude", label: "Claude" }, { value: "codex", label: "Codex" }]
-            onChanged: function(v) {
-              tour.set("aiProvider", v)
-              tour.set("aiModel", "")
-              tour.set("aiEffort", "")
-            }
-          }
-        }
-
-        SettingRow {
-          chrome: tour.chrome
-          glyph: "󰘦"
-          switchable: false
-          title: "AI model"
-          description: "Pick a model from the selected CLI's local catalog."
-          trailing: ChoiceMenu {
-            chrome: tour.chrome
-            bounds: tour
-            value: tour.draft.aiModel || ""
-            options: AiOptions.models(tour.aiModels, tour.draft.aiProvider || "claude")
-            onChanged: function(v) { tour.set("aiModel", v); tour.set("aiEffort", "") }
-          }
-        }
-
-        SettingRow {
-          chrome: tour.chrome
-          glyph: "󰞌"
-          switchable: false
-          title: "Thinking level"
-          description: "Available levels depend on the model."
-          trailing: ChoiceMenu {
-            chrome: tour.chrome
-            bounds: tour
-            value: tour.draft.aiEffort || ""
-            options: AiOptions.efforts(tour.aiModels, tour.draft.aiProvider || "claude", tour.draft.aiModel || "")
-            onChanged: function(v) { tour.set("aiEffort", v) }
-          }
-        }
-
-        SettingRow {
-          chrome: tour.chrome
-          glyph: "󰖟"
-          title: "AI web search"
-          description: "Allow the selected AI provider to search the web for current information."
-          checked: tour.draft.aiWebSearch === true
-          onToggled: tour.set("aiWebSearch", !tour.draft.aiWebSearch)
-        }
+        chrome: tour.chrome
+        bounds: tour
+        draft: tour.draft
+        aiModels: tour.aiModels
+        onChanged: function(patch) { tour.draft = Object.assign({}, tour.draft, patch) }
       }
 
       // ------------------------------------------------------- 5 done

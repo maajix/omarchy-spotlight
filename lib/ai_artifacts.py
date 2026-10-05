@@ -6,7 +6,7 @@ import json
 import math
 import re
 import unicodedata
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from urllib.parse import quote, urlsplit
 
 
@@ -270,6 +270,80 @@ def gallery(item):
     return {"type": "gallery", "title": text(item.get("title")), "note": text(item.get("note"), 240), "images": clean}
 
 
-VALIDATORS = {"palette": palette, "chart": chart, "comparison": comparison, "timeline": timeline,
+def map_artifact(item):
+    if (not isinstance(item.get("title"), str) or not item["title"].strip()
+            or not all(isinstance(item.get(key), (int, float)) and not isinstance(item.get(key), bool)
+                       and math.isfinite(item[key]) for key in ("latitude", "longitude"))
+            or not -85 <= item["latitude"] <= 85 or not -180 <= item["longitude"] <= 180
+            or (item["latitude"] == 0 and item["longitude"] == 0)
+            or type(item.get("zoom")) is not int or not 2 <= item["zoom"] <= 17):
+        raise ValueError("AI returned an invalid map")
+    return {"type": "map", "title": item["title"].strip()[:120], "latitude": item["latitude"],
+            "longitude": item["longitude"], "zoom": item["zoom"]}
+
+
+def weather(item):
+    variant = item.get("variant")
+    location, source = item.get("location"), item.get("sourceUrl")
+    days = item.get("days")
+    if (variant not in ("current", "rain", "forecast")
+            or not isinstance(location, str) or not 1 <= len(location.strip()) <= 120
+            or not isinstance(source, str) or not 1 <= len(source) <= 2048
+            or any(char.isspace() for char in source)
+            or not isinstance(days, list) or not 1 <= len(days) <= 7
+            or (variant == "current" and len(days) != 1)
+            or (variant == "rain" and len(days) != 2)):
+        raise ValueError("AI returned invalid weather data")
+    try:
+        url = urlsplit(source)
+        if url.scheme != "https" or not url.hostname or url.username or url.password:
+            raise ValueError("invalid source")
+    except ValueError:
+        raise ValueError("AI returned an invalid weather source")
+    clean_days = []
+    for day in days:
+        if not isinstance(day, dict):
+            raise ValueError("AI returned invalid weather data")
+        day_date, summary = day.get("date"), day.get("summary")
+        if (not isinstance(day_date, str) or not re.fullmatch(r"\d{4}-\d{2}-\d{2}", day_date)
+                or not isinstance(summary, str) or not 1 <= len(summary.strip()) <= 100):
+            raise ValueError("AI returned invalid weather data")
+        try:
+            date.fromisoformat(day_date)
+        except ValueError:
+            raise ValueError("AI returned invalid weather date")
+        values = {}
+        for field, lower, upper in (("temperatureC", -100, 65), ("lowC", -100, 65),
+                                    ("highC", -100, 65), ("rainPercent", 0, 100)):
+            value = day.get(field)
+            if value is not None and (not isinstance(value, (int, float)) or isinstance(value, bool)
+                                      or not math.isfinite(value) or not lower <= value <= upper):
+                raise ValueError("AI returned invalid weather data")
+            values[field] = value
+        clean_days.append({"date": day_date, "summary": summary.strip(), **values})
+    dates = [date.fromisoformat(day["date"]) for day in clean_days]
+    today = datetime.now(timezone.utc).date()
+    if (len(set(dates)) != len(dates)
+            or dates != sorted(dates)
+            or (variant in ("current", "rain") and abs((dates[0] - today).days) > 1)
+            or (variant == "rain" and (dates[1] - dates[0]).days != 1)
+            or (variant == "forecast" and any(not -1 <= (day - today).days <= 14 for day in dates))
+            or (variant == "current" and clean_days[0]["temperatureC"] is None)
+            or (variant == "rain" and any(day["rainPercent"] is None for day in clean_days))
+            ):
+        raise ValueError("AI returned incomplete weather data")
+    if variant == "forecast":
+        # Sources often publish a high without a low. Keep known temperatures;
+        # never turn a missing value into a fabricated zero or drop valid days.
+        clean_days = [day for day in clean_days if day["highC"] is not None or day["lowC"] is not None]
+        if not clean_days:
+            raise ValueError("AI returned incomplete weather data")
+    return {"type": "weather", "variant": variant, "location": location.strip(),
+            "sourceUrl": source, "retrievedAt": datetime.now(timezone.utc).isoformat(timespec="minutes"),
+            "days": clean_days}
+
+
+VALIDATORS = {"map": map_artifact, "weather": weather, "palette": palette, "chart": chart,
+              "comparison": comparison, "timeline": timeline,
               "diagram": diagram, "checklist": checklist, "dashboard": dashboard, "places": places, "diff": diff,
               "gallery": gallery}

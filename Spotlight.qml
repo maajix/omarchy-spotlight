@@ -3116,7 +3116,7 @@ Item {
         result: root.aiResult
         helperCommand: root.helperArgv([])
         onCopyRequested: function(value) { Util.execArgv(["wl-copy", "--", value]) }
-        onMapRequested: function(url) { root.openUrl(url) }
+        onOpenRequested: function(url) { root.openUrl(url) }
         onBackRequested: { root.aiActive = false; root.rebuild(); input.forceActiveFocus() }
         onDismissRequested: root.dismiss()
         onCancelRequested: { root.stopAi(); root.rebuild(); input.forceActiveFocus() }

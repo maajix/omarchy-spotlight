@@ -4,7 +4,6 @@ import QtQuick.Layouts
 import qs.Commons
 import "../components"
 import "../../lib/Web.js" as Web
-import "../../lib/AiOptions.js" as AiOptions
 
 // Spotlight.qml owns persistence; draft keeps controls responsive during writes.
 FocusScope {
@@ -335,67 +334,13 @@ FocusScope {
 
         GroupLabel { text: "AI" }
 
-        SettingRow {
+        AiSettings {
+          Layout.fillWidth: true
           chrome: panel.chrome
-          glyph: "󰚩"
-          title: "Ask AI"
-          description: "Send ai: queries to your selected CLI. Answers and commands stay in Spotlight; commands run only when you press Enter in a terminal."
-          checked: panel.draft.aiEnabled === true
-          onToggled: panel.toggle("aiEnabled")
-        }
-
-        SettingRow {
-          chrome: panel.chrome
-          glyph: "󰒊"
-          switchable: false
-          title: "AI provider"
-          description: "Use an installed and signed-in Claude or Codex CLI. Queries are sent to that provider."
-          trailing: ChoiceMenu {
-            chrome: panel.chrome
-            bounds: panel
-            value: panel.draft.aiProvider || "claude"
-            options: [{ value: "claude", label: "Claude" }, { value: "codex", label: "Codex" }]
-            onChanged: function(v) { panel.changed({ aiProvider: v, aiModel: "", aiEffort: "" }) }
-          }
-        }
-
-        SettingRow {
-          chrome: panel.chrome
-          glyph: "󰘦"
-          switchable: false
-          title: "AI model"
-          description: "Available models from the selected CLI's local catalog."
-          trailing: ChoiceMenu {
-            chrome: panel.chrome
-            bounds: panel
-            value: panel.draft.aiModel || ""
-            options: AiOptions.models(panel.aiModels, panel.draft.aiProvider || "claude")
-            onChanged: function(v) { panel.changed({ aiModel: v, aiEffort: "" }) }
-          }
-        }
-
-        SettingRow {
-          chrome: panel.chrome
-          glyph: "󰞌"
-          switchable: false
-          title: "Thinking level"
-          description: "Levels supported by the selected model; choose a model to set one."
-          trailing: ChoiceMenu {
-            chrome: panel.chrome
-            bounds: panel
-            value: panel.draft.aiEffort || ""
-            options: AiOptions.efforts(panel.aiModels, panel.draft.aiProvider || "claude", panel.draft.aiModel || "")
-            onChanged: function(v) { panel.set("aiEffort", v) }
-          }
-        }
-
-        SettingRow {
-          chrome: panel.chrome
-          glyph: "󰖟"
-          title: "AI web search"
-          description: "Allow the selected AI provider to search the web for current information."
-          checked: panel.draft.aiWebSearch === true
-          onToggled: panel.toggle("aiWebSearch")
+          bounds: panel
+          draft: panel.draft
+          aiModels: panel.aiModels
+          onChanged: function(patch) { panel.changed(patch) }
         }
 
         GroupLabel { text: "CURRENCY" }

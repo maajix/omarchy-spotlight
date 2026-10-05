@@ -40,7 +40,6 @@ Item {
     id: galleryCard
     GalleryArtifact {
       artifact: host.artifact
-      chrome: host.chrome
       actions: host.galleryActions
       actionBusy: host.galleryBusy
       onImageActionRequested: function(identity, action) { host.imageActionRequested(identity, action) }
@@ -52,7 +51,6 @@ Item {
     id: diffCard
     DiffArtifact {
       artifact: host.artifact
-      chrome: host.chrome
       onCopyRequested: function(value) { host.copyRequested(value) }
     }
   }
@@ -61,7 +59,6 @@ Item {
     id: placesCard
     PlacesArtifact {
       artifact: host.artifact
-      chrome: host.chrome
       onOpenRequested: function(url) { host.openRequested(url) }
       onCopyRequested: function(value) { host.copyRequested(value) }
     }
@@ -71,7 +68,6 @@ Item {
     id: dashboardCard
     DashboardArtifact {
       artifact: host.artifact
-      chrome: host.chrome
       onCopyRequested: function(value) { host.copyRequested(value) }
     }
   }
@@ -80,7 +76,6 @@ Item {
     id: checklistCard
     ChecklistArtifact {
       artifact: host.artifact
-      chrome: host.chrome
       completed: host.checklistCompleted
       onProgressRequested: function(completed) { host.checklistProgressRequested(completed) }
       onOpenRequested: function(url) { host.openRequested(url) }
@@ -92,7 +87,6 @@ Item {
     id: diagramCard
     DiagramArtifact {
       artifact: host.artifact
-      chrome: host.chrome
       onOpenRequested: function(url) { host.openRequested(url) }
       onCopyRequested: function(value) { host.copyRequested(value) }
     }
@@ -102,7 +96,6 @@ Item {
     id: timelineCard
     TimelineArtifact {
       artifact: host.artifact
-      chrome: host.chrome
       onOpenRequested: function(url) { host.openRequested(url) }
       onCopyRequested: function(value) { host.copyRequested(value) }
     }
@@ -121,7 +114,6 @@ Item {
     id: comparisonCard
     ComparisonArtifact {
       artifact: host.artifact
-      chrome: host.chrome
       onOpenRequested: function(url) { host.openRequested(url) }
       onCopyRequested: function(value) { host.copyRequested(value) }
     }
@@ -131,7 +123,6 @@ Item {
     id: chartCard
     ChartArtifact {
       artifact: host.artifact
-      chrome: host.chrome
       onOpenRequested: function(url) { host.openRequested(url) }
     }
   }
@@ -140,7 +131,6 @@ Item {
     id: paletteCard
     PaletteArtifact {
       artifact: host.artifact
-      chrome: host.chrome
       onCopyRequested: function(value) { host.copyRequested(value) }
     }
   }

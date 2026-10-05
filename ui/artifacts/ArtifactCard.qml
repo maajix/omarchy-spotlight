@@ -6,7 +6,6 @@ import "../components"
 Rectangle {
   id: card
   required property var artifact
-  required property SpotlightPalette chrome
   default property alias contents: body.data
   property string subtitle: ""
   property string sourceUrl: ""

@@ -60,7 +60,7 @@ Item {
     checklistProgress = next
   }
   signal copyRequested(string value)
-  signal mapRequested(string url)
+  signal openRequested(string url)
   signal backRequested()
   signal cancelRequested()
   signal dismissRequested()
@@ -213,7 +213,7 @@ Item {
             font.family: "sans-serif"
             font.pixelSize: Style.font.body + 1
             onLinkActivated: function(link) {
-              if (/^https?:\/\//i.test(link)) panel.mapRequested(link)
+              if (/^https?:\/\//i.test(link)) panel.openRequested(link)
             }
           }
 
@@ -254,7 +254,7 @@ Item {
           onImageActionRequested: function(identity, action) { panel.imageAction(identity, action) }
           onChecklistProgressRequested: function(completed) { panel.setChecklistProgress(modelData.id, completed) }
           chrome: panel.chrome
-          onOpenRequested: function(url) { panel.mapRequested(url) }
+          onOpenRequested: function(url) { panel.openRequested(url) }
           onCopyRequested: function(value) { panel.copyRequested(value) }
         }
       }

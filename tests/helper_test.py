@@ -644,6 +644,25 @@ class HelperTests(unittest.TestCase):
         self.assertEqual(catalogs["claude"], [
             {"id": "claude-opus-5-5", "name": "Opus 5.5", "efforts": ["medium", "max"]}])
 
+    def test_bounded_deadline_includes_stalled_stdin(self):
+        started = time.monotonic()
+        _, truncated, status = HELPER.run_bounded(
+            [sys.executable, "-c", "import time; time.sleep(3)"],
+            256, 0.1, b"x" * 1048576, want_status=True)
+        self.assertTrue(truncated)
+        self.assertNotEqual(status, 0)
+        self.assertLess(time.monotonic() - started, 2)
+
+    def test_bounded_drains_output_while_writing_stdin(self):
+        data = b"x" * 1048576
+        program = ("import sys; sys.stdout.buffer.write(b'y' * 1048576); "
+                   "sys.stdout.buffer.flush(); "
+                   "sys.stdout.buffer.write(sys.stdin.buffer.read())")
+        raw, truncated, status = HELPER.run_bounded(
+            [sys.executable, "-c", program], 3 * len(data), 3, data, want_status=True)
+        self.assertEqual((truncated, status), (False, 0))
+        self.assertEqual(raw, b"y" * len(data) + data)
+
     def test_ai_stream_reads_progress_and_final_result(self):
         lines = [
             b'{"type":"stream_event","event":{"delta":{"type":"thinking_delta","thinking":"Checking"}}}',

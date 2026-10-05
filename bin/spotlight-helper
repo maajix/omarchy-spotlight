@@ -49,7 +49,7 @@ from datetime import date, datetime, timezone
 from urllib.parse import quote, urlsplit
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "lib"))
-from ai_artifacts import VALIDATORS as CARD_VALIDATORS
+from ai_artifacts import VALIDATORS as ARTIFACT_VALIDATORS, unsafe
 from system_metrics import snapshot as system_snapshot
 from gallery_images import fetch as fetch_gallery_image, IMAGE_BYTES
 
@@ -589,6 +589,7 @@ def run_bounded(argv, cap, deadline, stdin_bytes=None, want_status=False, on_lin
     on its own and the teardown took it.
     """
     global ACTIVE_PROC
+    end = time.monotonic() + deadline
     blocked = {signal.SIGINT, signal.SIGTERM}
     old_mask = signal.pthread_sigmask(signal.SIG_BLOCK, blocked)
     try:
@@ -607,19 +608,15 @@ def run_bounded(argv, cap, deadline, stdin_bytes=None, want_status=False, on_lin
 
     out = proc.stdout
     try:
-        if stdin_bytes is not None:
-            try:
-                proc.stdin.write(stdin_bytes)
-            except OSError:
-                pass
-            try:
+        pending_input = memoryview(stdin_bytes or b"")
+        input_fd = proc.stdin.fileno() if proc.stdin is not None else None
+        if input_fd is not None:
+            os.set_blocking(input_fd, False)
+            if not pending_input:
                 proc.stdin.close()
-            except OSError:
-                pass
-
+                input_fd = None
         fd = out.fileno()
         os.set_blocking(fd, False)
-        end = time.monotonic() + deadline
         chunks = []
         total = 0
         truncated = False
@@ -630,7 +627,19 @@ def run_bounded(argv, cap, deadline, stdin_bytes=None, want_status=False, on_lin
             if remaining <= 0:
                 truncated = True
                 break
-            ready, _, _ = select.select([fd], [], [], min(remaining, 0.25))
+            ready, writable, _ = select.select(
+                [fd], [input_fd] if input_fd is not None else [], [], min(remaining, 0.25))
+            if writable:
+                try:
+                    written = os.write(input_fd, pending_input[:65536])
+                    pending_input = pending_input[written:]
+                except BlockingIOError:
+                    pass
+                except OSError:
+                    pending_input = pending_input[:0]
+                if not pending_input:
+                    proc.stdin.close()
+                    input_fd = None
             if not ready:
                 continue
             try:
@@ -658,6 +667,8 @@ def run_bounded(argv, cap, deadline, stdin_bytes=None, want_status=False, on_lin
         result = (b"".join(chunks), truncated)
     finally:
         _reap(proc)
+        if proc.stdin is not None:
+            proc.stdin.close()
         if ACTIVE_PROC is proc:
             ACTIVE_PROC = None
         try:
@@ -3070,83 +3081,6 @@ COMMANDS = {
 }
 
 
-def validate_map_artifact(item):
-    if (not isinstance(item.get("title"), str) or not item["title"].strip()
-            or not all(isinstance(item.get(key), (int, float)) and not isinstance(item.get(key), bool)
-                       and math.isfinite(item[key]) for key in ("latitude", "longitude"))
-            or not -85 <= item["latitude"] <= 85 or not -180 <= item["longitude"] <= 180
-            or (item["latitude"] == 0 and item["longitude"] == 0)
-            or type(item.get("zoom")) is not int or not 2 <= item["zoom"] <= 17):
-        raise Denied("AI returned an invalid map")
-    return {"type": "map", "title": item["title"].strip()[:120], "latitude": item["latitude"],
-            "longitude": item["longitude"], "zoom": item["zoom"]}
-
-
-def validate_weather_artifact(item):
-    variant = item.get("variant")
-    location, source = item.get("location"), item.get("sourceUrl")
-    days = item.get("days")
-    if (variant not in ("current", "rain", "forecast")
-            or not isinstance(location, str) or not 1 <= len(location.strip()) <= 120
-            or not isinstance(source, str) or not 1 <= len(source) <= 2048
-            or any(char.isspace() for char in source)
-            or not isinstance(days, list) or not 1 <= len(days) <= 7
-            or (variant == "current" and len(days) != 1)
-            or (variant == "rain" and len(days) != 2)):
-        raise Denied("AI returned invalid weather data")
-    try:
-        url = urlsplit(source)
-        if url.scheme != "https" or not url.hostname or url.username or url.password:
-            raise ValueError("invalid source")
-    except ValueError:
-        raise Denied("AI returned an invalid weather source")
-    clean_days = []
-    for day in days:
-        if not isinstance(day, dict):
-            raise Denied("AI returned invalid weather data")
-        day_date, summary = day.get("date"), day.get("summary")
-        if (not isinstance(day_date, str) or not re.fullmatch(r"\d{4}-\d{2}-\d{2}", day_date)
-                or not isinstance(summary, str) or not 1 <= len(summary.strip()) <= 100):
-            raise Denied("AI returned invalid weather data")
-        try:
-            date.fromisoformat(day_date)
-        except ValueError:
-            raise Denied("AI returned invalid weather date")
-        values = {}
-        for field, lower, upper in (("temperatureC", -100, 65), ("lowC", -100, 65),
-                                    ("highC", -100, 65), ("rainPercent", 0, 100)):
-            value = day.get(field)
-            if value is not None and (not isinstance(value, (int, float)) or isinstance(value, bool)
-                                      or not math.isfinite(value) or not lower <= value <= upper):
-                raise Denied("AI returned invalid weather data")
-            values[field] = value
-        clean_days.append({"date": day_date, "summary": summary.strip(), **values})
-    dates = [date.fromisoformat(day["date"]) for day in clean_days]
-    today = datetime.now(timezone.utc).date()
-    if (len(set(dates)) != len(dates)
-            or dates != sorted(dates)
-            or (variant in ("current", "rain") and abs((dates[0] - today).days) > 1)
-            or (variant == "rain" and (dates[1] - dates[0]).days != 1)
-            or (variant == "forecast" and any(not -1 <= (day - today).days <= 14 for day in dates))
-            or (variant == "current" and clean_days[0]["temperatureC"] is None)
-            or (variant == "rain" and any(day["rainPercent"] is None for day in clean_days))
-            ):
-        raise Denied("AI returned incomplete weather data")
-    if variant == "forecast":
-        # Sources often publish a high without a low. Keep known temperatures;
-        # never turn a missing value into a fabricated zero or drop valid days.
-        clean_days = [day for day in clean_days if day["highC"] is not None or day["lowC"] is not None]
-        if not clean_days:
-            raise Denied("AI returned incomplete weather data")
-    return {"type": "weather", "variant": variant, "location": location.strip(),
-            "sourceUrl": source, "retrievedAt": datetime.now(timezone.utc).isoformat(timespec="minutes"),
-            "days": clean_days}
-
-
-ARTIFACT_VALIDATORS = {"map": validate_map_artifact, "weather": validate_weather_artifact}
-ARTIFACT_VALIDATORS.update(CARD_VALIDATORS)
-
-
 def ai_result(raw, provider, allow_weather=False, weather_request=False):
     try:
         value = json.loads(raw.decode("utf-8"))
@@ -3170,8 +3104,7 @@ def ai_result(raw, provider, allow_weather=False, weather_request=False):
         body = body[:AI_TEXT_CHARS] + "…"
     if "\n" not in body and "\\n" in body:
         body = body.replace("\\n", "\n")
-    if any((ord(char) < 32 and char not in "\n\r\t") or 127 <= ord(char) <= 159
-           or unicodedata.category(char) == "Cf" for char in body):
+    if any(unsafe(char) and char not in "\n\r\t" for char in body):
         raise Denied("AI returned unsafe control characters in answer text")
     clean = []
     for item in commands:
@@ -3179,8 +3112,7 @@ def ai_result(raw, provider, allow_weather=False, weather_request=False):
             raise Denied("AI returned an invalid command")
         command, explanation = item.get("command"), item.get("explanation")
         if (not isinstance(command, str) or not command.strip() or len(command) > 2048
-                or any(ord(char) < 32 or 127 <= ord(char) <= 159
-                       or unicodedata.category(char) == "Cf" for char in command)
+                or any(unsafe(char) for char in command)
                 or not isinstance(explanation, str)):
             raise Denied("AI returned an invalid command")
         clean.append({"command": command.strip(), "explanation": explanation[:1024]})

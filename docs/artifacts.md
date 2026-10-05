@@ -28,7 +28,6 @@ field into the `artifacts` list in `ai_result()`.
    explicit unavailable result for request-specific cards when the provider
    cannot get trustworthy data.
 2. Add a validator in `lib/ai_artifacts.py` and register it in `VALIDATORS`.
-   Existing map and weather validators live in `bin/spotlight-helper`.
    Treat every provider field as untrusted: bound text
    and array lengths, check numeric ranges and dates, restrict URLs, and return
    only validated fields. `ai_result()` drops an invalid card without dropping
@@ -38,8 +37,7 @@ field into the `artifacts` list in `ai_result()`.
    frame, title, source footer and content layout, and `ArtifactText` for
    consistent typography. The shared frame supplies the gradient and spacing;
    set `glyph` for a header icon and use its `actionChrome` for buttons.
-   It receives validated
-   `artifact` data and a `SpotlightPalette` named `chrome`, reports its
+   It receives validated `artifact` data, reports its
    `implicitHeight`, and emits `openRequested(url)` for user-clicked links.
    Emit `copyRequested(value)` for clipboard actions. Register the type once in
    `ArtifactHost.qml`; display-only cards need no `AiPanel.qml` change.
