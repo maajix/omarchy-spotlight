@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Spotlight for Omarchy: launcher and command palette plugin</title>
-<meta name="description" content="Fast, local-first command palette plugin for Omarchy Linux: apps, windows, files, clipboard, calculator, reminders, command help, system views and web search from one input.">
+<meta name="description" content="Fast, local-first command palette plugin for Omarchy Linux: apps, windows, files, clipboard, calculator, reminders, command help, system views, web search and optional AI answers from one input.">
 <meta name="author" content="Max Randhahn">
 <meta name="theme-color" content="#08090a">
 <link rel="canonical" href="https://maajix.github.io/omarchy-spotlight/">
@@ -15,7 +15,7 @@
 <meta property="og:locale" content="en_US">
 <meta property="og:site_name" content="Spotlight for Omarchy">
 <meta property="og:title" content="Spotlight for Omarchy: launcher and command palette plugin">
-<meta property="og:description" content="Fast, local-first command palette plugin for Omarchy Linux: apps, windows, files, clipboard, calculator, reminders, command help, system views and web search from one input.">
+<meta property="og:description" content="Fast, local-first command palette plugin for Omarchy Linux: apps, windows, files, clipboard, calculator, reminders, command help, system views, web search and optional AI answers from one input.">
 <meta property="og:url" content="https://maajix.github.io/omarchy-spotlight/">
 <meta property="og:image" content="https://maajix.github.io/omarchy-spotlight/og.jpg">
 <meta property="og:image:width" content="1200">
@@ -23,9 +23,9 @@
 <meta property="og:image:alt" content="Spotlight open on an Omarchy desktop">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="Spotlight for Omarchy: launcher and command palette plugin">
-<meta name="twitter:description" content="Fast, local-first command palette plugin for Omarchy Linux: apps, windows, files, clipboard, calculator, reminders, command help, system views and web search from one input.">
+<meta name="twitter:description" content="Fast, local-first command palette plugin for Omarchy Linux: apps, windows, files, clipboard, calculator, reminders, command help, system views, web search and optional AI answers from one input.">
 <meta name="twitter:image" content="https://maajix.github.io/omarchy-spotlight/og.jpg">
-<script type="application/ld+json">{"@context":"https://schema.org","@graph":[{"@id":"https://maajix.github.io/omarchy-spotlight/#app","@type":"SoftwareApplication","alternateName":"omarchy-spotlight","applicationCategory":"UtilitiesApplication","author":{"@id":"https://maajix.github.io/#person"},"description":"Fast, local-first command palette plugin for Omarchy Linux: apps, windows, files, clipboard, calculator, reminders, command help, system views and web search from one input.","downloadUrl":"https://github.com/maajix/omarchy-spotlight","featureList":["Application launcher","Window switcher","File and folder search","Clipboard history","Calculator","Natural-language calendar events and reminders","Live system toggles","System views for ports, SSH hosts, Docker containers, services, mounts, audio, Wi-Fi and Bluetooth","Web search bangs","Command help from tldr pages"],"image":"https://maajix.github.io/omarchy-spotlight/og.jpg","inLanguage":"en","installUrl":"https://plugins.omarchy.org/plugin.html?id=io.github.maajix.spotlight","isAccessibleForFree":true,"license":"https://github.com/maajix/omarchy-spotlight/blob/main/LICENSE","name":"Spotlight","offers":{"@type":"Offer","price":"0","priceCurrency":"EUR"},"operatingSystem":"Linux (Omarchy 4)","softwareRequirements":"Omarchy 4 with omarchy-shell","softwareVersion":"1.6.2","url":"https://maajix.github.io/omarchy-spotlight/"},{"@id":"https://maajix.github.io/omarchy-spotlight/#website","@type":"WebSite","about":{"@id":"https://maajix.github.io/omarchy-spotlight/#app"},"author":{"@id":"https://maajix.github.io/#person"},"description":"Fast, local-first command palette plugin for Omarchy Linux: apps, windows, files, clipboard, calculator, reminders, command help, system views and web search from one input.","inLanguage":"en","name":"Spotlight for Omarchy","publisher":{"@id":"https://maajix.github.io/#person"},"url":"https://maajix.github.io/omarchy-spotlight/"},{"@id":"https://maajix.github.io/#person","@type":"Person","name":"Max Randhahn","sameAs":["https://github.com/maajix"],"url":"https://maajix.github.io/"}]}</script>
+<script type="application/ld+json">{"@context":"https://schema.org","@graph":[{"@id":"https://maajix.github.io/omarchy-spotlight/#app","@type":"SoftwareApplication","alternateName":"omarchy-spotlight","applicationCategory":"UtilitiesApplication","author":{"@id":"https://maajix.github.io/#person"},"description":"Fast, local-first command palette plugin for Omarchy Linux: apps, windows, files, clipboard, calculator, reminders, command help, system views, web search and optional AI answers from one input.","downloadUrl":"https://github.com/maajix/omarchy-spotlight","featureList":["Application launcher","Window switcher","File and folder search","Clipboard history","Calculator","Natural-language calendar events and reminders","Live system toggles","System views for ports, SSH hosts, Docker containers, services, mounts, audio, Wi-Fi and Bluetooth","Web search bangs","Command help from tldr pages","Optional Ask AI via Claude or Codex","Twelve visual AI artifact types"],"image":"https://maajix.github.io/omarchy-spotlight/og.jpg","inLanguage":"en","installUrl":"https://plugins.omarchy.org/plugin.html?id=io.github.maajix.spotlight","isAccessibleForFree":true,"license":"https://github.com/maajix/omarchy-spotlight/blob/main/LICENSE","name":"Spotlight","offers":{"@type":"Offer","price":"0","priceCurrency":"EUR"},"operatingSystem":"Linux (Omarchy 4)","softwareRequirements":"Omarchy 4 with omarchy-shell","softwareVersion":"1.7.0","url":"https://maajix.github.io/omarchy-spotlight/"},{"@id":"https://maajix.github.io/omarchy-spotlight/#website","@type":"WebSite","about":{"@id":"https://maajix.github.io/omarchy-spotlight/#app"},"author":{"@id":"https://maajix.github.io/#person"},"description":"Fast, local-first command palette plugin for Omarchy Linux: apps, windows, files, clipboard, calculator, reminders, command help, system views, web search and optional AI answers from one input.","inLanguage":"en","name":"Spotlight for Omarchy","publisher":{"@id":"https://maajix.github.io/#person"},"url":"https://maajix.github.io/omarchy-spotlight/"},{"@id":"https://maajix.github.io/#person","@type":"Person","name":"Max Randhahn","sameAs":["https://github.com/maajix"],"url":"https://maajix.github.io/"}]}</script>
 <script
   src="https://cdn.databuddy.cc/databuddy.js"
   data-client-id="1DL7tse_ZTnMsjrVbv_Bp"
@@ -249,12 +249,98 @@ kbd{display:inline-grid;place-items:center;min-width:20px;height:20px;padding:0 
 .tab.on::before,.tab.on::after{content:"";position:absolute;left:0;right:0;bottom:0;height:2px;background:rgba(255,255,255,.06)}
 .tab.on::after{background:var(--lime);transform-origin:left;animation:timer 6.4s linear forwards}
 .views.idle .tab.on::after{animation-play-state:paused}
-@media (hover:hover){.views:hover .tab.on::after{animation-play-state:paused}}
 @keyframes timer{from{transform:scaleX(0)}to{transform:scaleX(1)}}
 .views .spot{--h:232px;height:100%;background:var(--void);-webkit-backdrop-filter:none;backdrop-filter:none}
 .views .sp-body{flex:1}
 @media (max-width:900px){.views{grid-template-columns:minmax(0,1fr);padding:12px}.tabs{grid-template-columns:repeat(4,minmax(0,1fr))}.tab{grid-template-columns:1fr;justify-items:center;align-content:center;gap:6px;height:66px;padding:0 4px}.tab span{display:none}}
 @media (max-width:480px){.tabs{grid-template-columns:repeat(2,minmax(0,1fr))}.tab{grid-template-columns:16px auto;justify-content:center;height:44px}}
+
+/* AI previews share the palette and timer tabs with the system views. */
+.ai-views{height:560px}
+.ai-views .tabs{grid-template-columns:1fr;align-content:start;gap:4px}
+.ai-views .tab{grid-template-columns:18px auto 1fr;gap:12px;height:35px;padding:0 12px}
+.ai-views .tab b{font-size:13px}
+.ai-views .tab.on::after{animation-duration:10s}
+.ai-views .spot{height:100%;min-height:0;min-width:0}
+.ai-views .sp-body{min-height:0;overflow:auto}
+.ai-views .sp-in,.ai-views .sp-foot{flex:none}
+.head p a{color:var(--mist);text-decoration:underline;text-underline-offset:4px}
+.ai-answer{padding:8px;font-size:13px;line-height:1.5}
+.ai-answer>p{margin:6px 0 12px;color:var(--mist)}
+.ai-label{display:flex;align-items:center;justify-content:space-between;gap:12px;font:11px/1.5 var(--mono);letter-spacing:.06em;color:var(--lime)}
+.ai-label span{color:var(--ash);letter-spacing:0}
+.ai-label button{padding:5px 10px;border:1px solid var(--smoke);border-radius:6px;color:var(--mist);background:var(--carbon);font:12px/1.5 var(--sans);letter-spacing:0;cursor:pointer}
+.ai-thinking{position:relative;min-height:260px;padding:18px;color:var(--fog)}
+.ai-thinking img{position:absolute;width:160px;height:auto;left:calc(50% - 80px);top:65px;opacity:.15;animation:hover 3s ease-in-out infinite;pointer-events:none}
+.ai-card{position:relative;margin-top:10px;padding:16px;border-radius:18px;border:1px solid #526883;background:radial-gradient(circle at 100% 0,rgba(154,203,255,.07),transparent 55%),linear-gradient(#304661,#253951 55%,#19283d);color:#e8f3ff}
+.ai-card h3{display:flex;align-items:center;gap:10px;font-size:16px;margin-bottom:12px;color:#f3f8ff}
+.ai-glyph{display:grid;place-items:center;flex:none;width:28px;height:28px;border-radius:9px;background:rgba(255,255,255,.08);color:#9bd2ff}
+.ai-glyph svg{width:18px;height:18px}
+.ai-card small{display:block;margin-top:12px;color:#a5bdd7;font-size:10px}
+.ai-card button,.ai-card a{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border:1px solid rgba(255,255,255,.18);border-radius:999px;background:rgba(255,255,255,.07);color:#c5e6ff;font:12px/1.5 var(--sans);cursor:pointer}
+.ai-card button:hover,.ai-card a:hover{background:rgba(255,255,255,.14)}
+button[data-value].ok{box-shadow:0 0 0 2px var(--lime)}
+.ai-card[data-kind="Commands"]{border-color:var(--smoke);border-radius:12px;background:var(--carbon)}
+.ai-card[data-kind="Commands"] h3{font-size:13px;color:var(--fog)}
+.ai-card[data-kind="Commands"] .ai-glyph{background:var(--graphite);color:var(--fog)}
+.ai-card pre{margin:0 0 12px;white-space:pre-wrap;overflow-wrap:anywhere;font:12px/1.8 var(--mono);color:var(--bone)}
+.ai-swatches{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+.ai-swatches button{display:flex;flex-direction:column;justify-content:end;align-items:start;gap:0;min-height:84px;padding:8px 6px;border-radius:12px;background:var(--swatch);color:var(--ink,#fff);font:10px/1.6 var(--mono);text-align:left}
+.ai-swatches button:hover{background:var(--swatch);border-color:#fff}
+.ai-palette-preview{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:12px 0;padding:10px 12px;border-radius:12px;background:#0b1426;font-size:12px}
+.ai-palette-preview small{margin:3px 0 0;font-size:10px}
+.ai-palette-preview span{padding:8px 16px;border-radius:10px;background:#17334a}
+.ai-chart{display:grid;gap:10px}
+.ai-chart div{display:grid;grid-template-columns:76px minmax(0,1fr) 60px;gap:8px;align-items:center;font-size:12px}
+.ai-chart i{display:block;width:var(--value);height:10px;border-radius:4px;background:#8acaff;animation:row .6s ease both}
+.ai-chart b{text-align:right;font-weight:400;font-family:var(--mono)}
+.ai-plot{display:flex;align-items:end;justify-content:space-around;gap:10px;height:142px;margin-top:12px;padding:20px 14px 28px 24px;border:1px solid rgba(255,255,255,.12);border-radius:14px;background:repeating-linear-gradient(to top,transparent 0 24px,rgba(255,255,255,.1) 25px 26px),rgba(24,33,46,.28)}
+.ai-plot div{position:relative;flex:1;height:var(--value);border-radius:5px 5px 0 0;background:#8acaff;text-align:center}
+.ai-plot div span{position:absolute;inset:auto -10px -24px;font-size:10px;color:#c4d5e8}
+.ai-plot div b{position:absolute;inset:-20px -10px auto;font:10px/1.5 var(--mono);color:#e8f3ff}
+.ai-metric{display:flex;align-items:center;gap:12px;margin:10px 0;font-size:11px;color:#c4d5e8}
+.ai-metric strong{font:300 34px/1 var(--sans);color:#fff}
+.ai-columns{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.ai-columns b{color:var(--paper);font-weight:510}
+.ai-columns p{font-size:12px;color:var(--fog);margin-top:8px}
+.ai-card .ai-columns>div{padding:14px;border:1px solid rgba(255,255,255,.12);border-radius:16px;background:rgba(255,255,255,.03)}
+.ai-card .ai-columns p{color:#c4d5e8}
+.ai-option{display:inline-block;margin-bottom:10px;padding:2px 8px;border-radius:999px;background:rgba(255,255,255,.08);color:#c4d5e8;font-size:10px}
+.ai-option.pick{background:rgba(120,186,255,.2);color:#c5e6ff}
+.ai-timeline{position:relative;margin:0;padding:0 0 0 24px;list-style:none}
+.ai-timeline::before{content:"";position:absolute;left:0;top:18px;bottom:18px;width:2px;background:rgba(165,189,215,.2)}
+.ai-timeline li{position:relative;margin:0 0 8px;padding:6px 10px;border:1px solid rgba(255,255,255,.09);border-radius:12px;background:rgba(255,255,255,.03);font-size:11px;line-height:1.45}
+.ai-timeline li::before{content:"";position:absolute;left:-30px;top:12px;width:12px;height:12px;border:2px solid #9bd2ff;border-radius:50%;background:#304661}
+.ai-timeline time{display:block;margin-bottom:3px;color:#9bd2ff;font:10px/1.5 var(--mono)}
+.ai-diff{padding:8px;border:1px solid #41617e;border-radius:12px;background:#172332}
+.ai-diff span{display:block;padding:4px}
+.ai-diff .minus{color:#ffb4ac;background:rgba(227,119,108,.14)}.ai-diff .plus{color:#9be1ba;background:rgba(61,217,136,.12)}
+.ai-checklist{display:grid;gap:8px;font-size:12px}
+.ai-checklist label{display:flex;align-items:center;gap:10px;padding:7px 10px;border-radius:12px;background:rgba(255,255,255,.05);cursor:pointer}
+.ai-checklist input{appearance:none;flex:none;width:18px;height:18px;margin:0;border:1.5px solid #7796b7;border-radius:50%;background:transparent;cursor:pointer}
+.ai-checklist input:checked{background:#8bdcd2;border-color:#8bdcd2;box-shadow:inset 0 0 0 4px #304661}
+.ai-checklist input:focus-visible{outline:2px solid #a6d6ff;outline-offset:3px}
+.ai-checklist label:has(:checked){color:#a5bdd7;text-decoration:line-through}
+.ai-progress{appearance:none;display:block;width:100%;height:6px;margin:8px 0 12px;border:0;border-radius:3px;overflow:hidden;background:rgba(255,255,255,.13)}
+.ai-progress::-webkit-progress-bar{background:rgba(255,255,255,.13);border-radius:3px}
+.ai-progress::-webkit-progress-value{background:#8bdcd2;border-radius:3px}
+.ai-progress::-moz-progress-bar{background:#8bdcd2;border-radius:3px}
+.ai-diagram{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:10px;padding:20px 0}
+.ai-diagram span{padding:10px;border:1px solid var(--smoke);border-radius:8px;font-size:12px;background:var(--void)}
+.ai-diagram i{color:var(--teal);font-style:normal}
+.ai-card[data-kind="Maps"]{padding:0;border:0;background:none}
+.ai-card[data-kind="Maps"] h3{position:absolute;z-index:1;top:16px;left:16px;margin:0;padding:6px 12px;border:1px solid #52718d;border-radius:12px;background:rgba(17,28,45,.86);font-size:14px}
+.ai-card[data-kind="Maps"] .ai-glyph{width:20px;height:20px;background:none}
+.ai-map{position:relative;height:210px;overflow:hidden;border:1px solid #49607a;border-radius:18px;background:repeating-linear-gradient(25deg,transparent 0 26px,#343a41 27px 29px,transparent 30px 58px),repeating-linear-gradient(110deg,#171e26 0 44px,#39404a 45px 48px,#171e26 49px 75px)}
+.ai-map::before{content:"";position:absolute;left:60%;top:-50%;width:44px;height:300px;background:#153b4b;transform:rotate(24deg)}
+.ai-map span{position:absolute;left:46%;top:48%;padding:5px 10px;border-radius:6px;color:#e8f3ff;background:#426a93;font-size:12px}
+.ai-weather{display:flex;justify-content:space-between;gap:8px}
+.ai-weather div{text-align:center;font-size:12px;color:var(--fog)}
+.ai-weather b{display:block;margin:8px 0;font-size:22px;color:var(--paper);font-weight:510}
+.ai-weather div{color:#c4d5e8}
+.ai-gallery svg{width:100%;height:110px;border-radius:6px;background:linear-gradient(#1b2940,#5d7788)}
+@media (max-width:900px){.ai-views{height:auto}.ai-views .tabs{grid-template-columns:repeat(4,minmax(0,1fr))}.ai-views .tab{height:42px}.ai-views .spot{height:520px}}
+@media (max-width:480px){.ai-views .tabs{grid-template-columns:repeat(2,minmax(0,1fr))}.ai-views .spot{height:560px}.ai-answer{padding:6px}.ai-card{padding:12px}.ai-chart div{grid-template-columns:65px minmax(0,1fr) 55px}.ai-swatches{grid-template-columns:repeat(2,minmax(0,1fr))}.ai-swatches button{min-height:72px}}
 
 /* Bento */
 .bento{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:12px;margin-top:56px}
@@ -376,7 +462,7 @@ kbd{display:inline-grid;place-items:center;min-width:20px;height:20px;padding:0 
   <div class="wrap">
     <a class="brand" href="#"><span class="mk"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><circle cx="10.5" cy="10.5" r="6"/><path d="m15 15 5 5"/></svg></span>Spotlight</a>
     <nav class="links" aria-label="Main">
-      <a href="#views">Views</a><a href="#features">Features</a><a href="#install">Install</a><a href="docs/">Docs</a>
+      <a href="#ai">Ask AI</a><a href="#views">Views</a><a href="#features">Utility</a><a href="#install">Install</a><a href="docs/">Docs</a>
     </nav>
     <a class="gh" href="https://github.com/maajix/omarchy-spotlight" rel="noopener"><svg data-i="github"></svg>GitHub<span class="n" id="stars" hidden></span></a>
   </div>
@@ -389,13 +475,13 @@ kbd{display:inline-grid;place-items:center;min-width:20px;height:20px;padding:0 
     <div class="hero-top">
       <h1 id="h1"><em>One field</em> for your whole desktop.</h1>
       <div class="hero-side fade-in">
-        <p>Spotlight is a command palette plugin for Omarchy 4 (Quattro). Apps, windows, files, clipboard, math, reminders and the web in <em>one ranked list</em>, a keystroke away. No background process, nothing to configure.</p>
+        <p>Spotlight is a command palette plugin for Omarchy 4 (Quattro). Apps, windows, files, math and your whole desktop, a keystroke away. <em>Ask AI</em> when you need more.</p>
       </div>
     </div>
   </div>
 
   <div class="wrap stage-wrap fade-in">
-    <a class="badge" href="#views"><span class="dot"></span><b>New in 1.6</b><span class="bar"></span><span class="txt">System views<span class="more"> for ports, SSH, Docker and more</span></span><svg data-i="arrow"></svg></a>
+    <a class="badge" href="#ai"><span class="dot"></span><b>New in 1.7</b><span class="bar"></span><span class="txt">Ask AI<span class="more"> and visual answers, inside Spotlight</span></span><svg data-i="arrow"></svg></a>
     <div class="stage" id="stage">
       <div class="desk" aria-hidden="true">
         <div class="wbar">
@@ -437,9 +523,22 @@ redis
 
   <div class="wrap proof rv">
     <div><b data-count="8">8</b><span>system views, new in 1.6</span></div>
-    <div><b data-count="19">19</b><span>live switches with real state</span></div>
+    <div><b data-count="12">12</b><span>AI artifact types</span></div>
     <div><b data-count="20">20</b><span>search bangs built in</span></div>
     <div><b>1</b><span>command to install</span></div>
+  </div>
+</section>
+
+<section class="section" id="ai">
+  <div class="wrap">
+    <div class="head">
+      <div><span class="label"><i></i>New in 1.7</span><h2>Ask a question.<br>See the answer.</h2></div>
+      <p>Ask Claude or Codex without leaving Spotlight. Answers take shape as maps, charts, timelines and more. Copy code, compare options or work through a checklist. <a href="docs/?p=ask-ai">Read the AI docs →</a></p>
+    </div>
+    <div class="views ai-views rv idle" id="ai-w">
+      <ul class="tabs" id="ai-tabs" aria-label="AI demo examples"></ul>
+      <div class="spot" id="ai-spot" aria-label="Ask AI demo"></div>
+    </div>
   </div>
 </section>
 
@@ -594,7 +693,27 @@ const HERO = [
   { q: 'aw hyprland', enter: 'Search Arch Wiki', s: [['Web', [R('globe', 'hyprland', 'Search Arch Wiki', 'Web', { sel: 1 }), R('globe', 'Search Google for “aw hyprland”', '', 'Web')]]] }
 ];
 
+// Static examples use local artwork and sample data, never provider or image APIs.
+const AI = [
+  { name: 'Commands', icon: 'terminal', q: 'ai: find large files in Downloads', answer: 'This command lists the ten largest files and folders in Downloads.', card: `<h3>Largest files in Downloads</h3><pre>du -ah ~/Downloads | sort -rh | head -n 10</pre><button type="button" data-value="du -ah ~/Downloads | sort -rh | head -n 10">Copy command</button>` },
+  { name: 'Maps', icon: 'globe', q: 'ai: show me Tokyo on a map', answer: 'Tokyo is on the eastern coast of Japan’s main island, Honshu.', card: `<h3>Tokyo, Japan</h3><div class="ai-map" role="img" aria-label="Illustrative map with a Tokyo marker"><span>● Tokyo</span></div><small>35.6762° N · 139.6503° E · illustrative preview</small><a href="https://www.openstreetmap.org/?mlat=35.6762&amp;mlon=139.6503#map=11/35.6762/139.6503" rel="noopener" target="_blank">Open in OpenStreetMap ↗</a>` },
+  { name: 'Weather', icon: 'globe', q: 'ai: weather in Tokyo this week?', answer: 'Here is the outlook for Tokyo over the next five days.', card: `<h3>Tokyo</h3><div class="ai-metric"><strong>22°</strong><span>☀ Clear<br>H: 22° &nbsp; L: 16°</span></div><div class="ai-weather"><div>Mon<b>22°</b>Clear</div><div>Tue<b>24°</b>Clear</div><div>Wed<b>21°</b>Cloudy</div><div>Thu<b>19°</b>Rain</div><div>Fri<b>23°</b>Clear</div></div><small>Illustrative forecast · live cards include dated source links</small><a href="docs/?p=ai-artifacts#weather">Weather setup →</a>` },
+  { name: 'Palettes', icon: 'layers', q: 'ai: create a dark ocean palette', answer: 'A deep navy background, calm blue surfaces and a bright aqua accent.', card: `<h3>Dark ocean</h3><div class="ai-swatches">${[['#0B1426','Night'],['#17334A','Deep'],['#327A91','Tide'],['#72E0CF','Foam']].map(([hex,name],i) => `<button type="button" data-value="${hex}" style="--swatch:${hex};--ink:${i === 3 ? '#111722' : '#fff'}" aria-label="Copy ${name}: ${hex}">${name}<br>${hex}</button>`).join('')}</div><div class="ai-palette-preview"><div>A little preview<small>Background · accent · action</small></div><span>Button</span></div><button type="button" data-value="Night: #0B1426&#10;Deep: #17334A&#10;Tide: #327A91&#10;Foam: #72E0CF">Copy palette</button>` },
+  { name: 'Charts', icon: 'calc', q: 'ai: chart my monthly budget', answer: 'Your example budget totals €1,700. Rent is the largest share.', card: `<h3>Monthly budget</h3><div class="ai-metric"><strong>1,700</strong><span>EUR<br>Total monthly budget</span></div><div class="ai-plot" role="img" aria-label="Budget chart: Rent 900, Food 300, Transport 100, Savings 400 EUR">${[['Rent',900],['Food',300],['Transport',100],['Savings',400]].map(([name,value]) => `<div style="--value:${value/10}%" title="${name}: €${value}"><b>${value}</b><span>${name}</span></div>`).join('')}</div><small>● Budget · EUR · supplied example values</small>` },
+  { name: 'Comparisons', icon: 'layers', q: 'ai: compare scp and rsync', answer: 'Both transfer files over SSH. Choose based on whether you need a quick copy or repeatable synchronization.', card: `<h3>SSH file transfers</h3><div class="ai-columns"><div><span class="ai-option">Option</span><br><b>scp</b><p>Best for<br>One-off copies</p><p>Strength<br>Simple syntax</p><p>Tradeoff<br>Copies complete files</p></div><div><span class="ai-option pick">✓ Suggested pick</span><br><b>rsync</b><p>Best for<br>Repeat synchronization</p><p>Strength<br>Transfers changed data</p><p>Tradeoff<br>More options to learn</p></div></div>` },
+  { name: 'Timelines', icon: 'calendar', q: 'ai: timeline for Future Summit', answer: 'Here is the fictional event schedule you supplied, organized by time.', card: `<h3>Future Summit</h3><ol class="ai-timeline"><li><time>09:00</time>Registration</li><li><time>10:00</time>Keynote</li><li><time>12:00</time>Lunch</li><li><time>14:00</time>Workshops</li></ol><small>Fictional schedule · supplied by you</small>` },
+  { name: 'Dashboards', icon: 'monitor', q: 'ai: show my system dashboard', answer: 'Here is a snapshot of CPU, memory and storage usage.', card: `<h3>System snapshot</h3><div class="ai-chart"><div><span>CPU</span><i style="--value:23%"></i><b>23%</b></div><div><span>Memory</span><i style="--value:42%"></i><b>42%</b></div><div><span>Storage</span><i style="--value:61%"></i><b>61%</b></div></div><small>Illustrative values · live snapshots are measured on your machine</small>` },
+  { name: 'Places', icon: 'globe', q: 'ai: find ramen restaurants in Tokyo', answer: 'Explore ramen spots around Shinjuku.', card: `<h3>Example ramen shop</h3><p>Shinjuku, Tokyo<br>Hours: not verified · Rating: unavailable</p><small>Illustrative place · live cards include provenance and source links</small><a href="https://www.openstreetmap.org/search?query=ramen%20Shinjuku%20Tokyo" rel="noopener" target="_blank">View map ↗</a>` },
+  { name: 'Config diffs', icon: 'file', q: 'ai: preview font size 12 to 14', answer: 'Change the font size from 12 to 14 with this one-line edit.', card: `<h3>Font size</h3><small>PREVIEW ONLY · NO FILES CHANGED</small><p class="ai-metric">config.txt &nbsp; +1 / −1</p><pre class="ai-diff"><span class="minus">1 &nbsp; &nbsp; − size = 12</span><span class="plus">&nbsp; 1 &nbsp; + size = 14</span></pre><button type="button" data-value="size = 14">Copy proposed config</button><small>Preview only · no files are read or changed</small>` },
+  { name: 'Checklists', icon: 'check', q: 'ai: prepare for a server migration', answer: 'A short checklist for a safe server migration.', card: `<h3>Server migration</h3><div class="ai-check-count">Your progress · 0 of 4 completed</div><progress class="ai-progress" value="0" max="4" aria-label="Checklist progress"></progress><div class="ai-checklist"><label><input type="checkbox">Back up data and configuration</label><label><input type="checkbox">Test restore on the new host</label><label><input type="checkbox">Plan the cutover window</label><label><input type="checkbox">Verify services after migration</label></div><p style="margin-top:16px"><button type="button" data-reset-checklist>Reset</button></p>` },
+  { name: 'Diagrams', icon: 'network', q: 'ai: explain DNS resolution', answer: 'Your device asks a resolver to look up a name. The resolver finds the authoritative answer and returns the address.', card: `<h3>DNS resolution</h3><div class="ai-diagram"><span>Your device</span><i>→</i><span>Resolver</span><i>→</i><span>DNS server</span></div><small>Device → resolver → authoritative answer</small>` },
+  { name: 'Galleries', icon: 'layers', q: 'ai: suggest mountain wallpapers', answer: 'Two minimal mountain scenes for your desktop.', card: `<h3>Mountain wallpapers</h3><div class="ai-columns ai-gallery"><svg viewBox="0 0 200 110" role="img" aria-label="Illustrative blue mountain wallpaper"><path d="M0 110 65 20 120 90 160 45 200 110" fill="#213e50"/><path d="m48 44 17-24 17 24-17-6z" fill="#d0d6e0"/></svg><svg viewBox="0 0 200 110" role="img" aria-label="Illustrative mountain silhouette wallpaper"><circle cx="150" cy="30" r="15" fill="#e4f222"/><path d="M0 110 80 35 135 85 180 55 200 110" fill="#122b3a"/></svg></div><small>Illustrative artwork · live previews include attribution links</small><a href="docs/?p=ai-artifacts#gallery">Save / Apply in Spotlight →</a>` }
+].map((sc) => ({ ...sc, enter: 'Copy answer', s: [] }));
+const answerHTML = (sc) => `<div class="ai-answer"><div class="ai-label">ANSWER <button type="button" data-value="${esc(sc.answer)}">Copy answer</button></div><p>${esc(sc.answer)}</p><div class="ai-card" data-kind="${esc(sc.name)}">${sc.card.replace('<h3>', `<h3><span class="ai-glyph">${svg(sc.icon)}</span>`)}</div></div>`;
+HERO.push(AI[0], AI[3], AI[4]);
+
 const rowsHTML = (sc) => {
+  if (sc.answer) return answerHTML(sc);
   let n = 0;
   return sc.s.map(([title, rows]) => `<div class="sec">${esc(title)}</div>` + rows.map((r) => `<div class="row${r.sel ? ' sel' : ''}" style="--i:${n++}"><span class="ic">${svg(r.i)}</span><span class="t${r.big ? ' big' : ''}">${esc(r.t)}</span>${r.m ? `<span class="m">${esc(r.m)}</span>` : '<span class="m"></span>'}${r.pill ? `<span class="pill ${r.pill}"></span>` : ''}${r.tag ? `<span class="tag${r.ok ? ' ok' : ''}${r.bad ? ' bad' : ''}">${esc(r.tag)}</span>` : ''}${r.k ? `<span class="k">${esc(r.k)}</span>` : ''}</div>`).join('')).join('');
 };
@@ -614,6 +733,12 @@ function palette(el, first, fit) {
       while (q.textContent && !sc.q.startsWith(q.textContent)) { if (my !== token) return; q.textContent = q.textContent.slice(0, -1); await wait(12); }
       for (const ch of sc.q.slice(q.textContent.length)) { if (my !== token) return; q.textContent += ch; await wait(28 + Math.random() * 50); }
       body.classList.add('out'); await wait(140); if (my !== token) return;
+      if (sc.answer) {
+        rows.innerHTML = `<div class="ai-thinking"><div class="ai-label">THINKING <span>Cancel</span></div><p>Preparing your answer…</p><img src="mascot.webp" alt=""></div>`;
+        body.classList.remove('out'); if (fit) body.style.height = '300px';
+        foot.innerHTML = footHTML({ enter: 'Cancel', s: [] });
+        await wait(1350); if (my !== token) return;
+      }
       show(sc); body.classList.remove('out');
       if (sc.press) {
         await wait(900); if (my !== token) return;
@@ -659,7 +784,7 @@ io.observe(stage);
 heroLoop();
 
 const tryBox = document.getElementById('try');
-['chrom', '12*7+3', 'ports:', 'toggle', 'man ssh', 'remind me in 20m…'].forEach((label) => {
+['chrom', '12*7+3', 'ports:', 'toggle', 'man ssh', 'ai: find large…', 'remind me in 20m…'].forEach((label) => {
   const i = HERO.findIndex((sc) => sc.q.startsWith(label.replace('…', '')));
   const b = document.createElement('button'); b.textContent = label; b.type = 'button';
   b.onclick = () => {
@@ -689,6 +814,35 @@ new IntersectionObserver(([e]) => {
   // The first view is already rendered; replay it on first sight so its filter step is seen too.
   if (e.isIntersecting && !vSeen) { vSeen = true; selectView(0); }
 }, { threshold: .3 }).observe(vw);
+
+// AI widget: reuse the palette typing and the tabs' native CSS timer.
+const aiTabs = document.getElementById('ai-tabs'), aiWidget = document.getElementById('ai-w');
+const aiPalette = palette(document.getElementById('ai-spot'), AI[0]);
+let aiIdx = 0;
+const aiAbout = ['Copyable code', 'Locations', 'Forecasts', 'Colors', 'Your data', 'Options', 'Schedules', 'Local metrics', 'Venues', 'Before / after', 'Tasks', 'Connections', 'Images'];
+aiTabs.innerHTML = AI.map((sc,i) => `<li><button class="tab${i ? '' : ' on'}" type="button" data-i="${i}" aria-pressed="${!i}">${svg(sc.icon)}<b>${esc(sc.name)}</b><span>${aiAbout[i]}</span></button></li>`).join('');
+const selectAi = (i) => {
+  aiIdx = i;
+  aiTabs.querySelectorAll('.tab').forEach((tab,j) => { tab.classList.remove('on'); tab.setAttribute('aria-pressed', j === i); if (j === i) { void tab.offsetWidth; tab.classList.add('on'); } });
+  aiPalette.play(AI[i]);
+};
+aiTabs.addEventListener('click', (e) => { const tab = e.target.closest('.tab'); if (tab) selectAi(+tab.dataset.i); });
+aiTabs.addEventListener('animationend', (e) => { if (e.target.classList.contains('on') && !reduced) selectAi((aiIdx + 1) % AI.length); });
+new IntersectionObserver(([e]) => aiWidget.classList.toggle('idle', !e.isIntersecting), { threshold: .3 }).observe(aiWidget);
+// Demo copy controls work on the displayed command, config or HEX value.
+document.addEventListener('click', async (e) => {
+  const button = e.target.closest('button[data-value]'); if (!button) return;
+  try { await navigator.clipboard.writeText(button.dataset.value); button.classList.add('ok'); setTimeout(() => button.classList.remove('ok'), 1400); }
+  catch { button.setAttribute('title', 'Clipboard unavailable; select and copy the text.'); }
+});
+
+const updateChecklist = (card) => {
+  const items = [...card.querySelectorAll('input[type="checkbox"]')], done = items.filter((item) => item.checked).length;
+  card.querySelector('progress').value = done;
+  card.querySelector('.ai-check-count').textContent = `${done === items.length ? 'All done' : 'Your progress'} · ${done} of ${items.length} completed`;
+};
+document.addEventListener('change', (e) => { if (e.target.matches('.ai-checklist input')) updateChecklist(e.target.closest('.ai-card')); });
+document.addEventListener('click', (e) => { if (e.target.closest('[data-reset-checklist]')) { const card = e.target.closest('.ai-card'); card.querySelectorAll('input').forEach((input) => { input.checked = false; }); updateChecklist(card); } });
 
 // Switch board, static.
 const board = document.getElementById('board');

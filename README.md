@@ -5,6 +5,7 @@ Landing page and documentation for [Spotlight](https://github.com/maajix/omarchy
 ```bash
 hugo server          # http://localhost:1313/omarchy-spotlight/
 hugo --gc --minify   # build into public/
+node tests/site.test.cjs
 ```
 
 - `static/index.html`: the landing page.
@@ -13,3 +14,5 @@ hugo --gc --minify   # build into public/
 - `static/robots.txt`, `static/sitemap.xml`, `static/llms.txt`: served as is.
 
 When a release ships, update the version in the landing page JSON-LD (`softwareVersion`), the docs header button, the docs changelog and `llms.txt`.
+
+The AI showcase reuses the landing page's palette and timer tabs. Its examples use local artwork and sample data; update them alongside the plugin's card layouts. Keep the showcase height fixed and check every card at desktop and phone widths when changing its content.

@@ -288,7 +288,7 @@ main{min-width:0;width:100%;max-width:740px;justify-self:center;padding:52px 0 0
   <a class="brand" href="../"><span class="mk"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><circle cx="10.5" cy="10.5" r="6"/><path d="m15 15 5 5"/></svg></span>Spotlight<span class="sub">Docs</span></a>
   <button class="find" id="find" type="button" aria-label="Search docs"><svg data-i="search"></svg><span>Search docs</span><kbd>Ctrl</kbd><kbd>K</kbd></button>
   <nav class="tlinks" aria-label="Site"><a href="../">Home</a><a href="?p=changelog">Changelog</a></nav>
-  <a class="gh" href="https://github.com/maajix/omarchy-spotlight" rel="noopener"><svg data-i="github"></svg><span class="l">GitHub</span><span class="n">v1.6.2</span></a>
+  <a class="gh" href="https://github.com/maajix/omarchy-spotlight" rel="noopener"><svg data-i="github"></svg><span class="l">GitHub</span><span class="n">v1.7.0</span></a>
 </header>
 
 <div class="docs">
@@ -311,10 +311,12 @@ main{min-width:0;width:100%;max-width:740px;justify-self:center;padding:52px 0 0
 <pre class="code" data-title="Terminal"><code>omarchy plugin add https://github.com/maajix/omarchy-spotlight.git --enable</code></pre>
 <p>Then press <kbd>Alt</kbd><kbd>Space</kbd>. <a href="?p=installation">Installation</a> covers requirements, the first run, updating and removing. New to Spotlight? Take the <a href="?p=quickstart">Quickstart</a>, then read <a href="?p=how-search-works">How search works</a>.</p>
 
-<h2 id="whats-new">What's new in 1.6.2</h2>
+<h2 id="whats-new">What's new in 1.7.0</h2>
 <ul>
-  <li><b class="ui">Change Theme</b> and <b class="ui">Change Background</b> now apply the choice you pick.</li>
-  <li><b class="ui">Change Font</b> now opens Omarchy's font picker.</li>
+  <li><a href="?p=ask-ai">Ask AI</a> through your signed-in Claude or Codex CLI, with progress, Markdown answers and copyable commands.</li>
+  <li><a href="?p=ai-artifacts">Twelve visual artifact types</a>, from maps and weather to charts, timelines, checklists and wallpaper galleries.</li>
+  <li>Model and thinking-level menus, optional AI web search and a default weather location in Spotlight Settings.</li>
+  <li>Close Spotlight while a request runs and reopen it to return to the same answer.</li>
 </ul>
 <p>Every release is listed in the <a href="?p=changelog">Changelog</a>.</p>
 
@@ -327,6 +329,8 @@ main{min-width:0;width:100%;max-width:740px;justify-self:center;padding:52px 0 0
   <a class="card" href="?p=web-search"><b>Web search and bangs</b><span>Search the web, jump to a site with a bang, open URLs.</span></a>
   <a class="card" href="?p=command-help"><b>Command help</b><span>tldr examples for a command, ready to copy or run.</span></a>
   <a class="card" href="?p=toggles"><b>Live toggles</b><span>Switches that read the real system state and flip in place.</span></a>
+  <a class="card" href="?p=ask-ai"><b>Ask AI</b><span>Ask Claude or Codex, follow progress and copy the answer.</span></a>
+  <a class="card" href="?p=ai-artifacts"><b>AI artifacts</b><span>Maps, weather, charts, palettes, timelines and more.</span></a>
   <a class="card" href="?p=system-views"><b>System views</b><span>Ports, SSH hosts, containers, services, mounts, audio, Wi-Fi and Bluetooth.</span></a>
 </div>
 
@@ -551,7 +555,7 @@ rm -f ~/.cache/omarchy/spotlight-currency.json ~/.cache/omarchy/spotlight-curren
 <p>The whole list stops at <b class="ui">Results shown</b> (20 by default, 8 to 50), and so do filtered lists such as <code class="q">f:</code> and <code class="q">cb:</code>. System views are the exception. Because the lower sections come last, a short, broad query that matches many apps and commands can push windows, clipboard entries and the web search row off the end. Type a little more, use a filter, or raise the limit in <a href="?p=settings#results">Settings</a> (<a href="?p=settings-reference#max-results"><code>maxResults</code></a>).</p>
 
 </article>
-<article data-group="Get started" data-slug="settings" data-title="Settings" data-desc="Change the shortcut, search sources and behavior from the settings panel or spotlight.json." data-since="1.6.1">
+<article data-group="Get started" data-slug="settings" data-title="Settings" data-desc="Change the shortcut, search sources, AI and behavior from the settings panel or spotlight.json.">
 
 <p>Every setting has a control in the settings panel, and every control writes to <code>~/.config/omarchy/spotlight.json</code> for you. <a href="?p=settings-reference">Settings reference</a> describes each key in detail.</p>
 
@@ -596,6 +600,10 @@ rm -f ~/.cache/omarchy/spotlight-currency.json ~/.cache/omarchy/spotlight-curren
     <tr><td><b class="ui">Default currency</b></td><td>The currency an amount converts to when you name no target. A target you type always wins. Leave it blank for none. An unsupported code turns the field red and is not saved; <kbd>Esc</kbd> puts the saved value back.</td><td><a href="?p=settings-reference#default-currency"><code>defaultCurrency</code></a></td></tr>
   </tbody>
 </table>
+
+<h3 id="ai-settings">Ask AI and artifacts</h3>
+<p>Enable <b class="ui">Ask AI</b>, select an installed Claude or Codex provider, then choose its model and thinking level. <b class="ui">CLI default</b> and <b class="ui">Model default</b> use the CLI's choices. The menus read local model catalogs; run the CLI once and reopen Spotlight if a catalog is missing.</p>
+<p><b class="ui">AI web search</b> independently allows the provider to search the web. Under <b class="ui">Artifacts</b>, set an optional default weather location. These settings are described in <a href="?p=settings-reference#ai">Settings reference</a>; see <a href="?p=ask-ai">Ask AI</a> to get started.</p>
 
 <h3 id="results">Results</h3>
 <table>
@@ -650,6 +658,12 @@ rm -f ~/.cache/omarchy/spotlight-currency.json ~/.cache/omarchy/spotlight-curren
   "clipboardSearch": true,
   "clipboardSearchAlways": true,
   "learningEnabled": true,
+  "aiEnabled": false,
+  "aiProvider": "claude",
+  "aiModel": "",
+  "aiEffort": "",
+  "aiWebSearch": false,
+  "artifactSettings": { "weather": { "defaultLocation": "" } },
   "maxResults": 20,
   "maxApps": 8,
   "maxSuggestions": 4,
@@ -713,13 +727,16 @@ hl.layer_rule({
   <li>To list only apps, type <code class="q">a:</code> or <code class="q">app:</code> followed by at least two characters, such as <code class="q">a:fi</code>. With one character the list stays empty. <code class="q">a firefox</code> (with a space) is a normal search, not a filter.</li>
 </ul>
 
+<h2 id="shell-plugins">Open a shell plugin</h2>
+<p>Enabled shell panels, overlays and menus are searchable by name and plugin ID. The list refreshes when Spotlight opens, and curated entries keep their titles and icons. Plugins with only a <code>bar-widget</code> kind are excluded because the shell does not report whether a widget has an openable panel. Discovered entries use a default plugin icon; a failed launch produces a desktop notification.</p>
+
 <h2 id="switch-to-a-window">Switch to a window</h2>
 <p>Type two or more characters of a window's title or app id. Each row shows the window title (or the app id when the window has no title), the app id underneath and <b class="ui">Window</b> on the right. The row does not show the workspace.</p>
 <ul>
   <li><kbd>Enter</kbd> (<b class="ui">Focus window</b>) focuses the window and closes Spotlight.</li>
   <li><kbd>Shift</kbd><kbd>Enter</kbd> (<b class="ui">Close window</b>) closes that window and Spotlight.</li>
   <li>Type <code class="q">window</code>, <code class="q">switch</code> or <code class="q">focus</code> to list every open window.</li>
-  <li><code class="q">w:</code> and <code class="q">window:</code> show only windows. <code class="q">w firefox</code> (with a space) is the Wikipedia shortcut instead: see <a href="?p=web-search">Web search</a>.</li>
+  <li><code class="q">w:</code> and <code class="q">window:</code> list all open windows when bare, and narrow the list when followed by text. <code class="q">w firefox</code> (with a space) is the Wikipedia shortcut instead: see <a href="?p=web-search">Web search</a>.</li>
   <li>Learning counts the app, not the single window, so focusing one terminal often lifts every terminal window.</li>
 </ul>
 
@@ -917,6 +934,10 @@ hl.layer_rule({
 <h3 id="default-currency">Convert to your default currency</h3>
 <p>Set <b class="ui">Default currency</b> in <b class="ui">Spotlight Settings</b> and a query without a target converts to it: <code class="q">23 USD</code>, <code class="q">$23</code> or <code class="q">23 dollars</code>. An explicit target still wins. Without a default, these queries show no row. Lowercase codes and <code>pound</code> don't count without a target (<code class="q">23 usd</code>, <code class="q">10 pounds</code>), so a unit you are still typing is not taken for a currency.</p>
 
+<h3 id="currency-expressions">Calculate with several currencies</h3>
+<p>Try <code class="q">23 EUR + 43 JPY</code>, <code class="q">(23 EUR + 43 JPY) * 2</code> or <code class="q">23 EUR + 43 JPY to USD</code>. Use <code>+</code> and <code>-</code> between currency amounts and <code>*</code> or <code>/</code> with plain numbers. Parentheses set the order. Without a target or configured default, the first currency sets the result currency.</p>
+<p>Each distinct source currency may need its own rate lookup. Required pairs are fetched sequentially; expressions with several uncached pairs take longer to load. Pressing <kbd>Enter</kbd> while rates load copies the result once every required rate arrives.</p>
+
 <h3 id="exchange-rates">How exchange rates are fetched</h3>
 <p>Rates come from <a href="https://frankfurter.dev" rel="noopener">Frankfurter</a>, a free service that needs no account or API key. Spotlight asks for a rate only after you pause for 250 ms on a complete query. It sends the two currency codes, never the amount.</p>
 <ul>
@@ -926,7 +947,7 @@ hl.layer_rule({
   <li>With no rate at all, the row reads "Exchange rate unavailable" and can't be selected.</li>
   <li>Converting a currency to itself needs no network. Historical rates are not available.</li>
 </ul>
-<div class="callout tip"><p>Turn off <b class="ui">Currency rates</b> to keep Spotlight off the network. Currency queries then use only rates already in the cache, even old ones. A pair that was never fetched shows "Exchange rate unavailable".</p></div>
+<div class="callout tip"><p>Turn off <b class="ui">Currency rates</b> to disable network rate lookups. Currency queries then use only rates already in the cache, even old ones. A pair that was never fetched shows "Exchange rate unavailable".</p></div>
 
 <h2 id="settings">Settings</h2>
 <ul>
@@ -1261,7 +1282,7 @@ hl.layer_rule({
 <details><summary>The switch jumped back after I flipped it</summary><p>The re-check found the old state, so the Omarchy command did not change anything. Run the command from the Omarchy menu or a terminal to see the error.</p></details>
 
 </article>
-<article data-group="Features" data-slug="system-views" data-title="System views" data-desc="Type ports:, ssh:, docker: and more to list what is on your machine and act on it." data-since="1.6">
+<article data-group="Features" data-slug="system-views" data-title="System views" data-desc="Type ports:, ssh:, docker: and more to list what is on your machine and act on it.">
 
 <p>A system view is a list of live things on your machine, such as open ports, containers or audio devices, fetched when you open it. Type the view's name and a colon, narrow the list with a few letters, then press <kbd>Enter</kbd> to act on a row: open a port in the browser, follow a container's logs, switch your speakers. There are eight views.</p>
 <p class="prefixes"><code class="q">ports:</code> <code class="q">ssh:</code> <code class="q">docker:</code> <code class="q">services:</code> <code class="q">mounts:</code> <code class="q">audio:</code> <code class="q">wifi:</code> <code class="q">bluetooth:</code></p>
@@ -1435,6 +1456,93 @@ hl.layer_rule({
 </table>
 
 </article>
+<article data-group="Features" data-slug="ask-ai" data-title="Ask AI" data-desc="Ask Claude or Codex a question, follow its progress and read the answer inside Spotlight." data-since="1.7">
+
+<p class="prefixes"><code class="q">ai:</code></p>
+<p>Ask AI uses an installed, signed-in Claude or Codex CLI. It is optional and disabled by default. Each question is an independent request: Spotlight does not send a conversation history, your search results or clipboard contents.</p>
+
+<h2 id="enable">Enable Ask AI</h2>
+<ol>
+<li>Install the Claude or Codex CLI and run it once in a terminal to sign in. Spotlight uses that CLI's account and access; it does not ask for an API key.</li>
+<li>Open <b class="ui">Spotlight Settings</b>, enable <b class="ui">Ask AI</b> and choose <b class="ui">Claude</b> or <b class="ui">Codex</b>. These choices are also available in the setup tour.</li>
+<li>Optionally choose a model and thinking level. <b class="ui">CLI default</b> and <b class="ui">Model default</b> leave those choices to the CLI. The menus use the installed CLI's local model catalog and list only the thinking levels supported by the selected model.</li>
+</ol>
+<p>If a model catalog is missing, run the provider CLI once, then close and reopen Spotlight. Provider usage and limits follow your CLI account.</p>
+
+<h2 id="ask">Ask a question</h2>
+<p>Type <code class="q">ai: how does scp work?</code> and press <kbd>Enter</kbd>. Nothing is sent while you type. Spotlight shows provider reasoning or progress when available, with a floating ghost while it thinks, then renders the validated answer as readable Markdown in a scrollable panel. It asks the provider to answer in the language of your question unless you request another language.</p>
+<p>Click <b class="ui">Copy answer</b> to copy the text, or <b class="ui">← Results</b> to return to search. Fenced code blocks become terminal cards with their own <b class="ui">Copy</b> action. A question that benefits from a visual answer can also show an <a href="?p=ai-artifacts">artifact</a>.</p>
+
+<h2 id="commands">Command suggestions</h2>
+<p>Try <code class="q">ai: how do I find large files in Downloads?</code>. Spotlight shows the exact command with a <b class="ui">Copy</b> action; a multi-step task can show up to six commands in order. The AI does not execute those commands or change your desktop. Review them before running them. If a task is outside its capabilities or it cannot suggest a reliable command, it should explain that in the answer.</p>
+
+<h2 id="return">Close and return</h2>
+<p>A submitted request keeps running when you close Spotlight. Reopen it to return to the same request, progress or completed answer. A completion notification appears while you are away; clicking it opens Spotlight. The notification contains fixed text rather than your question or answer.</p>
+<p><b class="ui">Cancel</b> stops the current request. Disabling Ask AI, submitting a new question or restarting/unloading the shell also stops it. Only the latest request and answer are retained, with the reading position, in the running shell's memory. They are lost when the shell restarts.</p>
+
+<h2 id="web-search">AI web search</h2>
+<p><b class="ui">AI web search</b> is separately disabled by default. Enable it in the setup tour or Spotlight Settings to allow the selected provider to search the web during a submitted question. It is independent of normal <a href="?p=web-search">web search and suggestions</a>.</p>
+<p>Weather cards require this setting. Image galleries need actual image URLs found through web search or explicitly supplied by you. Source links help you verify an answer; URL validation does not prove that the provider checked a page.</p>
+
+<h2 id="settings">Settings and privacy</h2>
+<p>The <a href="?p=settings-reference#ai">settings reference</a> documents the provider, model, thinking level, web access and default weather location. <a href="?p=privacy-security#ai">Privacy and security</a> explains which requests leave your machine and which actions remain local.</p>
+
+</article>
+<article data-group="Features" data-slug="ai-artifacts" data-title="AI artifacts" data-desc="Maps, weather, palettes, charts and eight more visual card types, with examples and actions." data-since="1.7">
+
+<p>Artifacts are visual cards alongside an <a href="?p=ask-ai">Ask AI</a> answer. Ask for the shape you want, such as a chart or timeline. Spotlight validates the provider's structured data before rendering it. If a card is missing or invalid, the text answer remains readable and a warning explains the missing card.</p>
+
+<h2 id="map">Maps</h2>
+<p>Try <code class="q">ai: show me Tokyo on a map</code>. A dark map preview shows a location marker, coordinates and an <b class="ui">Open in OpenStreetMap</b> link. The preview is fetched from <code>mapmap.ai</code> using the coordinates and zoom. If it fails, the coordinates and link remain available.</p>
+
+<h2 id="weather">Weather</h2>
+<p>Try <code class="q">ai: what's the weather in Tokyo this week?</code> with <b class="ui">AI web search</b> enabled. The card shows sourced weather with up to seven days. It reports unavailable data rather than inventing a forecast.</p>
+<p>Set a default city under <b class="ui">Spotlight Settings → Artifacts</b> to ask <code class="q">ai: what's the weather?</code> without naming a location. A location in your question takes priority. The saved location is sent only for recognized weather questions. Forecasts come from the provider's web search; Spotlight does not call a weather service directly.</p>
+
+<h2 id="palette">Color palettes</h2>
+<p>Try <code class="q">ai: create a palette for a dark ocean theme</code>. Named swatches show HEX values and an interface preview. Copy a color to use it in your own theme; the card does not change the active theme.</p>
+
+<h2 id="chart">Charts</h2>
+<p>Try <code class="q">ai: chart this budget: Rent 900, Food 300, Transport 100, Savings 400 EUR</code>. The chart includes a legend, a provenance note and exact values on hover. Supply your own numbers or enable web search for sourced data.</p>
+
+<h2 id="comparison">Comparisons</h2>
+<p>Try <code class="q">ai: compare scp and rsync for SSH file transfers</code>. Each option shows facts, strengths, tradeoffs and source links when supplied. It is a compact way to read alternatives alongside the explanation.</p>
+
+<h2 id="timeline">Timelines</h2>
+<p>Try <code class="q">ai: plan a weekend in Tokyo</code>, or <code class="q">ai: extract the schedule from &lt;event URL&gt; and show a timeline</code> with web search enabled. Timeline entries show dates, activities, descriptions and optional source links.</p>
+<p>For a fictional example, use <code class="q">ai: show a timeline for Future Summit: 09:00 registration, 10:00 keynote, 12:00 lunch, 14:00 workshops</code>.</p>
+
+<h2 id="dashboard">System dashboards</h2>
+<p>Try <code class="q">ai: show my CPU, memory, storage and service status in a dashboard</code>. The AI asks for a card; Spotlight collects a read-only local snapshot with usage bars and service health. The provider cannot supply these measurements and is not given the collected values. Partial or unavailable readings are labelled.</p>
+<p>Use <b class="ui">Copy snapshot</b> to export the measured values to the clipboard. The snapshot is taken for that request; it is not a continuously updating monitor.</p>
+
+<h2 id="places">Place cards</h2>
+<p>Try <code class="q">ai: find two ramen restaurants in Tokyo with opening hours and ratings</code> with web search enabled. Place cards show addresses, ratings, hours, provenance, source links and map links. Missing details stay unknown. <b class="ui">View map</b> opens an OpenStreetMap search in your browser; the card makes no automatic map request.</p>
+
+<h2 id="diff">Configuration diffs</h2>
+<p>Try <code class="q">ai: preview changing font size from 12 to 14 in this config: size = 12</code>. A diff shows additions, removals and line numbers for up to three files. <b class="ui">Copy proposed config</b> copies the complete proposed contents; <b class="ui">Copy diff</b> copies the unified diff.</p>
+<p>Paths are display labels only. Spotlight does not open them, read your config or write any changes, and there is no apply action. Supply the starting text for an exact comparison; examples without it are labelled illustrative.</p>
+
+<h2 id="checklist">Checklists</h2>
+<p>Try <code class="q">ai: help me prepare for a server migration</code>. Check items as you work, follow the progress and use the reset and copy actions. Checkmarks survive closing Spotlight and stay in shell memory for up to 32 checklists. They reset when the shell restarts and are never sent back to the provider.</p>
+
+<h2 id="diagram">Diagrams</h2>
+<p>Try <code class="q">ai: explain how DNS resolution works</code>. Connected nodes, selectable connections and readable captions help explain a flow. The diagram is rendered from validated structured data alongside the answer.</p>
+
+<h2 id="gallery">Image galleries</h2>
+<p>Try <code class="q">ai: suggest two minimalist mountain wallpapers</code>. Galleries show up to eight images with attribution and source links. Previews fit the complete image without cropping. Enable AI web search to find real URLs, or include direct image URLs in the question.</p>
+<p>Gallery previews require native <code>curl</code> and ImageMagick (<code>magick</code>). Downloads are validated and sanitized locally before the UI loads them. Missing tools or unavailable images produce a per-image unavailable state.</p>
+<ul>
+<li><b class="ui">Save</b> keeps the sanitized image in <code>~/Pictures/Spotlight</code>.</li>
+<li><b class="ui">Apply</b> saves the image and sets it as your wallpaper through Omarchy.</li>
+<li><b class="ui">Source</b> opens the attribution or licensing page so you can check reuse rights.</li>
+</ul>
+<p>Save and Apply require their own explicit clicks; generating or reopening a gallery never applies a wallpaper. The private cache keeps the newest 16 previews. An expired preview needs a new request.</p>
+
+<h2 id="contribute">Add a card type</h2>
+<p>Artifacts are a source-level extension point. Contributors define a schema, validate its data and register a QML card; see <a href="?p=development#artifacts">Artifact development</a>. Arbitrary QML files dropped into a folder are not loaded automatically.</p>
+
+</article>
 <article data-group="Reference" data-slug="search-syntax" data-title="Search syntax" data-desc="Every prefix, filter and short form in one place.">
 
 <p>Without a prefix, Spotlight searches everything at once and ranks the results together. A prefix narrows the search to one provider. For how the mixed list is ranked, see <a href="?p=how-search-works">How search works</a>.</p>
@@ -1454,6 +1562,7 @@ hl.layer_rule({
 <tr><td><code class="q">reminder:</code></td><td>none</td><td>Reminders</td><td>none</td></tr>
 <tr><td><code class="q">calendar:</code></td><td><code class="q">event:</code></td><td>Calendar events</td><td>none</td></tr>
 <tr><td><code class="q">man:</code></td><td><code class="q">tldr:</code></td><td>tldr examples for a command</td><td><code class="q">man text</code>, <code class="q">tldr text</code></td></tr>
+<tr><td><code class="q">ai:</code></td><td>none</td><td><a href="?p=ask-ai">Ask AI</a> through Claude or Codex</td><td>none</td></tr>
 <tr><td><code class="q">ports:</code></td><td>none</td><td>Listening ports</td><td>none</td></tr>
 <tr><td><code class="q">ssh:</code></td><td>none</td><td>SSH hosts</td><td>none</td></tr>
 <tr><td><code class="q">docker:</code></td><td>none</td><td>Docker containers</td><td>none</td></tr>
@@ -1470,8 +1579,8 @@ hl.layer_rule({
 <p>A filter is a known word followed by a colon, then your search. Only that provider runs, so nothing else appears in the list. Filters ignore case and the space after the colon is optional: <code class="q">F:invoice</code>, <code class="q">f:invoice</code> and <code class="q">f: invoice</code> are the same query.</p>
 <ul>
 <li>Unknown words stay text. If the word before the colon is not in the table above, the whole query is an ordinary search. <code class="q">c:</code>, <code class="q">clip:</code>, <code class="q">port:</code> and <code class="q">bt:</code> are not filters.</li>
-<li>Nothing after the colon. A provider filter shows only a hint row, such as <b class="ui">Type a search after “f:”</b>. A view lists its entries right away.</li>
-<li>Minimum length. <code class="q">a:</code>, <code class="q">w:</code> and <code class="q">action:</code> need 2 characters after the colon; with 1 the list is empty. <code class="q">f:</code>, <code class="q">cb:</code> and <code class="q">man:</code> start at 1 character.</li>
+<li>Nothing after the colon. A provider filter shows only a hint row (except bare <code class="q">w:</code> / <code class="q">window:</code>, which list all open windows), such as <b class="ui">Type a search after “f:”</b>. A view lists its entries right away.</li>
+<li>Minimum length. <code class="q">a:</code> and <code class="q">action:</code> need 2 characters after the colon; a nonempty window filter also needs 2, while an empty one lists all windows; with 1 the list is empty. <code class="q">f:</code>, <code class="q">cb:</code> and <code class="q">man:</code> start at 1 character.</li>
 <li>Tool filters show one row. <code class="q">calc:</code>, <code class="q">unit:</code>, <code class="q">reminder:</code> and <code class="q">calendar:</code> show only that tool's row: no apps, files or web results.</li>
 <li>Reminder and event filters add the trigger word. <code class="q">reminder: call mom in 20m</code> reads as <code class="q">reminder call mom in 20m</code>, and <code class="q">event: dentist friday at 10</code> as <code class="q">event dentist friday at 10</code>.</li>
 <li>Files always start at home. <code class="q">f:</code> searches your whole home directory. To search inside one folder, use a <a href="#path-queries">path query</a>.</li>
@@ -1503,7 +1612,7 @@ hl.layer_rule({
 <tr><td><code class="q">port</code></td><td><code class="q">ports:</code></td></tr>
 <tr><td><code class="q">s</code></td><td><code class="q">ssh:</code>, <code class="q">services:</code></td></tr>
 <tr><td><code class="q">dock:</code></td><td><code class="q">docker:</code></td></tr>
-<tr><td><code class="q">a</code></td><td><code class="q">audio:</code></td></tr>
+<tr><td><code class="q">a</code></td><td><code class="q">ai:</code>, <code class="q">audio:</code></td></tr>
 <tr><td><code class="q">ports:22</code>, <code class="q">hello world</code></td><td>none</td></tr>
 </tbody>
 </table>
@@ -1722,6 +1831,10 @@ hl.layer_rule({
 <h2 id="confirmations">Confirmations</h2>
 <p>Log Out, Restart, Shut Down and disconnecting a connected Bluetooth device need two presses. The first <kbd>Enter</kbd> (or <kbd>Shift</kbd><kbd>Enter</kbd>) arms the row, and it reads <b class="ui">Press ↵ again to confirm</b>. The second press runs it. Moving the selection, editing the query or reopening Spotlight disarms the row.</p>
 
+<h2 id="ai-panel">Ask AI panel</h2>
+<p><kbd>Enter</kbd> on an <code class="q">ai:</code> result submits the question. <kbd>Esc</kbd> dismisses the overlay without cancelling the request. Use <b class="ui">Cancel</b> to stop it or <b class="ui">← Results</b> to return to search.</p>
+<p><kbd>Tab</kbd> moves through the answer and card controls; <kbd>Enter</kbd> or <kbd>Space</kbd> activates a focused button or checkbox. Use the panel's scroll area to read long answers. <b class="ui">Copy answer</b> and each code card's <b class="ui">Copy</b> button copy their own text.</p>
+
 <h2 id="settings-panel">Settings panel</h2>
 <p>The panel opens with nothing focused. Press <kbd>Tab</kbd> to walk through the controls.</p>
 <table>
@@ -1763,7 +1876,7 @@ hl.layer_rule({
 </article>
 <article data-group="Reference" data-slug="settings-reference" data-title="Settings reference" data-desc="Every key in spotlight.json with its type, default and effect.">
 
-<p>Spotlight keeps its settings in <code>~/.config/omarchy/spotlight.json</code>. The file holds one flat JSON object with 13 keys. Most of them also have a control in the settings panel; see <a href="?p=settings">Settings</a> for how to use it. The keyboard shortcut is not stored here: it lives in <code>~/.config/hypr/bindings.lua</code>.</p>
+<p>Spotlight keeps its settings in <code>~/.config/omarchy/spotlight.json</code>. The file holds a JSON object; artifact preferences live in the nested <code>artifactSettings</code> object. Most of them also have a control in the settings panel; see <a href="?p=settings">Settings</a> for how to use it. The keyboard shortcut is not stored here: it lives in <code>~/.config/hypr/bindings.lua</code>.</p>
 
 <h2 id="example-file">Full example</h2>
 <p>This is the file with every key at its default, exactly as <b class="ui">Edit spotlight.json</b> creates it. Leave out any key to use its default.</p>
@@ -1777,6 +1890,12 @@ hl.layer_rule({
   "clipboardSearch": true,
   "clipboardSearchAlways": true,
   "learningEnabled": true,
+  "aiEnabled": false,
+  "aiProvider": "claude",
+  "aiModel": "",
+  "aiEffort": "",
+  "aiWebSearch": false,
+  "artifactSettings": { "weather": { "defaultLocation": "" } },
   "maxResults": 20,
   "maxApps": 8,
   "maxSuggestions": 4,
@@ -1797,6 +1916,12 @@ hl.layer_rule({
 <tr><td><a href="#search-engine"><code>searchEngine</code></a></td><td>string</td><td><code>"g"</code></td><td>Web search engine</td></tr>
 <tr><td><a href="#currency-rates"><code>currencyRates</code></a></td><td>boolean</td><td><code>true</code></td><td>Currency rates</td></tr>
 <tr><td><a href="#default-currency"><code>defaultCurrency</code></a></td><td>string</td><td><code>""</code></td><td>Default currency</td></tr>
+<tr><td><a href="#ai-enabled"><code>aiEnabled</code></a></td><td>boolean</td><td><code>false</code></td><td>Ask AI</td></tr>
+<tr><td><a href="#ai-provider"><code>aiProvider</code></a></td><td>string</td><td><code>"claude"</code></td><td>Provider</td></tr>
+<tr><td><a href="#ai-model"><code>aiModel</code></a></td><td>string</td><td><code>""</code></td><td>Model</td></tr>
+<tr><td><a href="#ai-effort"><code>aiEffort</code></a></td><td>string</td><td><code>""</code></td><td>Thinking level</td></tr>
+<tr><td><a href="#ai-web-search"><code>aiWebSearch</code></a></td><td>boolean</td><td><code>false</code></td><td>AI web search</td></tr>
+<tr><td><a href="#artifact-settings"><code>artifactSettings.weather.defaultLocation</code></a></td><td>string</td><td><code>""</code></td><td>Artifacts → Weather location</td></tr>
 <tr><td><a href="#max-results"><code>maxResults</code></a></td><td>integer, 8 to 50</td><td><code>20</code></td><td>Results shown</td></tr>
 <tr><td><a href="#max-apps"><code>maxApps</code></a></td><td>integer, 3 to 24</td><td><code>8</code></td><td>Applications shown</td></tr>
 <tr><td><a href="#max-suggestions"><code>maxSuggestions</code></a></td><td>integer, 0 to 8</td><td><code>4</code></td><td>Search suggestions shown</td></tr>
@@ -1935,6 +2060,38 @@ hl.layer_rule({
   "maxSuggestions": 6
 }</code></pre>
 
+<h2 id="ai">Ask AI</h2>
+
+<h3 id="ai-enabled">aiEnabled</h3>
+<p>Enables <code class="q">ai:</code> requests through the selected provider. Nothing is submitted until you press <kbd>Enter</kbd>. Turning this off also stops an active request.</p>
+<dl class="setting"><dt>Type</dt><dd>boolean</dd><dt>Default</dt><dd><code>false</code></dd><dt>Set in panel</dt><dd><b class="ui">Ask AI</b></dd></dl>
+
+<h3 id="ai-provider">aiProvider</h3>
+<p>The installed, signed-in CLI used for requests. Changing providers resets model and effort choices to defaults.</p>
+<dl class="setting"><dt>Type</dt><dd>string</dd><dt>Default</dt><dd><code>"claude"</code></dd><dt>Values</dt><dd><code>"claude"</code>, <code>"codex"</code></dd><dt>Set in panel</dt><dd><b class="ui">Provider</b></dd></dl>
+
+<h3 id="ai-model">aiModel</h3>
+<p>A model identifier from the selected CLI's local catalog. An empty value means <b class="ui">CLI default</b>. The model menu shows locally known choices rather than a fixed list.</p>
+<dl class="setting"><dt>Type</dt><dd>string</dd><dt>Default</dt><dd><code>""</code></dd><dt>Set in panel</dt><dd><b class="ui">Model</b></dd></dl>
+
+<h3 id="ai-effort">aiEffort</h3>
+<p>The thinking level supported by the chosen model. An empty value means <b class="ui">Model default</b>. Pick from the menu so the level matches the provider and model.</p>
+<dl class="setting"><dt>Type</dt><dd>string</dd><dt>Default</dt><dd><code>""</code></dd><dt>Set in panel</dt><dd><b class="ui">Thinking level</b></dd></dl>
+
+<h3 id="ai-web-search">aiWebSearch</h3>
+<p>Allows the selected provider to search the web while answering a submitted <code class="q">ai:</code> query. Weather cards require it. This is separate from <code>webSuggestions</code> and the web search engine.</p>
+<dl class="setting"><dt>Type</dt><dd>boolean</dd><dt>Default</dt><dd><code>false</code></dd><dt>Set in panel</dt><dd><b class="ui">AI web search</b></dd></dl>
+
+<h3 id="artifact-settings">artifactSettings</h3>
+<p>Stores preferences per card type. Currently <code>weather.defaultLocation</code> is an optional location string. A place named in the question takes priority; the saved location is sent only for recognized weather questions.</p>
+<dl class="setting"><dt>Type</dt><dd>object</dd><dt>Default</dt><dd><code>{ "weather": { "defaultLocation": "" } }</code></dd><dt>Set in panel</dt><dd><b class="ui">Artifacts → Weather location</b></dd></dl>
+<pre class="code" data-title="~/.config/omarchy/spotlight.json"><code>{
+  "aiEnabled": true,
+  "aiProvider": "codex",
+  "aiWebSearch": true,
+  "artifactSettings": { "weather": { "defaultLocation": "Berlin" } }
+}</code></pre>
+
 <h2 id="setup">Setup</h2>
 
 <h3 id="setup-completed">setupCompleted</h3>
@@ -2041,6 +2198,13 @@ hl.layer_rule({
 <pre class="code" data-title="Terminal"><code>python3 ~/.config/omarchy/plugins/io.github.maajix.spotlight/bin/spotlight-helper docker</code></pre>
 </details>
 
+<h2 id="ai">Ask AI and artifacts</h2>
+<details><summary>ai: does not answer, or says the provider is unavailable</summary><p>Enable Ask AI in Spotlight Settings and choose an installed Claude or Codex CLI. Run that CLI in a terminal to confirm that you are signed in and can submit a question, then reopen Spotlight. A typed question is submitted only after Enter.</p></details>
+<details><summary>The model or thinking-level menu is empty</summary><p>The menus read local model catalogs. Run the selected CLI once to populate its catalog, then close and reopen Spotlight. CLI default and Model default remain usable when no explicit choice is available.</p></details>
+<details><summary>A weather card is unavailable</summary><p>Enable AI web search and name a location, or set the default under Spotlight Settings → Artifacts. A weather card needs reliable sourced data; missing data is reported as unavailable rather than invented.</p></details>
+<details><summary>A gallery image is unavailable</summary><p>Check that curl and ImageMagick's magick are installed. Preview URLs must be direct HTTPS PNG/JPEG images on public hosts. Redirects, unsupported images, oversized downloads and expired cached previews are refused. Enable AI web search or supply actual image URLs, and submit a new request.</p></details>
+<details><summary>Closing Spotlight did not stop the AI request</summary><p>Requests intentionally continue while Spotlight is closed. Reopen it to return to the answer; use Cancel to stop the current request.</p></details>
+
 <h2 id="settings-file">Settings file</h2>
 
 <details><summary>The panel says "Settings not saved", or I got a "Spotlight settings not saved" notification</summary>
@@ -2101,7 +2265,7 @@ hl.layer_rule({
 <p>Clipboard search reads Omarchy's own history file, <code>~/.local/state/omarchy/clipboard-history.json</code>, and uses text items only. Spotlight does not copy it anywhere. The <code>tldr</code> client keeps its pages in <code>~/.cache/tldr</code>.</p>
 
 <h2 id="network">What reaches the network</h2>
-<p>Spotlight makes no request when it starts and never refreshes anything in the background. Requests happen only in these cases:</p>
+<p>Spotlight makes no request at startup and does not poll for updates. A submitted AI request can continue while the overlay is closed. Requests happen only in these cases:</p>
 <table>
 <thead><tr><th>Feature</th><th>When</th><th>What is sent</th></tr></thead>
 <tbody>
@@ -2117,12 +2281,29 @@ hl.layer_rule({
 <li>A failed suggestion request shows no suggestions and no error.</li>
 <li>With <b class="ui">Currency rates</b> off, Spotlight uses cached rates only and contacts no one. Same-currency pairs never need the network.</li>
 <li>Listing a view sends nothing, with one exception: <code class="q">docker:</code> talks to the daemon of your active Docker context, which may be on another machine.</li>
-<li>Spotlight loads no icons, favicons or images from the network.</li>
+<li>Ordinary search results load no remote icons or favicons. AI maps and galleries can fetch previews as described below.</li>
 </ul>
-<p>Spotlight builds each request address itself, so nothing you type can point it at another host. Requests do not follow redirects, identify themselves as <code>Spotlight</code>, give up after 3 seconds and cap the response size. See <a href="?p=settings-reference#web-suggestions">webSuggestions</a> and <a href="?p=settings-reference#currency-rates">currencyRates</a>.</p>
+<p>For suggestions and currency rates, Spotlight builds the request addresses itself. Those requests do not follow redirects, identify themselves as <code>Spotlight</code>, give up after 3 seconds and cap the response size. See <a href="?p=settings-reference#web-suggestions">webSuggestions</a> and <a href="?p=settings-reference#currency-rates">currencyRates</a>.</p>
+
+<h2 id="ai">AI requests and artifacts</h2>
+<p>Ask AI is disabled by default. Only an explicitly submitted <code class="q">ai:</code> question is sent through the selected Claude or Codex CLI. AI web search is a separate opt-in. The provider's privacy policy and CLI account apply; Spotlight does not add telemetry or send ordinary search results.</p>
+<table>
+<thead><tr><th>Feature</th><th>When</th><th>What leaves your machine</th></tr></thead>
+<tbody>
+<tr><td>Claude or Codex</td><td>After submitting an AI question</td><td>Your question and the bounded instructions needed to answer it; the saved weather location only for recognized weather questions</td></tr>
+<tr><td>AI web search</td><td>During a submitted question, if enabled</td><td>Provider-managed web searches and fetched pages</td></tr>
+<tr><td>Map preview</td><td>When a map card appears</td><td>Coordinates and zoom to <code>mapmap.ai</code></td></tr>
+<tr><td>Gallery preview</td><td>When an image gallery is generated</td><td>An HTTPS request to each validated image host</td></tr>
+<tr><td>Source and map links</td><td>After you click one</td><td>The destination URL opened in your browser</td></tr>
+</tbody>
+</table>
+<p>The latest request, progress, answer and reading position stay in shell memory until restart. Completion notifications contain fixed text without the prompt or answer. Closing Spotlight does not cancel a request; Cancel, disabling Ask AI, a replacement question or restarting/unloading the shell stops it.</p>
+<p>Generated commands are displayed for copying and never executed. Diff paths are display labels: Spotlight never reads or writes those configs. Dashboard measurements are collected locally and never given to the provider. Checklist progress stays in shell memory, is not sent to the provider and is not written to disk.</p>
+<p>Gallery previews reject credentials, private IP addresses, non-443 ports and redirects. Downloads are capped at 8 MiB and sanitized into metadata-stripped local JPEG previews; the private cache holds at most 16 images. <b class="ui">Save</b> writes a fixed file under <code>~/Pictures/Spotlight</code>; <b class="ui">Apply</b> saves it and invokes the fixed Omarchy wallpaper action. Both require explicit clicks. See <a href="?p=ai-artifacts#gallery">Image galleries</a> for requirements and actions.</p>
+<p>Artifact URLs and data are validated, but a valid source link does not prove the provider checked its contents. Review sources and image licenses before relying on an answer or reusing an image.</p>
 
 <h2 id="helper">The helper script</h2>
-<p>The Spotlight interface does not read files, run system tools or open network connections itself. It asks a Python helper in the plugin folder (<code>bin/spotlight-helper</code>) to do it, one short-lived process per request, and gets one JSON reply back. That helper is the security boundary:</p>
+<p>The Spotlight interface delegates file access, system tools and most network requests to the helper; map preview images are loaded directly from the fixed <code>mapmap.ai</code> endpoint. It asks a Python helper in the plugin folder (<code>bin/spotlight-helper</code>) to do it, one short-lived process per request, and gets one JSON reply back. That helper is the security boundary:</p>
 <ul>
 <li>Every command runs as an argument list, never through a shell.</li>
 <li>Values cannot be read as command options: SSH hosts must match a strict pattern, container ids must be hex, Bluetooth addresses must be MAC addresses, mount targets must be absolute paths and services are passed as <code>--unit=NAME</code>. Wi-Fi and audio names that start with <code>-</code> are never passed on, and copying uses <code>wl-copy --</code>.</li>
@@ -2149,6 +2330,36 @@ hl.layer_rule({
 <article data-group="Resources" data-slug="changelog" data-title="Changelog" data-desc="What changed in each release.">
 
 <p>Newest release first, starting at 1.5.0. To get the latest version, run <code>omarchy plugin update io.github.maajix.spotlight</code>.</p>
+
+<h2 id="1-7-0">1.7.0 <span class="date">2026-10-05</span></h2>
+<h3 id="1-7-0-added">Added</h3>
+<ul>
+<li><a href="?p=ask-ai">Opt-in Ask AI</a> using installed Claude or Codex CLIs, with streamed progress, Markdown answers, copyable code and up to six proposed commands.</li>
+<li><a href="?p=ai-artifacts">AI artifacts</a>: maps, sourced weather, color palettes, charts, comparisons, timelines, measured local dashboards, place cards, configuration diffs, interactive checklists, diagrams and image galleries.</li>
+<li>Provider, model, thinking-level and web-search settings, plus an optional default weather location.</li>
+<li>Requests continue while Spotlight is closed. Reopen to return to the latest answer and reading position; completion notifications open Spotlight.</li>
+<li>A floating thinking ghost, gallery Save / Apply actions and a contributor artifact contract.</li>
+</ul>
+<h3 id="1-7-0-changed">Changed</h3>
+<ul><li>Reusable QML controls and panels now live under <code>ui/</code>; schemas and validators define the artifact boundary.</li></ul>
+
+<h2 id="1-6-6">1.6.6 <span class="date">2026-10-02</span></h2>
+<h3 id="1-6-6-fixed">Fixed</h3>
+<ul><li>The search field stays in the same position while typing. Results grow below it within the available screen height.</li></ul>
+
+<h2 id="1-6-5">1.6.5 <span class="date">2026-10-01</span></h2>
+<h3 id="1-6-5-added">Added</h3>
+<ul><li>Discover enabled, launchable shell panels, overlays and menus by name and plugin ID through bounded IPC. Curated titles and icons are preserved; widget-only plugins are excluded.</li></ul>
+
+<h2 id="1-6-4">1.6.4 <span class="date">2026-09-30</span></h2>
+<h3 id="1-6-4-added">Added</h3>
+<ul><li><a href="?p=calculator#currency-expressions">Mixed currency expressions</a>, such as <code class="q">23 EUR + 43 JPY to USD</code>, including arithmetic and parentheses. Contributed by <a href="https://github.com/vleeuwenmenno" rel="noopener">@vleeuwenmenno</a>.</li></ul>
+<h3 id="1-6-4-fixed">Fixed</h3>
+<ul><li>Preserve currency aliases and signed symbols, and keep rate lookups tied to the current expression.</li></ul>
+
+<h2 id="1-6-3">1.6.3 <span class="date">2026-09-25</span></h2>
+<h3 id="1-6-3-added">Added</h3>
+<ul><li>Bare <code class="q">w:</code> and <code class="q">window:</code> list all open windows.</li></ul>
 
 <h2 id="1-6-2">1.6.2 <span class="date">2026-09-24</span></h2>
 <h3 id="1-6-2-fixed">Fixed</h3>
@@ -2248,12 +2459,14 @@ hl.layer_rule({
 <table>
 <thead><tr><th>Path</th><th>What it holds</th></tr></thead>
 <tbody>
-<tr><td>Top-level <code>.qml</code> files</td><td>The palette, the settings panel, the setup tour and the small controls they share</td></tr>
+<tr><td><code>Spotlight.qml</code></td><td>Manifest entry point, UI state and actions</td></tr>
+<tr><td><code>ui/components/</code>, <code>ui/panels/</code>, <code>ui/artifacts/</code></td><td>Shared controls; search, AI, setup and settings panels; registered visual cards</td></tr>
 <tr><td><code>lib/</code></td><td>Plain JavaScript: query parsing, matching and ranking, learning, calculator, units, currency, dates, web engines and views</td></tr>
 <tr><td><code>bin/spotlight-helper</code></td><td>The Python helper, the boundary for file access, subprocesses and network requests</td></tr>
 <tr><td><code>bin/</code> (the rest)</td><td>Two bash scripts: one keeps a terminal open after a command exits, one puts a command on a prompt without running it</td></tr>
 <tr><td><code>tests/</code></td><td>Node tests (<code>*.test.js</code>) and the helper's Python tests</td></tr>
-<tr><td><code>resources/</code></td><td>Images and other assets</td></tr>
+<tr><td><code>resources/</code></td><td>AI result schemas and other assets</td></tr>
+<tr><td><code>docs/artifacts.md</code></td><td>Artifact contract and contributor guide</td></tr>
 <tr><td><code>manifest.json</code></td><td>Plugin id, version and entry points</td></tr>
 </tbody>
 </table>
@@ -2277,7 +2490,7 @@ git switch -c my-change</code></pre></li>
 python3 -m unittest discover -s tests -p '*_test.py'
 node --test
 python3 -m py_compile bin/spotlight-helper
-/usr/lib/qt6/bin/qmlformat -n *.qml &gt;/dev/null
+/usr/lib/qt6/bin/qmlformat -n Spotlight.qml ui/{components,panels,artifacts}/*.qml &gt;/dev/null
 for file in lib/*.js; do node --check "$file"; done
 git diff --check</code></pre>
 <p>The first line validates the manifest, the next two run the Python and JavaScript tests, and the rest catch syntax errors and stray whitespace. To run one test file, use <code>node tests/currency.test.js</code>.</p>
@@ -2291,9 +2504,42 @@ git diff --check</code></pre>
 </ol>
 <p>Report bugs and ideas on the <a href="https://github.com/maajix/omarchy-spotlight/issues" rel="noopener">issue tracker</a>; see <a href="?p=troubleshooting#report-a-bug">Report a bug</a> for what to include. Never put a security problem in a public issue or pull request. Follow <a href="?p=privacy-security#report-a-vulnerability">Report a vulnerability</a> instead.</p>
 
+<h2 id="artifacts">Artifact development</h2>
+<p>Cards are a source-level extension point. The provider returns structured JSON; <code>bin/spotlight-helper</code> validates it and <code>ui/artifacts/ArtifactHost.qml</code> selects the registered card. Invalid cards are dropped without dropping the text answer.</p>
+<ol>
+<li>Define a closed, bounded object variant with a unique type in <code>resources/ai-result.schema.json</code>, or use a dedicated schema for a request-specific card such as weather.</li>
+<li>Add a validator in <code>lib/ai_artifacts.py</code> and register it in <code>VALIDATORS</code>. Bound text and arrays, validate numeric ranges and dates, restrict URLs and return only validated fields.</li>
+<li>Add a QML card under <code>ui/artifacts/</code>, reusing <code>ArtifactCard</code> and <code>ArtifactText</code>. Register it in <code>ArtifactHost.qml</code>. Emit the existing copy and open signals for explicit user actions.</li>
+<li>Describe the card in the provider prompt in <code>cmd_ai()</code>. A dedicated request also needs detection, schema selection and result conversion.</li>
+<li>Add valid and invalid examples to <code>tests/artifacts_test.py</code> and update <code>SECURITY.md</code> for a new data flow. Add per-card preferences to the settings defaults, normalizer and <code>ArtifactSettingsPage.qml</code> only when needed.</li>
+</ol>
+<p>Diff previews accept up to three files, with each before/after string capped at 6,000 characters, 120 lines and 300 characters per line. Display paths are never opened. Galleries contain up to eight images and use helper-owned identifiers for Save / Apply; providers cannot choose a destination path or command.</p>
+<h3 id="artifact-shape">Response shape and limits</h3>
+<p>The generic result has <code>kind</code> (<code>answer</code>, <code>command</code> or <code>steps</code>), Markdown <code>text</code>, a <code>commands</code> list and an optional <code>artifacts</code> list. The helper accepts at most six commands and two artifacts. Each optional artifact is its own closed object variant in <code>artifacts.items.anyOf</code>; adding a type name to an existing enum does not define a new shape.</p>
+<p>A map is the smallest complete example:</p>
+<pre class="code" data-title="Artifact JSON"><code>{
+  "type": "map",
+  "title": "Tokyo",
+  "latitude": 35.6762,
+  "longitude": 139.6503,
+  "zoom": 11
+}</code></pre>
+<p><code>map_artifact()</code> accepts a nonempty title, finite latitude in −85 to 85, finite longitude in −180 to 180 and an integer zoom from 2 to 17; (0, 0) is refused. It returns only normalized display fields. Your validator should follow the same boundary: provider data stays untrusted even when the provider was given a JSON schema.</p>
+
+<h3 id="artifact-host">Register the renderer</h3>
+<p><code>ArtifactHost.qml</code> selects a component through its <code>Loader.sourceComponent</code> mapping. Add a type branch and a <code>Component</code> that receives <code>host.artifact</code>, reports its <code>implicitHeight</code> and forwards <code>openRequested(url)</code> and/or <code>copyRequested(value)</code>. Ordinary display cards need no <code>AiPanel.qml</code> changes. Stateful actions must use the existing explicit signals: checklist progress and gallery image actions are forwarded through the host.</p>
+<p><code>ArtifactCard</code> supplies the shared blue gradient, icon tile, title, subtitle, source footer and action styling. <code>ArtifactText</code> supplies consistent typography. Use their layout and actions instead of building a second card frame.</p>
+
+<h3 id="artifact-request">Request-specific cards and local data</h3>
+<p>Weather uses <code>WeatherIntent.isWeather()</code> in <code>Spotlight.qml</code>, passes a request flag to <code>cmd_ai()</code> and selects <code>ai-weather-result.schema.json</code>. <code>ai_result()</code> converts the dedicated <code>weather</code> field into a validated card or an explicit unavailable result. A new request-specific card must wire the same detection, schema selection, prompt and conversion stages; a generic optional card needs only its shared prompt instruction.</p>
+<p>After validation, <code>cmd_ai()</code> enriches dashboards with <code>local_dashboard()</code> and galleries with <code>local_gallery()</code>. Measurements and cached image IDs come from these helpers, never from provider fields. New local or state-changing actions need a bounded helper command and explicit user activation.</p>
+<p>For a setting, add defaults and normalization for <code>artifactSettings.&lt;type&gt;</code>, add the control in <code>ui/panels/ArtifactSettingsPage.qml</code> and pass only what that request needs. Do not send the whole settings object to the provider.</p>
+
+<p>The full schema and broker contract is maintained in <a href="https://github.com/maajix/omarchy-spotlight/blob/main/docs/artifacts.md" rel="noopener">docs/artifacts.md</a>. Adding a card requires editing the plugin and reloading the shell; arbitrary dropped-in QML is not loaded.</p>
+
 <h2 id="design-docs">Design and security docs</h2>
 <ul>
-<li><code>README.md</code> in the repository is the feature reference, with the dependencies and the privacy table.</li>
+<li><code>README.md</code> is a short introduction and installation guide; this website holds the full feature and settings reference.</li>
 <li><code>SECURITY.md</code> holds the security policy and design notes. It names the helper as the main boundary for file access and command execution, so issues there matter most.</li>
 <li>On this site, <a href="?p=how-search-works">How search works</a> covers parsing, ranking and learning, <a href="?p=privacy-security#helper">The helper script</a> covers the hardening, and the <a href="?p=settings-reference">Settings reference</a> lists every key in <code>spotlight.json</code>.</li>
 </ul>
@@ -2303,7 +2549,7 @@ git diff --check</code></pre>
     <div class="pmeta">
       <a id="edit" href="#" rel="noopener"><svg data-i="edit"></svg>Edit this page on GitHub</a>
       <a id="report" href="#" rel="noopener"><svg data-i="flag"></svg>Report a problem with this page</a>
-      <span class="upd">Updated for 1.6.2</span>
+      <span class="upd">Updated for 1.7.0</span>
     </div>
     <nav class="pn" id="pn" aria-label="Previous and next page"></nav>
   </main>
@@ -2338,7 +2584,7 @@ document.querySelectorAll('svg[data-i]').forEach((s) => { s.outerHTML = svg(s.da
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const REPO = 'https://github.com/maajix/omarchy-spotlight';
-const CURRENT = '1.6';
+const CURRENT = '1.7';
 
 // Pages come from the articles themselves, in sidebar order.
 const pages = [...document.querySelectorAll('#doc > article')].map((a) => ({ el: a, ...a.dataset }));

@@ -1,8 +1,8 @@
 # Spotlight for Omarchy
 
-> Fast, local-first command palette plugin for Omarchy Linux: apps, windows, files, clipboard, calculator, reminders, command help, system views and web search from one input.
+> Fast, local-first command palette plugin for Omarchy Linux: apps, windows, files, clipboard, calculator, reminders, command help, system views, web search and optional AI answers from one input.
 
-Spotlight is an open-source plugin (MIT license) for Omarchy 4 (Quattro) by Max Randhahn; the current version is 1.6.2. It runs inside omarchy-shell and opens with Alt+Space. One input searches applications, open windows, files, clipboard history and system commands, evaluates calculations, unit and currency conversions, creates calendar events and reminders from natural language, flips live system toggles, lists listening ports, SSH hosts, Docker containers, services, mounts, audio devices, Wi-Fi networks and Bluetooth devices through system views such as ports: and ssh:, runs web search bangs and shows tldr command help. Settings are in the Spotlight Settings panel and in ~/.config/omarchy/spotlight.json. Everything runs locally: the network is used only for web suggestions (off by default), currency rates, the first lookup of a tldr page and results you open.
+Spotlight is an open-source plugin (MIT license) for Omarchy 4 (Quattro) by Max Randhahn; the current version is 1.7.0. It runs inside omarchy-shell and opens with Alt+Space. One input searches applications, open windows, files, clipboard history and system commands, evaluates calculations, unit and currency conversions including mixed currency expressions, creates calendar events and reminders from natural language, flips live system toggles, discovers enabled shell panels and menus by name and ID, lists listening ports, SSH hosts, Docker containers, services, mounts, audio devices, Wi-Fi networks and Bluetooth devices through system views such as ports: and ssh:, runs web search bangs and shows tldr command help. Settings are in the Spotlight Settings panel and in ~/.config/omarchy/spotlight.json. Ordinary search and ranking run locally. Network access includes optional suggestions, currency rates, tldr lookups and activated browser results. Ask AI is off by default and submits questions only on Enter through a signed-in Claude or Codex CLI. AI web search is separately opt-in. Map cards fetch previews from mapmap.ai; galleries fetch validated image previews. Dashboard readings and checklist progress remain local.
 
 ## Install
 
@@ -26,6 +26,9 @@ Spotlight is an open-source plugin (MIT license) for Omarchy 4 (Quattro) by Max 
 - [Command help](https://maajix.github.io/omarchy-spotlight/docs/?p=command-help): Browse tldr examples for a command, then copy one or open it in a terminal.
 - [Live toggles](https://maajix.github.io/omarchy-spotlight/docs/?p=toggles): Switches that read the real system state and flip in place.
 - [System views](https://maajix.github.io/omarchy-spotlight/docs/?p=system-views): Type ports:, ssh:, docker: and more to list what is on your machine and act on it.
+
+- [Ask AI](https://maajix.github.io/omarchy-spotlight/docs/?p=ask-ai): Enable Claude or Codex, choose a model and thinking level, submit a question and return to its answer.
+- [AI artifacts](https://maajix.github.io/omarchy-spotlight/docs/?p=ai-artifacts): Maps, weather, palettes, charts, comparisons, timelines, dashboards, places, config diffs, checklists, diagrams and image galleries.
 
 ## Docs: Reference
 
