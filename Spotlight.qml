@@ -19,6 +19,7 @@ import "lib/Apps.js" as Apps
 import "lib/FileRank.js" as FileRank
 import "lib/Query.js" as Query
 import "lib/Views.js" as Views
+import "lib/Preview.js" as Preview
 import "lib/Ranking.js" as Ranking
 import "lib/Chord.js" as Chord
 import "lib/SettingsQueue.js" as SettingsQueue
@@ -103,6 +104,7 @@ Item {
   property bool opened: false
   property string query: ""
   property int selectedIndex: 0
+  onSelectedIndexChanged: root.schedulePreview()
   property bool cursorActive: true
 
   // Rows currently on screen, as plain JS objects. displayModel mirrors only
@@ -219,6 +221,7 @@ Item {
     fileSearchAlways: true,
     clipboardSearch: true,
     clipboardSearchAlways: true,
+    previewPane: true,
     learningEnabled: true,
     aiEnabled: false,
     aiProvider: "claude",
@@ -295,6 +298,7 @@ Item {
   // command, 2 files and 2 windows at rowHeight, plus their four section
   // headings at sectionHeight. A query may still scroll.
   readonly property int maxListHeight: Style.space(456)
+  readonly property int minPreviewHeight: Style.space(260)
   readonly property int hairline: Style.spacing.hairline
 
   // Between heading (16) and display (24): a hero input that is still an
@@ -401,6 +405,10 @@ Item {
     fileProc.running = false
     clipboardProc.running = false
     tldrProc.running = false
+    previewDebounce.stop()
+    root.stopPreviewProcess()
+    root.preview = null
+    root.previewData = null
     root.resetView("")
     root.clipboardRows = []
     root.clipboardFor = ""
@@ -796,6 +804,7 @@ Item {
       fileSearchAlways: parsed.fileSearchAlways !== false,
       clipboardSearch: parsed.clipboardSearch !== false,
       clipboardSearchAlways: parsed.clipboardSearchAlways !== false,
+      previewPane: parsed.previewPane !== false,
       learningEnabled: parsed.learningEnabled !== false,
       aiEnabled: parsed.aiEnabled === true,
       aiProvider: parsed.aiProvider === "codex" ? "codex" : "claude",
@@ -962,7 +971,7 @@ Item {
         title: calc.text, subtitle: q.replace(/^=/, "").trim(),
         accessory: "Calculator", icon: "󰃬", mono: true,
         primaryLabel: "Copy result",
-        payload: { text: calc.text.replace(/\s/g, "") }
+        payload: { text: calc.text.replace(/\s/g, ""), value: calc.value }
       }))
     }
 
@@ -973,7 +982,7 @@ Item {
         title: unit.text, subtitle: unit.detail,
         accessory: "Conversion", icon: "󰑤", mono: true,
         primaryLabel: "Copy result",
-        payload: { text: unit.text.replace(/\s/g, "") }
+        payload: { text: unit.text.replace(/\s/g, ""), related: Units.related(unit, 5) }
       }))
     }
 
@@ -990,7 +999,15 @@ Item {
           : currency.base) + " → " + currency.quote + " · Frankfurter",
         accessory: "Currency", section: "Conversions", icon: "󰑤", mono: true,
         primaryLabel: converted ? "Copy result" : waiting ? "Copy when ready" : "",
-        payload: converted ? { text: converted.copy } : ({})
+        payload: converted ? {
+          text: converted.copy, amount: currency.amount, base: currency.base || "",
+          quote: currency.quote, expression: !!currency.expression,
+          source: currency.expression ? currency.source
+            : Units.formatNumber(currency.amount) + " " + currency.base,
+          rate: !currency.expression && cached && cached.rate ? cached.rate.rate
+            : (currency.base === currency.quote ? 1 : NaN),
+          date: !currency.expression && cached && cached.rate ? cached.rate.date : ""
+        } : ({})
       }))
     }
 
@@ -1153,7 +1170,13 @@ Item {
         keywords: Apps.entrySearchText(entry),
         resultType: "app",
         stableId: key,
-        payload: { appId: String(entry.id || ""), name: root.appName(entry) }
+        payload: {
+          appId: String(entry.id || ""), name: root.appName(entry),
+          icon: root.appIcon(entry.icon),
+          comment: String(entry.comment || entry.genericName || "").slice(0, 512),
+          exec: String(entry.execString || "").slice(0, 512),
+          categories: (entry.categories || []).slice(0, 8).map(String)
+        }
       }))
       if (out.length >= limit) break
     }
@@ -1615,6 +1638,8 @@ Item {
     if (root.pinnedKey && restored < 0) root.pinnedKey = ""
     root.selectedIndex = restored >= 0 ? restored : root.firstSelectableIndex()
     root.cursorActive = next.length > 0
+    root.previewRich = next.some(Preview.rich)
+    root.schedulePreview()
     pointerGate.reset()
     Qt.callLater(function() {
       if (displayModel.count > 0) resultList.positionViewAtIndex(root.selectedIndex, ListView.Contain)
@@ -2105,6 +2130,106 @@ Item {
     root.rebuild()
   }
 
+  // ------------------------------------------------------------- preview
+  // The pane opens when any row on screen has a preview of its own, and then
+  // stays for the whole result set, so moving the cursor never resizes the
+  // card. Rows without one show their name and description.
+  property bool previewRich: false
+  property var preview: null
+  // { key, state, reply } for the selected row's helper call. Only the one
+  // selected row's data is held — a clipboard entry in particular is dropped
+  // as soon as the cursor leaves it.
+  property var previewData: null
+  property bool previewQueued: false
+  property var previewProcess: null
+  readonly property bool previewShown: root.opened && root.settings.previewPane !== false
+    && root.previewRich && !root.aiActive && panel.width >= Style.space(960)
+
+  function schedulePreview() {
+    if (root.previewQueued) return
+    root.previewQueued = true
+    Qt.callLater(function() {
+      root.previewQueued = false
+      root.updatePreview()
+    })
+  }
+
+  function previewContext() {
+    return { defaultCurrency: root.settings.defaultCurrency,
+             currencyRates: root.settings.currencyRates !== false,
+             formatNumber: Units.formatNumber }
+  }
+
+  // Window rows carry the Wayland handle; where it sits comes from Hyprland
+  // when the pane asks, not on every keystroke that ranks windows.
+  function windowPreviewRow(r) {
+    var t = r.payload ? r.payload.toplevel : null
+    var extra = { toplevel: t, appId: r.subtitle }
+    try {
+      var values = Hyprland.toplevels.values || []
+      for (var i = 0; i < values.length; i++) {
+        if (values[i].wayland !== t) continue
+        var ipc = values[i].lastIpcObject || {}
+        var ws = values[i].workspace
+        extra.workspace = ws ? String(ws.name || ws.id || "") : ""
+        extra.monitor = ws && ws.monitor ? String(ws.monitor.name || "") : ""
+        var flags = []
+        if (ipc.floating) flags.push("Floating")
+        if (ipc.fullscreen) flags.push("Fullscreen")
+        if (ipc.pinned) flags.push("Pinned")
+        if (ipc.size && ipc.size.length === 2) flags.push(ipc.size[0] + " × " + ipc.size[1])
+        extra.state = flags.join(" · ")
+        break
+      }
+    } catch (e) {
+    }
+    var copy = {}
+    for (var k in r) copy[k] = r[k]
+    copy.payload = extra
+    return copy
+  }
+
+  function updatePreview() {
+    if (!root.previewShown) {
+      root.preview = null
+      root.previewData = null
+      previewDebounce.stop()
+      return
+    }
+    var r = root.cursorActive ? root.selectedRow() : null
+    if (r && r.kind === "window") r = root.windowPreviewRow(r)
+    var ctx = root.previewContext()
+    var need = r ? Preview.need(r, ctx) : null
+    if (!need) {
+      root.previewData = null
+      previewDebounce.stop()
+    } else if (!root.previewData || root.previewData.key !== need.key) {
+      root.previewData = { key: need.key, state: "loading", reply: null }
+      previewDebounce.args = need.args
+      previewDebounce.key = need.key
+      previewDebounce.restart()
+    }
+    root.preview = r ? Preview.build(r, ctx, root.previewData) : null
+  }
+
+  function stopPreviewProcess() {
+    var proc = root.previewProcess
+    root.previewProcess = null
+    if (proc) proc.running = false
+  }
+
+  // A run that was cancelled may still answer; its reply counts only if it is
+  // a whole one, never as a failure for the run that replaced it.
+  function loadPreview(raw, key, current) {
+    if (!root.previewData || root.previewData.key !== key) return
+    var reply = root.helperReply(raw)
+    if (!reply && !current) return
+    root.previewData = { key: key, state: reply ? "ready" : "error", reply: reply }
+    root.updatePreview()
+  }
+
+  onPreviewShownChanged: root.schedulePreview()
+
   function stopCurrencyProcess() {
     var proc = root.currencyProcess
     root.currencyProcess = null
@@ -2272,6 +2397,54 @@ Item {
           if (!currencyRun.delivered) root.loadCurrency("", currencyRun.request)
           if (root.currencyProcess === currencyRun) root.currencyProcess = null
           currencyRun.destroy()
+        })
+      }
+    }
+  }
+
+  // Arrowing through a list should not start a helper per row passed over.
+  Timer {
+    id: previewDebounce
+    interval: 120
+    property var args: []
+    property string key: ""
+    onTriggered: {
+      root.stopPreviewProcess()
+      if (!root.opened) return
+      var proc = previewProcessComponent.createObject(root, {
+        key: previewDebounce.key, args: previewDebounce.args
+      })
+      if (!proc) {
+        root.loadPreview("", previewDebounce.key, true)
+        return
+      }
+      root.previewProcess = proc
+      proc.running = true
+    }
+  }
+
+  // Each run carries its own key, so a cancelled run that still finishes
+  // collecting stdout cannot land on the row selected after it.
+  Component {
+    id: previewProcessComponent
+    Process {
+      id: previewRun
+      required property string key
+      required property var args
+      property bool delivered: false
+      command: root.helperArgv(args)
+      stdout: StdioCollector {
+        waitForEnd: true
+        onStreamFinished: {
+          previewRun.delivered = true
+          root.loadPreview(text, previewRun.key, root.previewProcess === previewRun)
+        }
+      }
+      onExited: {
+        Qt.callLater(function() {
+          if (!previewRun.delivered) root.loadPreview("", previewRun.key, root.previewProcess === previewRun)
+          if (root.previewProcess === previewRun) root.previewProcess = null
+          previewRun.destroy()
         })
       }
     }
@@ -2735,13 +2908,18 @@ Item {
 
       readonly property int availableBodyHeight: Math.max(0, panel.height - y - Style.space(24)
         - root.searchHeight - root.footerHeight - root.hairline * 2 - root.listPadding * 2)
-      readonly property int listHeight: Math.min(root.maxListHeight, root.contentHeight, availableBodyHeight)
+      // The pane needs room for an answer and its details even when the list
+      // beside it is a single row.
+      readonly property int listHeight: Math.min(root.maxListHeight,
+        root.previewShown ? Math.max(root.contentHeight, root.minPreviewHeight) : root.contentHeight,
+        availableBodyHeight)
       readonly property bool hasResults: !root.aiActive && displayModel.count > 0
       readonly property int bodyHeight: root.aiActive
         ? Math.min(root.maxListHeight, availableBodyHeight)
         : listHeight
 
-      width: Math.min(Style.space(750), panel.width - Style.space(48))
+      width: Math.min(root.previewShown ? Style.space(960) : Style.space(750),
+        panel.width - Style.space(48))
       height: root.searchHeight
         + (hasResults || root.aiActive ? root.hairline + root.listPadding * 2 + bodyHeight : 0)
         + root.hairline + root.footerHeight
@@ -2756,6 +2934,9 @@ Item {
       antialiasing: true
 
       Behavior on height {
+        NumberAnimation { duration: 110; easing.type: Easing.OutCubic }
+      }
+      Behavior on width {
         NumberAnimation { duration: 110; easing.type: Easing.OutCubic }
       }
 
@@ -2900,13 +3081,14 @@ Item {
 
       // ------------------------------------------------------- results
       Item {
+        id: resultsArea
         anchors {
           top: searchDivider.bottom
           left: parent.left
-          right: parent.right
         }
         anchors.topMargin: root.listPadding
         anchors.bottomMargin: root.listPadding
+        width: root.previewShown ? Math.round(card.width * 0.58) : card.width
         height: card.listHeight
         visible: card.hasResults
 
@@ -3098,6 +3280,31 @@ Item {
         }
       }
 
+      Rectangle {
+        id: previewDivider
+        visible: root.previewShown && card.hasResults
+        anchors { top: searchDivider.bottom; bottom: footerDivider.top; left: resultsArea.right }
+        width: root.hairline
+        color: root.dividerColor
+      }
+
+      PreviewPane {
+        id: previewPane
+        visible: previewDivider.visible
+        anchors {
+          top: searchDivider.bottom
+          bottom: footerDivider.top
+          left: previewDivider.right
+          right: parent.right
+        }
+        preview: root.preview
+        live: root.opened && visible
+        foreground: root.foreground
+        accent: root.accent
+        fontFamily: root.fontFamily
+        gutter: root.gutter - root.listPadding
+      }
+
       AiPanel {
         id: aiPanel
         visible: root.opened && root.aiActive
@@ -3126,6 +3333,7 @@ Item {
 
       // ------------------------------------------------------- footer
       Rectangle {
+        id: footerDivider
         anchors { bottom: footer.top; left: parent.left; right: parent.right }
         anchors.leftMargin: root.listPadding
         anchors.rightMargin: root.listPadding

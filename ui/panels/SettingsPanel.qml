@@ -376,6 +376,15 @@ FocusScope {
 
         SettingRow {
           chrome: panel.chrome
+          glyph: "󰕮"
+          title: "Preview pane"
+          description: "Show details for the selected result beside the list: conversions, file contents, clipboard entries and more."
+          checked: panel.draft.previewPane === true
+          onToggled: panel.toggle("previewPane")
+        }
+
+        SettingRow {
+          chrome: panel.chrome
           glyph: "󰒺"
           switchable: false
           title: "Results shown"
