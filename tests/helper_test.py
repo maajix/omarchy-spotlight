@@ -2896,6 +2896,24 @@ class PreviewTests(unittest.TestCase):
         (self.home / "id_ed25519.pub").write_text("ssh-ed25519 AAAA")
         self.assertEqual(self.call("preview-file", str(self.home / "id_ed25519.pub"))["kind"], "text")
 
+    def test_privacy_comes_before_images_folders_and_symlinks(self):
+        (self.home / ".ssh").mkdir()
+        (self.home / ".ssh" / "config").write_text("SECRET")
+        (self.home / ".ssh" / "recovery.png").write_bytes(b"\x89PNG")
+        (self.home / "secret-photo.png").write_bytes(b"\x89PNG")
+        for name in (".ssh/recovery.png", "secret-photo.png", ".ssh"):
+            reply = self.call("preview-file", str(self.home / name))
+            self.assertEqual(reply["kind"], "hidden", name)
+            self.assertNotIn("entries", reply)
+        # A link elsewhere is judged by its target, and a link into a private
+        # place is judged the same way whatever it is called.
+        (self.home / "notes.txt").symlink_to(self.home / ".ssh" / "config")
+        (self.home / "keys").symlink_to(self.home / ".ssh")
+        for name in ("notes.txt", "keys"):
+            reply = self.call("preview-file", str(self.home / name))
+            self.assertEqual(reply["kind"], "hidden", name)
+            self.assertNotIn("SECRET", json.dumps(reply))
+
     def test_bad_paths_are_refused(self):
         for path in ("relative", "", "/" + "a" * HELPER.FILES_PATH_CHARS):
             self.assertFalse(self.call("preview-file", path)["ok"], path)
@@ -2936,6 +2954,39 @@ class PreviewTests(unittest.TestCase):
         self.assertEqual(self.call("preview-view", "mount", "relative")["error"], "bad mount")
         reply = self.call("preview-view", "process", str(os.getpid()))
         self.assertIn("python", reply["command"])
+
+    def test_process_start_comes_from_its_stat_record(self):
+        boot = 1_700_000_000
+        ticks = os.sysconf("SC_CLK_TCK")
+        # A command name holding ") " must not shift the fields after it.
+        record = b"42 (odd) name) S" + b" 0" * 18 + b" " + str(3600 * ticks).encode() + b" 0 0\n"
+        real_open = open
+        def fake_open(path, mode="r", *args, **kwargs):
+            if path == "/proc/stat":
+                return io.BytesIO(b"cpu 1 2 3\nbtime %d\n" % boot)
+            return real_open(path, mode, *args, **kwargs)
+        with mock.patch("builtins.open", fake_open):
+            started = HELPER._process_started(record)
+        self.assertEqual(started, HELPER._preview_time(boot + 3600))
+        self.assertEqual(HELPER._process_started(b"garbage"), "")
+
+    def test_container_logs_include_stderr(self):
+        calls = []
+        def fake(argv, cap, deadline, want_status=False, merge_stderr=False, **kwargs):
+            calls.append((argv[1], merge_stderr))
+            if argv[1] == "inspect":
+                return (b'[{"State": {"Status": "running"}}]', False, 0)
+            return (b"error from the app\n" if merge_stderr else b"", False)
+        with mock.patch.object(HELPER, "run_bounded", side_effect=fake):
+            reply = self.call("preview-view", "docker", "a" * 12)
+        self.assertEqual(reply["logs"], "error from the app")
+        self.assertIn(("logs", True), calls)
+
+    def test_run_bounded_can_merge_stderr(self):
+        argv = [sys.executable, "-c", "import sys; sys.stderr.write('err'); sys.stdout.write('out')"]
+        merged, _ = HELPER.run_bounded(argv, 64, 5, merge_stderr=True)
+        self.assertEqual(sorted(merged.decode()), sorted("errout"))
+        self.assertEqual(HELPER.run_bounded(argv, 64, 5)[0], b"out")
         show = b"ActiveState=active\nSubState=running\nMainPID=0\nMemoryCurrent=[not set]\n"
         fake = lambda argv, cap, deadline, want_status=False: \
             (show, False, 0) if want_status else (b"", False)

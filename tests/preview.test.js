@@ -65,6 +65,9 @@ test("money rounds to the currency's minor unit", () => {
   assert.equal(Preview.formatMoney(1234567.891, "USD"), "1 234 567.89 USD")
   assert.equal(Preview.formatMoney(-0.5, "EUR"), "-0.50 EUR")
   assert.equal(Preview.formatMoney(NaN, "EUR"), "")
+  assert.equal(Preview.formatMoney(0.001, "KWD"), "0.001 KWD")
+  assert.equal(Preview.formatMoney(12.3456, "BHD"), "12.346 BHD")
+  assert.equal(Preview.formatMoney(5, "constructor"), "5.00 constructor")
 })
 
 test("unit conversions list the related units the row carries", () => {

@@ -177,6 +177,7 @@ PREVIEW_DIR_ENTRIES = 24
 PREVIEW_DIR_COUNT = 1000
 PREVIEW_IMAGE_BYTES = 32 * 1024 * 1024
 PREVIEW_CMDLINE_BYTES = 4096
+PREVIEW_PROC_STAT_BYTES = 64 * 1024
 PREVIEW_LOG_LINES = 8
 PREVIEW_LOG_BYTES = 16 * 1024
 # Contents of these stay off screen; the pane shows only name, size and date.
@@ -595,7 +596,8 @@ def write_new(dirfd, name, payload):
 
 
 # ------------------------------------------------------------ subprocesses
-def run_bounded(argv, cap, deadline, stdin_bytes=None, want_status=False, on_line=None):
+def run_bounded(argv, cap, deadline, stdin_bytes=None, want_status=False, on_line=None,
+                merge_stderr=False):
     """Run `argv`, returning at most `cap` bytes of stdout within `deadline`.
 
     The child gets its own session, so the deadline tears down the whole
@@ -608,6 +610,9 @@ def run_bounded(argv, cap, deadline, stdin_bytes=None, want_status=False, on_lin
     command that runs and fails writes nothing, which is indistinguishable
     from a command that ran and found nothing. None means it never exited
     on its own and the teardown took it.
+
+    `merge_stderr` reads the child's stderr into the same bounded stream,
+    for commands such as `docker logs` that relay a program's stderr there.
     """
     global ACTIVE_PROC
     end = time.monotonic() + deadline
@@ -618,7 +623,7 @@ def run_bounded(argv, cap, deadline, stdin_bytes=None, want_status=False, on_lin
             argv,
             stdin=subprocess.PIPE if stdin_bytes is not None else subprocess.DEVNULL,
             stdout=subprocess.PIPE,
-            stderr=subprocess.DEVNULL,
+            stderr=subprocess.STDOUT if merge_stderr else subprocess.DEVNULL,
             start_new_session=True,
         )
         ACTIVE_PROC = proc
@@ -2258,16 +2263,23 @@ def _preview_time(seconds):
         return ""
 
 
-def _preview_secret(path):
-    """Files whose contents are not put on screen just because the cursor passed."""
+def _preview_secret_path(path):
     home = os.environ.get("HOME", "")
-    for folder in PREVIEW_SECRET_DIRS:
-        root = os.path.join(home, folder)
-        if path == root or path.startswith(root + "/"):
-            return True
+    for base in {home, os.path.realpath(home)} if home else ():
+        for folder in PREVIEW_SECRET_DIRS:
+            root = os.path.join(base, folder)
+            if path == root or path.startswith(root + "/"):
+                return True
     name = os.path.basename(path).lower()
     return any(fnmatch.fnmatchcase(name, pattern) for pattern in PREVIEW_SECRET_NAMES) \
         and not name.endswith(".pub")
+
+
+def _preview_secret(path):
+    """Files and folders whose contents are not put on screen just because the
+    cursor passed. File search follows symlinks, so a link is judged by both
+    its own name and what it points at."""
+    return _preview_secret_path(path) or _preview_secret_path(os.path.realpath(path))
 
 
 def cmd_preview_file(argv):
@@ -2289,6 +2301,11 @@ def cmd_preview_file(argv):
         raise Denied("file is gone") from None
     mime = mimetypes.guess_type(path, strict=False)[0] or ""
     out = {"modified": _preview_time(info.st_mtime), "size": info.st_size}
+    # Before anything that shows contents: a listing, an image or text.
+    if _preview_secret(path):
+        emit(dict(out, kind="hidden",
+                  description="Folder" if stat.S_ISDIR(info.st_mode) else mime or "Private file"))
+        return
     if stat.S_ISDIR(info.st_mode):
         entries, count = [], 0
         try:
@@ -2313,9 +2330,6 @@ def cmd_preview_file(argv):
         return
     if mime.startswith("image/") and info.st_size <= PREVIEW_IMAGE_BYTES:
         emit(dict(out, kind="image", description=mime))
-        return
-    if _preview_secret(path):
-        emit(dict(out, kind="hidden", description=mime or "Private file"))
         return
     try:
         fd = os.open(path, os.O_RDONLY | os.O_NONBLOCK | os.O_CLOEXEC)
@@ -2370,6 +2384,8 @@ def _preview_process(pid):
     try:
         with open(base + "/cmdline", "rb") as handle:
             raw = handle.read(PREVIEW_CMDLINE_BYTES)
+        with open(base + "/stat", "rb") as handle:
+            record = handle.read(PREVIEW_CMDLINE_BYTES)
         info = os.stat(base)
     except OSError:
         raise Denied("process is gone") from None
@@ -2378,7 +2394,23 @@ def _preview_process(pid):
         user = pwd.getpwuid(info.st_uid).pw_name
     except KeyError:
         user = str(info.st_uid)
-    return {"command": clamp_text(command, 400), "user": user, "started": _preview_time(info.st_ctime)}
+    return {"command": clamp_text(command, 400), "user": user, "started": _process_started(record)}
+
+
+def _process_started(record):
+    """Launch time from /proc/<pid>/stat: starttime (field 22) is in clock
+    ticks since boot. The directory's own timestamps say when the inode was
+    first looked up, not when the process began."""
+    # The command name (field 2) is parenthesised and may itself hold ") ".
+    fields = record.rpartition(b")")[2].split()
+    try:
+        ticks = int(fields[19])
+        with open("/proc/stat", "rb") as handle:
+            boot = next(int(line.split()[1]) for line in handle.read(PREVIEW_PROC_STAT_BYTES).splitlines()
+                        if line.startswith(b"btime "))
+        return _preview_time(boot + ticks / os.sysconf("SC_CLK_TCK"))
+    except (IndexError, ValueError, StopIteration, OSError):
+        return ""
 
 
 def _preview_ssh(host):
@@ -2437,8 +2469,9 @@ def _preview_docker(container):
         for binding in bindings or []:
             if isinstance(binding, dict):
                 ports.append("%s:%s → %s" % (binding.get("HostIp", ""), binding.get("HostPort", ""), inner))
+    # The container's stderr arrives on docker's own stderr.
     logs, _ = run_bounded(["docker", "logs", "--tail", str(PREVIEW_LOG_LINES), "--", container],
-                          PREVIEW_LOG_BYTES, DOCKER_DEADLINE)
+                          PREVIEW_LOG_BYTES, DOCKER_DEADLINE, merge_stderr=True)
     started = str(state.get("StartedAt") or "")
     return {"image": clamp_text(config.get("Image"), 160),
             "status": clamp_text(state.get("Status"), 32),
