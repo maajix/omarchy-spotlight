@@ -104,8 +104,99 @@ Item {
   property bool opened: false
   property string query: ""
   property int selectedIndex: 0
-  onSelectedIndexChanged: root.schedulePreview()
+  onSelectedIndexChanged: {
+    if (root.folderProcess) root.folderProcess.running = false
+    root.folderProcess = null
+    root.schedulePreview()
+  }
   property bool cursorActive: true
+  property bool navigatingResults: false
+  property var folderStack: []
+  property var folderRows: []
+  property string folderPath: ""
+  property int folderIndex: 0
+  property var folderProcess: null
+
+  function resetFolders() {
+    if (root.folderProcess) root.folderProcess.running = false
+    root.folderProcess = null
+    root.folderStack = []
+    root.folderRows = []
+    root.folderPath = ""
+    root.navigatingResults = false
+  }
+
+  function enterFolder() {
+    if (!root.previewShown) return false
+    var r = root.folderPath ? root.folderRows[root.folderIndex] : root.selectedRow()
+    if (!r || r.kind !== "file" || r.accessory !== "Folder") return false
+    if (root.folderProcess) root.folderProcess.running = false
+    var proc = folderProcessComponent.createObject(root, { path: r.payload.path })
+    root.folderProcess = proc
+    proc.running = true
+    return true
+  }
+
+  function loadFolder(raw, proc) {
+    if (root.folderProcess !== proc || !root.opened) return
+    root.folderProcess = null
+    var reply = root.helperReply(raw)
+    var next = []
+    if (reply && reply.kind === "dir") {
+      var entries = reply.entries || []
+      for (var i = 0; i < entries.length; i++) {
+        var e = entries[i]
+        next.push(root.row({ key: "file:" + e.path, kind: "file", title: e.name,
+          subtitle: proc.path, section: proc.path, resultType: "file",
+          accessory: e.isDir ? "Folder" : "File", icon: e.isDir ? "󰉋" : "󰈔",
+          primaryLabel: "Open", secondaryLabel: "Open folder",
+          payload: { path: e.path, dir: proc.path } }))
+      }
+      if (reply.more) next.push(root.row({ kind: "noop", title: "Showing the first 1000 entries", section: proc.path }))
+    }
+    if (!next.length) next.push(root.row({ kind: "noop", section: proc.path,
+      title: !reply ? "Folder unavailable" : reply.kind === "hidden" ? "Contents hidden for private files"
+        : reply.kind === "dir" ? "Empty folder" : "Not a folder" }))
+    root.folderStack = root.folderStack.concat([{ path: root.folderPath, rows: root.folderRows,
+      index: root.folderIndex }])
+    root.folderPath = proc.path
+    root.folderRows = next
+    root.folderIndex = 0
+  }
+
+  function leaveFolder() {
+    if (root.folderProcess) root.folderProcess.running = false
+    root.folderProcess = null
+    if (!root.folderStack.length) return false
+    var stack = root.folderStack.slice()
+    var previous = stack.pop()
+    root.folderStack = stack
+    root.folderPath = previous.path
+    root.folderRows = previous.rows
+    root.folderIndex = previous.index
+    return true
+  }
+
+  Component {
+    id: folderProcessComponent
+    Process {
+      id: folderRun
+      required property string path
+      property bool delivered: false
+      command: root.helperArgv(["browse-directory", path])
+      stdout: StdioCollector {
+        waitForEnd: true
+        onStreamFinished: {
+          folderRun.delivered = true
+          root.loadFolder(text, folderRun)
+        }
+      }
+      onExited: Qt.callLater(function() {
+        if (!folderRun.delivered) root.loadFolder("", folderRun)
+        folderRun.destroy()
+      })
+    }
+  }
 
   // Rows currently on screen, as plain JS objects. displayModel mirrors only
   // the display fields; the payload stays here and is read back by index, so
@@ -315,6 +406,7 @@ Item {
   // The payload may carry {"query": "..."} so a keybind can summon Spotlight
   // already primed, e.g. bound to open straight into "remind me ".
   function open(payloadJson) {
+    root.resetFolders()
     var initial = ""
     try {
       var rawPayload = String(payloadJson || "{}")
@@ -405,6 +497,7 @@ Item {
     fileProc.running = false
     clipboardProc.running = false
     tldrProc.running = false
+    root.resetFolders()
     previewDebounce.stop()
     root.stopPreviewProcess()
     root.preview = null
@@ -2267,6 +2360,7 @@ Item {
   // Query changes fan out to the async providers on a short debounce so a
   // fast typist does not spawn a process per keystroke.
   onQueryChanged: {
+    root.resetFolders()
     if (root.query !== root.aiQuery) root.aiActive = false
     root.armedKey = ""
     root.pendingCurrency = null
@@ -3026,22 +3120,56 @@ Item {
                 return
               }
             }
+            var down = event.key === Qt.Key_Down
+              || (event.key === Qt.Key_N && event.modifiers === Qt.ControlModifier)
+            var up = event.key === Qt.Key_Up
+              || (event.key === Qt.Key_P && event.modifiers === Qt.ControlModifier)
+            if (root.folderPath && (down || up
+                || event.key === Qt.Key_PageDown || event.key === Qt.Key_PageUp)) {
+              if (root.folderProcess) root.folderProcess.running = false
+              root.folderProcess = null
+              var step = down ? 1 : up ? -1
+                : event.key === Qt.Key_PageDown ? 8 : -8
+              root.folderIndex = Math.max(0, Math.min(root.folderRows.length - 1, root.folderIndex + step))
+              event.accepted = true
+              return
+            }
+            if (root.folderPath && (event.key === Qt.Key_Return || event.key === Qt.Key_Enter
+                || (event.key === Qt.Key_C && event.modifiers === Qt.ControlModifier))) {
+              var entry = root.folderRows[root.folderIndex]
+              if (entry && entry.kind === "file") {
+                if (event.key === Qt.Key_C) Util.execArgv(["wl-copy", "--", entry.payload.path])
+                else root.openPath(event.modifiers & Qt.ShiftModifier ? entry.payload.dir : entry.payload.path)
+              }
+              event.accepted = true
+              return
+            }
+            if ((event.key === Qt.Key_Right || event.key === Qt.Key_Left)
+                && event.modifiers === Qt.NoModifier && root.navigatingResults) {
+              if (event.key === Qt.Key_Right) root.enterFolder()
+              else if (!root.leaveFolder()) root.navigatingResults = false
+              event.accepted = true
+              return
+            }
             if (event.key === Qt.Key_Escape) {
-              if (input.text.length > 0) input.text = ""
+              if (root.folderPath) { root.resetFolders(); root.rebuild() }
+              else if (input.text.length > 0) input.text = ""
               else root.dismiss()
               event.accepted = true
-            } else if (event.key === Qt.Key_Down
-                || (event.key === Qt.Key_N && event.modifiers === Qt.ControlModifier)) {
-              root.select(1)
+            } else if (down) {
+              if (root.navigatingResults) root.select(1)
+              root.navigatingResults = true
               event.accepted = true
-            } else if (event.key === Qt.Key_Up
-                || (event.key === Qt.Key_P && event.modifiers === Qt.ControlModifier)) {
+            } else if (up) {
               root.select(-1)
+              root.navigatingResults = true
               event.accepted = true
             } else if (event.key === Qt.Key_PageDown) {
+              root.navigatingResults = true
               root.selectPage(1)
               event.accepted = true
             } else if (event.key === Qt.Key_PageUp) {
+              root.navigatingResults = true
               root.selectPage(-1)
               event.accepted = true
             } else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
@@ -3057,7 +3185,8 @@ Item {
               event.accepted = true
             } else if (event.key === Qt.Key_Tab) {
               // Tab completes the row Enter would act on.
-              var completion = Query.completionText(root.rows[root.targetIndex()])
+              var completion = Query.completionText(root.folderPath
+                ? root.folderRows[root.folderIndex] : root.rows[root.targetIndex()])
               if (completion) {
                 input.text = completion
                 input.cursorPosition = input.text.length
@@ -3298,6 +3427,9 @@ Item {
           left: previewDivider.right
           right: parent.right
         }
+        folderPath: root.folderPath
+        folderRows: root.folderRows
+        folderIndex: root.folderIndex
         preview: root.preview
         live: root.opened && visible
         foreground: root.foreground
@@ -3369,7 +3501,19 @@ Item {
           spacing: Style.space(14)
 
           Text {
-            readonly property var sel: root.selectedRow()
+            readonly property var sel: root.folderPath ? root.folderRows[root.folderIndex] : root.selectedRow()
+            text: "→  Browse folder"
+            visible: !root.aiActive && root.previewShown && sel !== null && sel !== undefined
+              && sel.kind === "file" && sel.accessory === "Folder"
+            textFormat: Text.PlainText
+            color: root.foreground
+            opacity: 0.55
+            font.family: root.fontFamily
+            font.pixelSize: Style.font.caption
+          }
+
+          Text {
+            readonly property var sel: root.folderPath ? root.folderRows[root.folderIndex] : root.selectedRow()
             text: sel && sel.primaryLabel ? "↵  " + root.primaryLabelFor(sel) : ""
             visible: !root.aiActive && text.length > 0
             textFormat: Text.PlainText
@@ -3380,7 +3524,7 @@ Item {
           }
 
           Text {
-            readonly property var sel: root.selectedRow()
+            readonly property var sel: root.folderPath ? root.folderRows[root.folderIndex] : root.selectedRow()
             text: sel && sel.secondaryLabel ? "⇧↵  " + sel.secondaryLabel : ""
             visible: !root.aiActive && text.length > 0
             textFormat: Text.PlainText

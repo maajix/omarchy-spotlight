@@ -2868,6 +2868,21 @@ class PreviewTests(unittest.TestCase):
         self.assertEqual(reply["text"], "x" * 100)
         self.assertTrue(reply["truncated"])
 
+    def test_browse_directory_keeps_exact_paths_and_lists_beyond_preview(self):
+        folder = self.home / "browse"
+        folder.mkdir()
+        for i in range(30):
+            (folder / ("item-%02d" % i)).write_text("")
+        long_name = "x" * 220
+        (folder / long_name).mkdir()
+        reply = self.call("browse-directory", str(folder))
+        self.assertEqual(len(reply["entries"]), 31)
+        self.assertEqual(reply["entries"][0]["path"], str(folder / long_name))
+        self.assertTrue(reply["entries"][0]["isDir"])
+        self.assertEqual(len(self.call("preview-file", str(folder))["entries"]), 24)
+        (self.home / ".ssh").mkdir(exist_ok=True)
+        self.assertEqual(self.call("browse-directory", str(self.home / ".ssh"))["kind"], "hidden")
+
     def test_folders_binaries_images_and_special_files(self):
         folder = self.home / "folder"
         (folder / "sub").mkdir(parents=True)

@@ -8,6 +8,53 @@ import qs.Commons
 Item {
   id: pane
   property var preview: null
+  property string folderPath: ""
+  property var folderRows: []
+  property int folderIndex: 0
+
+  Column {
+    anchors.fill: parent
+    anchors.margins: pane.gutter
+    spacing: Style.space(10)
+    visible: pane.folderPath !== ""
+    Text {
+      width: parent.width
+      text: pane.folderPath
+      textFormat: Text.PlainText
+      color: pane.accent
+      font.family: pane.fontFamily
+      font.pixelSize: Style.font.caption
+      elide: Text.ElideMiddle
+    }
+    ListView {
+      id: folderList
+      width: parent.width
+      height: parent.height - y
+      clip: true
+      model: pane.folderRows
+      currentIndex: pane.folderIndex
+      onCurrentIndexChanged: positionViewAtIndex(currentIndex, ListView.Contain)
+      delegate: Rectangle {
+        required property var modelData
+        required property int index
+        width: folderList.width
+        height: Style.space(30)
+        radius: Style.space(6)
+        color: index === pane.folderIndex ? Util.alpha(pane.accent, 0.16) : "transparent"
+        Text {
+          anchors.fill: parent
+          anchors.leftMargin: Style.space(8)
+          text: (modelData.icon || "") + "  " + modelData.title
+          textFormat: Text.PlainText
+          color: index === pane.folderIndex ? pane.accent : pane.foreground
+          font.family: pane.fontFamily
+          font.pixelSize: Style.font.subtitle
+          verticalAlignment: Text.AlignVCenter
+          elide: Text.ElideRight
+        }
+      }
+    }
+  }
   property color foreground: Color.foreground
   property color accent: Color.accent
   property string fontFamily: Style.font.family
@@ -21,6 +68,7 @@ Item {
 
   Flickable {
     id: flick
+    visible: pane.folderPath === ""
     anchors.fill: parent
     anchors.leftMargin: pane.gutter
     anchors.rightMargin: pane.gutter
@@ -31,6 +79,7 @@ Item {
 
     Column {
       id: column
+      objectName: "preview-blocks"
       y: Style.space(14)
       width: flick.width
       spacing: Style.space(10)

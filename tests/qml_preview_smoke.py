@@ -68,6 +68,7 @@ import qs.Commons
 import "ui/panels"
 ShellRoot {
   Window {
+    id: smokeWindow
     width: 400
     height: 460
     visible: true
@@ -77,6 +78,15 @@ ShellRoot {
       anchors.fill: parent
       foreground: Color.menu.text
       gutter: 11
+    }
+    function findItem(item, name) {
+      if (item.objectName === name) return item
+      var children = item.children || []
+      for (var i = 0; i < children.length; i++) {
+        var found = findItem(children[i], name)
+        if (found) return found
+      }
+      return null
     }
     Timer {
       property var cases: ''' + json.dumps(previews) + '''
@@ -91,8 +101,8 @@ ShellRoot {
       onTriggered: {
         try {
           if (!checked) {
-            var flick = pane.children[0]
-            var column = flick.contentItem.children[0]
+            var column = smokeWindow.findItem(pane, "preview-blocks")
+            if (!column) throw new Error("Missing preview block container")
             if (!(column.implicitHeight > 0)) throw new Error("Preview failed to lay out: " + cases[index].name)
             var shown = 0
             for (var i = 0; i < column.children.length; i++) {

@@ -2282,7 +2282,7 @@ def _preview_secret(path):
     return _preview_secret_path(path) or _preview_secret_path(os.path.realpath(path))
 
 
-def cmd_preview_file(argv):
+def cmd_preview_file(argv, browse=False):
     """Metadata plus a bounded look inside one file or folder.
 
     Only regular files are opened, and with O_NONBLOCK, so a FIFO or device
@@ -2307,6 +2307,7 @@ def cmd_preview_file(argv):
                   description="Folder" if stat.S_ISDIR(info.st_mode) else mime or "Private file"))
         return
     if stat.S_ISDIR(info.st_mode):
+        # shortcut: browsing is capped at 1000 entries; add paging if larger folders need full navigation.
         entries, count = [], 0
         try:
             with os.scandir(path) as listing:
@@ -2318,11 +2319,12 @@ def cmd_preview_file(argv):
                         is_dir = entry.is_dir()
                     except OSError:
                         is_dir = False
-                    entries.append({"name": clamp_text(entry.name, 200), "isDir": is_dir})
+                    entries.append({"name": clamp_text(entry.name, 200), "isDir": is_dir,
+                                    "path": entry.path})
         except OSError:
             raise Denied("folder cannot be read") from None
         entries.sort(key=lambda e: (not e["isDir"], e["name"].lower()))
-        emit(dict(out, kind="dir", description="Folder", entries=entries[:PREVIEW_DIR_ENTRIES],
+        emit(dict(out, kind="dir", description="Folder", entries=entries[:PREVIEW_DIR_COUNT if browse else PREVIEW_DIR_ENTRIES],
                   count=min(count, PREVIEW_DIR_COUNT), more=count > PREVIEW_DIR_COUNT))
         return
     if not stat.S_ISREG(info.st_mode):
@@ -3441,6 +3443,7 @@ COMMANDS = {
     "currency-rates": (cmd_currency_rates, True),
     "files": (cmd_files, True),
     "preview-file": (cmd_preview_file, True),
+    "browse-directory": (lambda argv: cmd_preview_file(argv, browse=True), True),
     "preview-view": (cmd_preview_view, True),
     "clipboard-preview": (cmd_clipboard_preview, True),
     "ports": (cmd_ports, False),
