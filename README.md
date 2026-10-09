@@ -18,7 +18,9 @@ omarchy plugin add https://github.com/maajix/omarchy-spotlight.git --enable
 
 Press **Alt+Space** to open Spotlight. The first-run tour sets up the shortcut; if it is already taken, choose another. Search for `spotlight settings` to change sources, behavior or the shortcut later.
 
-Under **General → Appearance**, **Vertical position** moves the launcher from 0% (top) to 100% (bottom); 50% keeps the default placement. Lower values move it higher. The position reserves space for the expanded results, so the search field stays fixed while you type. Small screens limit how far it can move.
+Settings are grouped into **General** (shortcut and data), **Search** (sources, results, web and currency), **Appearance**, and **AI** (provider and artifact settings, including weather location).
+
+Under **Appearance**, **Vertical position** moves the launcher from 0% (top) to 100% (bottom); 50% keeps the default placement. Lower values move it higher. The position reserves space for the expanded results, so the search field stays fixed while you type. Small screens limit how far it can move.
 
 If the shortcut does not open Spotlight:
 

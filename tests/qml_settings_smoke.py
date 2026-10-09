@@ -1,4 +1,4 @@
-"""Exercise appearance and shared AI settings in the real panels with Quickshell."""
+"""Exercise settings tabs, scrolling, edits, and the shared AI form with Quickshell."""
 import os
 from pathlib import Path
 import subprocess
@@ -25,18 +25,84 @@ ShellRoot {
     }
     return null
   }
+  function shown(item) {
+    for (var current = item; current; current = current.parent)
+      if (!current.visible) return false
+    return true
+  }
+  function row(title) { return find(settings, function(item) { return item.title === title }) }
+  function inView(item) {
+    var flick = find(settings, function(item) { return typeof item.contentY === "number" })
+    var top = item.mapToItem(flick, 0, 0).y
+    if (!shown(item) || top < -0.5 || top + item.height > flick.height + 0.5)
+      throw new Error("Focused row is outside the scroll viewport: " + item.title)
+  }
   Window {
     width: 1400; height: 1000; visible: true
     SettingsPanel {
       id: settings
+      availableHeight: 540
       settings: ({ searchEngine: "g", maxResults: 20, maxApps: 8, maxSuggestions: 4, verticalPosition: 50, aiEnabled: true, aiWebSearch: true, aiProvider: "claude", aiModel: "old", aiEffort: "high" })
       onChanged: function(patch) { settings.settings = Object.assign({}, settings.settings, patch) }
     }
     SetupTour { id: tour; x: 750 }
     Timer {
-      interval: 300; running: true
+      property int phase: 0
+      interval: 300; running: true; repeat: true
       onTriggered: {
         try {
+          if (phase === 1) {
+            root.find(root.row("AI provider"), function(item) { return typeof item.currentLabel === "function" }).forceActiveFocus()
+            phase++
+            return
+          }
+          if (phase === 2) {
+            root.inView(root.row("AI provider"))
+            root.find(root.row("Weather default location"), function(item) { return item.placeholderText === "City, region" }).forceActiveFocus()
+            phase++
+            return
+          }
+          if (phase === 3) {
+            root.inView(root.row("Weather default location"))
+            var location = root.find(root.row("Weather default location"), function(item) { return item.placeholderText === "City, region" })
+            location.text = " Tokyo "
+            settings.showTab("search")
+            if (settings.draft.artifactSettings.weather.defaultLocation !== "Tokyo")
+              throw new Error("Leaving AI did not commit the weather location")
+            settings.showTab("ai")
+            location.text = "Oslo"
+            settings.finish()
+            if (settings.draft.artifactSettings.weather.defaultLocation !== "Oslo")
+              throw new Error("Closing settings did not commit the weather location")
+            settings.open()
+            if (settings.activeTab !== "general") throw new Error("Reopening did not reset the tab")
+            console.log("SETTINGS_SMOKE_OK")
+            Qt.quit()
+            return
+          }
+          var pages = [
+            { key: "general", label: "General", rows: ["Open Spotlight", "Setup and data"] },
+            { key: "search", label: "Search", rows: ["Files and folders", "Clipboard history", "Learn from your choices",
+              "Search suggestions", "Search suggestions shown", "Web search engine", "Currency rates", "Default currency",
+              "Results shown", "Applications shown"] },
+            { key: "appearance", label: "Appearance", rows: ["Vertical position"] },
+            { key: "ai", label: "AI", rows: ["Ask AI", "AI provider", "AI model", "Thinking level", "AI web search", "Weather default location"] }
+          ]
+          for (var page of pages) {
+            var tab = root.find(settings, function(item) { return item.text === page.label && typeof item.clicked === "function" })
+            if (!tab || tab.mapToItem(settings, 0, 0).x + tab.width > settings.width)
+              throw new Error("Tab is missing or outside the panel: " + page.label)
+            tab.clicked()
+            if (settings.activeTab !== page.key || !tab.selected) throw new Error("Tab did not select: " + page.label)
+            for (var other of pages) {
+              for (var title of other.rows) {
+                var setting = root.row(title)
+                if (!setting || root.shown(setting) !== (page.key === other.key))
+                  throw new Error("Setting is missing or in the wrong tab: " + title)
+              }
+            }
+          }
+          settings.showTab("appearance")
           var positionRow = root.find(settings, function(item) { return item.title === "Vertical position" })
           var position = root.find(positionRow, function(item) { return typeof item.apply === "function" })
           if (!position || position.value !== 50 || position.step !== 5)
@@ -47,6 +113,7 @@ ShellRoot {
                 || position.value !== settings.draft.verticalPosition)
               throw new Error("Vertical position did not update or stay in bounds")
           }
+          settings.showTab("ai")
           tour.start(settings.settings, 3, false)
           for (var panel of [settings, tour]) {
             var web = root.find(panel, function(item) { return item.title === "AI web search" })
@@ -65,9 +132,8 @@ ShellRoot {
             if (panel.draft.aiModel !== "new" || panel.draft.aiEffort !== "")
               throw new Error("Model switch did not reset effort")
           }
-          console.log("SETTINGS_SMOKE_OK")
-        } catch (error) { console.error(error) }
-        Qt.quit()
+          phase++
+        } catch (error) { console.error(error); Qt.quit() }
       }
     }
   }
@@ -81,4 +147,4 @@ ShellRoot {
     output = result.stdout + result.stderr
     assert result.returncode == 0 and "SETTINGS_SMOKE_OK" in output, output
     assert not any(error in output for error in ("Error:", "Unable to assign", "Binding loop")), output
-    print("Appearance controls stay in bounds; settings and tour preserve shared AI behavior")
+    print("Four tabs group every setting; focused AI/weather rows stay visible; weather edits survive tab switches and closing; shared AI behavior passes")

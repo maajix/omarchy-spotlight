@@ -72,8 +72,10 @@ FocusScope {
   function toggle(key) { panel.set(key, panel.draft[key] !== true) }
 
   function showTab(tab) {
-    if (panel.activeTab === "artifacts") artifactSettingsPage.commit()
+    if (panel.activeTab === "ai") artifactSettingsPage.commit()
     panel.activeTab = tab
+    Qt.callLater(function() { flick.contentY = 0 })
+    focusPanel()
   }
 
   function focusPanel() {
@@ -88,7 +90,10 @@ FocusScope {
   readonly property Item focusedItem: Window.activeFocusItem
   onFocusedItemChanged: {
     for (var item = panel.focusedItem; item; item = item.parent)
-      if (item.parent === content) { panel.ensureVisible(item); break }
+      if (item.parent === content || typeof item.switchable === "boolean") {
+        panel.ensureVisible(item)
+        break
+      }
   }
 
   function ensureVisible(item) {
@@ -105,7 +110,7 @@ FocusScope {
   // the field at that point, and nothing was written for it, so the field is
   // put back on the stored value instead of leaving the two disagreeing.
   function finish() {
-    if (panel.activeTab === "artifacts") artifactSettingsPage.commit()
+    if (panel.activeTab === "ai") artifactSettingsPage.commit()
     currencyCodeField.revert()
     panel.closed()
   }
@@ -228,9 +233,23 @@ FocusScope {
 
       Pill {
         chrome: panel.chrome
-        text: "Artifacts"
-        selected: panel.activeTab === "artifacts"
-        onClicked: panel.showTab("artifacts")
+        text: "Search"
+        selected: panel.activeTab === "search"
+        onClicked: panel.showTab("search")
+      }
+
+      Pill {
+        chrome: panel.chrome
+        text: "Appearance"
+        selected: panel.activeTab === "appearance"
+        onClicked: panel.showTab("appearance")
+      }
+
+      Pill {
+        chrome: panel.chrome
+        text: "AI"
+        selected: panel.activeTab === "ai"
+        onClicked: panel.showTab("ai")
       }
 
       Item { Layout.fillWidth: true }
@@ -238,7 +257,6 @@ FocusScope {
 
     Flickable {
       id: flick
-      visible: panel.activeTab === "general"
       Layout.fillWidth: true
       Layout.fillHeight: true
       Layout.preferredHeight: content.implicitHeight
@@ -256,9 +274,10 @@ FocusScope {
         width: flick.width - (flick.contentHeight > flick.height ? Style.space(10) : 0)
         spacing: Style.space(10)
 
-        GroupLabel { text: "APPEARANCE" }
+        GroupLabel { text: "APPEARANCE"; visible: panel.activeTab === "appearance" }
 
         SettingRow {
+          visible: panel.activeTab === "appearance"
           chrome: panel.chrome
           glyph: "󰕴"
           switchable: false
@@ -275,9 +294,10 @@ FocusScope {
           }
         }
 
-        GroupLabel { text: "SEARCH" }
+        GroupLabel { text: "SOURCES"; visible: panel.activeTab === "search" }
 
         SettingRow {
+          visible: panel.activeTab === "search"
           chrome: panel.chrome
           glyph: "󰉋"
           title: "Files and folders"
@@ -296,6 +316,7 @@ FocusScope {
         }
 
         SettingRow {
+          visible: panel.activeTab === "search"
           chrome: panel.chrome
           glyph: "󰅌"
           title: "Clipboard history"
@@ -314,6 +335,7 @@ FocusScope {
         }
 
         SettingRow {
+          visible: panel.activeTab === "search"
           chrome: panel.chrome
           glyph: "󰧐"
           title: "Learn from your choices"
@@ -322,9 +344,10 @@ FocusScope {
           onToggled: panel.toggle("learningEnabled")
         }
 
-        GroupLabel { text: "WEB" }
+        GroupLabel { text: "WEB"; visible: panel.activeTab === "search" }
 
         SettingRow {
+          visible: panel.activeTab === "search"
           chrome: panel.chrome
           glyph: "󱐋"
           title: "Search suggestions"
@@ -336,6 +359,24 @@ FocusScope {
         }
 
         SettingRow {
+          visible: panel.activeTab === "search"
+          chrome: panel.chrome
+          glyph: "󱐋"
+          switchable: false
+          title: "Search suggestions shown"
+          description: "How many suggestions the web provider may add. Zero hides them."
+
+          trailing: Stepper {
+            chrome: panel.chrome
+            value: panel.draft.maxSuggestions
+            from: 0
+            to: 8
+            onChanged: function(v) { panel.set("maxSuggestions", v) }
+          }
+        }
+
+        SettingRow {
+          visible: panel.activeTab === "search"
           chrome: panel.chrome
           glyph: "󰖟"
           switchable: false
@@ -351,9 +392,10 @@ FocusScope {
           }
         }
 
-        GroupLabel { text: "AI" }
+        GroupLabel { text: "AI"; visible: panel.activeTab === "ai" }
 
         AiSettings {
+          visible: panel.activeTab === "ai"
           Layout.fillWidth: true
           chrome: panel.chrome
           bounds: panel
@@ -362,9 +404,21 @@ FocusScope {
           onChanged: function(patch) { panel.changed(patch) }
         }
 
-        GroupLabel { text: "CURRENCY" }
+        GroupLabel { text: "ARTIFACTS"; visible: panel.activeTab === "ai" }
+
+        ArtifactSettingsPage {
+          id: artifactSettingsPage
+          visible: panel.activeTab === "ai"
+          Layout.fillWidth: true
+          chrome: panel.chrome
+          artifactSettings: panel.draft.artifactSettings || ({ weather: { defaultLocation: "" } })
+          onChanged: function(patch) { panel.changed(patch) }
+        }
+
+        GroupLabel { text: "CURRENCY"; visible: panel.activeTab === "search" }
 
         SettingRow {
+          visible: panel.activeTab === "search"
           chrome: panel.chrome
           glyph: "󰑤"
           title: "Currency rates"
@@ -374,6 +428,7 @@ FocusScope {
         }
 
         SettingRow {
+          visible: panel.activeTab === "search"
           chrome: panel.chrome
           glyph: "󰠓"
           switchable: false
@@ -391,9 +446,10 @@ FocusScope {
           }
         }
 
-        GroupLabel { text: "RESULTS" }
+        GroupLabel { text: "RESULTS"; visible: panel.activeTab === "search" }
 
         SettingRow {
+          visible: panel.activeTab === "search"
           chrome: panel.chrome
           glyph: "󰒺"
           switchable: false
@@ -410,6 +466,7 @@ FocusScope {
         }
 
         SettingRow {
+          visible: panel.activeTab === "search"
           chrome: panel.chrome
           glyph: "󰀻"
           switchable: false
@@ -425,25 +482,10 @@ FocusScope {
           }
         }
 
-        SettingRow {
-          chrome: panel.chrome
-          glyph: "󱐋"
-          switchable: false
-          title: "Search suggestions shown"
-          description: "How many suggestions the web provider may add. Zero hides them."
-
-          trailing: Stepper {
-            chrome: panel.chrome
-            value: panel.draft.maxSuggestions
-            from: 0
-            to: 8
-            onChanged: function(v) { panel.set("maxSuggestions", v) }
-          }
-        }
-
-        GroupLabel { text: "SHORTCUT" }
+        GroupLabel { text: "SHORTCUT"; visible: panel.activeTab === "general" }
 
         SettingRow {
+          visible: panel.activeTab === "general"
           chrome: panel.chrome
           glyph: "󰌌"
           switchable: false
@@ -470,9 +512,10 @@ FocusScope {
           }
         }
 
-        GroupLabel { text: "MAINTENANCE" }
+        GroupLabel { text: "MAINTENANCE"; visible: panel.activeTab === "general" }
 
         SettingRow {
+          visible: panel.activeTab === "general"
           chrome: panel.chrome
           glyph: "󰑐"
           switchable: false
@@ -511,16 +554,6 @@ FocusScope {
           }
         }
       }
-    }
-
-    ArtifactSettingsPage {
-      id: artifactSettingsPage
-      visible: panel.activeTab === "artifacts"
-      Layout.fillWidth: true
-      Layout.fillHeight: true
-      chrome: panel.chrome
-      artifactSettings: panel.draft.artifactSettings || ({ weather: { defaultLocation: "" } })
-      onChanged: function(patch) { panel.changed(patch) }
     }
 
     RowLayout {
