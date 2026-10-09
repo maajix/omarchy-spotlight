@@ -42,7 +42,7 @@ ShellRoot {
     SettingsPanel {
       id: settings
       availableHeight: 540
-      settings: ({ searchEngine: "g", maxResults: 20, maxApps: 8, maxSuggestions: 4, verticalPosition: 50, aiEnabled: true, aiWebSearch: true, aiProvider: "claude", aiModel: "old", aiEffort: "high" })
+      settings: ({ searchEngine: "g", maxResults: 20, maxApps: 8, maxSuggestions: 4, verticalPosition: 50, horizontalPosition: 50, aiEnabled: true, aiWebSearch: true, aiProvider: "claude", aiModel: "old", aiEffort: "high" })
       onChanged: function(patch) { settings.settings = Object.assign({}, settings.settings, patch) }
     }
     SetupTour { id: tour; x: 750 }
@@ -85,7 +85,7 @@ ShellRoot {
             { key: "search", label: "Search", rows: ["Files and folders", "Clipboard history", "Learn from your choices",
               "Search suggestions", "Search suggestions shown", "Web search engine", "Currency rates", "Default currency",
               "Results shown", "Applications shown"] },
-            { key: "appearance", label: "Appearance", rows: ["Vertical position"] },
+            { key: "appearance", label: "Appearance", rows: ["Vertical position", "Horizontal position"] },
             { key: "ai", label: "AI", rows: ["Ask AI", "AI provider", "AI model", "Thinking level", "AI web search", "Weather default location"] }
           ]
           for (var page of pages) {
@@ -103,15 +103,17 @@ ShellRoot {
             }
           }
           settings.showTab("appearance")
-          var positionRow = root.find(settings, function(item) { return item.title === "Vertical position" })
-          var position = root.find(positionRow, function(item) { return typeof item.apply === "function" })
-          if (!position || position.value !== 50 || position.step !== 5)
-            throw new Error("Vertical position did not load its default")
-          for (var value of [25, 0, -5, 100, 105, 50]) {
-            position.apply(value)
-            if (settings.draft.verticalPosition !== Math.max(0, Math.min(100, value))
-                || position.value !== settings.draft.verticalPosition)
-              throw new Error("Vertical position did not update or stay in bounds")
+          for (var axis of [["Vertical position", "verticalPosition"], ["Horizontal position", "horizontalPosition"]]) {
+            var positionRow = root.row(axis[0])
+            var position = root.find(positionRow, function(item) { return typeof item.apply === "function" })
+            if (!position || position.value !== 50 || position.step !== 5)
+              throw new Error(axis[0] + " did not load its default")
+            for (var value of [25, 0, -5, 100, 105, 50]) {
+              position.apply(value)
+              if (settings.draft[axis[1]] !== Math.max(0, Math.min(100, value))
+                  || position.value !== settings.draft[axis[1]])
+                throw new Error(axis[0] + " did not update or stay in bounds")
+            }
           }
           settings.showTab("ai")
           tour.start(settings.settings, 3, false)

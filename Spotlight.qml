@@ -230,6 +230,7 @@ Item {
     maxApps: 8,
     maxSuggestions: 4,
     verticalPosition: 50,
+    horizontalPosition: 50,
     // true until the helper answers, so the tour never flashes before the
     // first-run flag has actually been read.
     setupCompleted: true
@@ -810,6 +811,8 @@ Item {
         ? Util.clamp(parsed.maxSuggestions, 0, 8) : 4,
       verticalPosition: isFinite(parsed.verticalPosition)
         ? Util.clamp(parsed.verticalPosition, 0, 100) : 50,
+      horizontalPosition: isFinite(parsed.horizontalPosition)
+        ? Util.clamp(parsed.horizontalPosition, 0, 100) : 50,
       setupCompleted: parsed.setupCompleted !== false
     }
     // First run: the flag usually lands after open() has already drawn the
@@ -2747,7 +2750,8 @@ Item {
         + (hasResults || root.aiActive ? root.hairline + root.listPadding * 2 + bodyHeight : 0)
         + root.hairline + root.footerHeight
       // Keep the search field fixed while results grow and shrink below it.
-      anchors.horizontalCenter: parent.horizontalCenter
+      x: Style.space(24) + Math.max(0, panel.width - width - Style.space(48))
+        * root.settings.horizontalPosition / 100
       y: Style.space(24) + Math.max(0, panel.height - root.maxCardHeight - Style.space(48))
         * root.settings.verticalPosition / 100
 

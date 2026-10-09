@@ -20,7 +20,7 @@ Press **Alt+Space** to open Spotlight. The first-run tour sets up the shortcut; 
 
 Settings are grouped into **General** (shortcut and data), **Search** (sources, results, web and currency), **Appearance**, and **AI** (provider and artifact settings, including weather location).
 
-Under **Appearance**, **Vertical position** moves the launcher from 0% (top) to 100% (bottom); 50% keeps the default placement. Lower values move it higher. The position reserves space for the expanded results, so the search field stays fixed while you type. Small screens limit how far it can move.
+Under **Appearance**, **Vertical position** moves the launcher from 0% (top) to 100% (bottom); 50% keeps the default placement. **Horizontal position** moves it from 0% (left) to 100% (right); 50% keeps it centered. The vertical position reserves space for expanded results, so the search field stays fixed while you type. Screen margins keep the launcher visible, and small screens limit movement.
 
 If the shortcut does not open Spotlight:
 

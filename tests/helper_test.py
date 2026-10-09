@@ -1172,26 +1172,35 @@ EXPECTED_AFTER_WRITE = LUA_FIXTURE.replace(
 
 
 class SettingsWriteTests(unittest.TestCase):
-    def test_vertical_position_defaults_clamps_and_rejects_invalid_types(self):
-        self.assertEqual(HELPER.normalize_settings({})["verticalPosition"], 50)
-        for value, expected in ((-10, 0), (0, 0), (25, 25), (50, 50), (100, 100), (110, 100)):
-            with self.subTest(value=value):
-                self.assertEqual(HELPER.normalize_settings({"verticalPosition": value})["verticalPosition"], expected)
-        for value in (None, True, False, "25", 25.5, [], {}, float("inf"), float("nan")):
-            with self.subTest(value=value):
-                self.assertEqual(HELPER.normalize_settings({"verticalPosition": value})["verticalPosition"], 50)
+    def test_positions_default_clamp_and_reject_invalid_types(self):
+        for key in ("verticalPosition", "horizontalPosition"):
+            self.assertEqual(HELPER.normalize_settings({})[key], 50)
+            for value, expected in ((-10, 0), (0, 0), (25, 25), (50, 50), (100, 100), (110, 100)):
+                with self.subTest(key=key, value=value):
+                    self.assertEqual(HELPER.normalize_settings({key: value})[key], expected)
+            for value in (None, True, False, "25", 25.5, [], {}, float("inf"), float("nan")):
+                with self.subTest(key=key, value=value):
+                    self.assertEqual(HELPER.normalize_settings({key: value})[key], 50)
 
-    def test_vertical_position_persists_and_survives_unrelated_updates(self):
+    def test_positions_persist_and_survive_unrelated_updates(self):
         with fake_home() as home:
-            reply = run(HELPER.cmd_write_settings, stdin=b'{"verticalPosition":25}')
+            reply = run(HELPER.cmd_write_settings, stdin=b'{"verticalPosition":25,"horizontalPosition":75}')
             self.assertEqual(reply["settings"]["verticalPosition"], 25)
+            self.assertEqual(reply["settings"]["horizontalPosition"], 75)
             path = home / ".config" / "omarchy" / "spotlight.json"
-            self.assertEqual(json.loads(path.read_text()), {"verticalPosition": 25})
+            self.assertEqual(json.loads(path.read_text()), {"verticalPosition": 25, "horizontalPosition": 75})
             run(HELPER.cmd_write_settings, stdin=b'{"webSuggestions":true}')
-            self.assertEqual(run(HELPER.cmd_read_settings)["settings"]["verticalPosition"], 25)
-            reply = run(HELPER.cmd_write_settings, stdin=b'{"verticalPosition":999}')
+            reply = run(HELPER.cmd_read_settings)
+            self.assertEqual(reply["settings"]["verticalPosition"], 25)
+            self.assertEqual(reply["settings"]["horizontalPosition"], 75)
+            reply = run(HELPER.cmd_write_settings, stdin=b'{"horizontalPosition":-10}')
+            self.assertEqual(reply["settings"]["verticalPosition"], 25)
+            self.assertEqual(reply["settings"]["horizontalPosition"], 0)
+            reply = run(HELPER.cmd_write_settings, stdin=b'{"verticalPosition":999,"horizontalPosition":999}')
             self.assertEqual(reply["settings"]["verticalPosition"], 100)
+            self.assertEqual(reply["settings"]["horizontalPosition"], 100)
             self.assertEqual(json.loads(path.read_text())["verticalPosition"], 100)
+            self.assertEqual(json.loads(path.read_text())["horizontalPosition"], 100)
 
     def test_weather_location_survives_unrelated_settings_updates(self):
         with fake_home():

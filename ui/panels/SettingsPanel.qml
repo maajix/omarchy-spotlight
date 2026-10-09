@@ -294,6 +294,24 @@ FocusScope {
           }
         }
 
+        SettingRow {
+          visible: panel.activeTab === "appearance"
+          chrome: panel.chrome
+          glyph: "󰁂"
+          switchable: false
+          title: "Horizontal position"
+          description: "0% is the left, 50% is the center, 100% is the right. Narrow screens limit movement."
+
+          trailing: Stepper {
+            chrome: panel.chrome
+            value: panel.draft.horizontalPosition
+            from: 0
+            to: 100
+            step: 5
+            onChanged: function(v) { panel.set("horizontalPosition", v) }
+          }
+        }
+
         GroupLabel { text: "SOURCES"; visible: panel.activeTab === "search" }
 
         SettingRow {

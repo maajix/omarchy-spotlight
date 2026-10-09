@@ -776,6 +776,7 @@ def normalize_settings(parsed):
         "maxApps": 8,
         "maxSuggestions": 4,
         "verticalPosition": 50,
+        "horizontalPosition": 50,
         "setupCompleted": False,
     }
     if not isinstance(parsed, dict):
@@ -806,9 +807,10 @@ def normalize_settings(parsed):
     out["maxResults"] = clamp_int(parsed.get("maxResults"), 8, 50, 20)
     out["maxApps"] = clamp_int(parsed.get("maxApps"), 3, 24, 8)
     out["maxSuggestions"] = clamp_int(parsed.get("maxSuggestions"), 0, SUGGEST_COUNT, 4)
-    position = parsed.get("verticalPosition")
-    if isinstance(position, int) and not isinstance(position, bool):
-        out["verticalPosition"] = clamp_int(position, 0, 100, 50)
+    for key in ("verticalPosition", "horizontalPosition"):
+        position = parsed.get(key)
+        if isinstance(position, int) and not isinstance(position, bool):
+            out[key] = clamp_int(position, 0, 100, 50)
     engine = parsed.get("searchEngine")
     if isinstance(engine, str) and re.match(r"^[A-Za-z]{1,8}$", engine):
         out["searchEngine"] = engine.lower()
