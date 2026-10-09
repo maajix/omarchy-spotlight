@@ -1,4 +1,4 @@
-"""Exercise the shared AI settings in both real panels with Quickshell."""
+"""Exercise appearance and shared AI settings in the real panels with Quickshell."""
 import os
 from pathlib import Path
 import subprocess
@@ -29,7 +29,7 @@ ShellRoot {
     width: 1400; height: 1000; visible: true
     SettingsPanel {
       id: settings
-      settings: ({ searchEngine: "g", maxResults: 20, maxApps: 8, maxSuggestions: 4, aiEnabled: true, aiWebSearch: true, aiProvider: "claude", aiModel: "old", aiEffort: "high" })
+      settings: ({ searchEngine: "g", maxResults: 20, maxApps: 8, maxSuggestions: 4, verticalPosition: 50, aiEnabled: true, aiWebSearch: true, aiProvider: "claude", aiModel: "old", aiEffort: "high" })
       onChanged: function(patch) { settings.settings = Object.assign({}, settings.settings, patch) }
     }
     SetupTour { id: tour; x: 750 }
@@ -37,6 +37,16 @@ ShellRoot {
       interval: 300; running: true
       onTriggered: {
         try {
+          var positionRow = root.find(settings, function(item) { return item.title === "Vertical position" })
+          var position = root.find(positionRow, function(item) { return typeof item.apply === "function" })
+          if (!position || position.value !== 50 || position.step !== 5)
+            throw new Error("Vertical position did not load its default")
+          for (var value of [25, 0, -5, 100, 105, 50]) {
+            position.apply(value)
+            if (settings.draft.verticalPosition !== Math.max(0, Math.min(100, value))
+                || position.value !== settings.draft.verticalPosition)
+              throw new Error("Vertical position did not update or stay in bounds")
+          }
           tour.start(settings.settings, 3, false)
           for (var panel of [settings, tour]) {
             var web = root.find(panel, function(item) { return item.title === "AI web search" })
@@ -71,4 +81,4 @@ ShellRoot {
     output = result.stdout + result.stderr
     assert result.returncode == 0 and "SETTINGS_SMOKE_OK" in output, output
     assert not any(error in output for error in ("Error:", "Unable to assign", "Binding loop")), output
-    print("Settings and tour preserve web search and reset model/effort through the shared form")
+    print("Appearance controls stay in bounds; settings and tour preserve shared AI behavior")

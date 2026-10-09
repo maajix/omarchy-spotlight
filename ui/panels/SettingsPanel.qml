@@ -256,6 +256,25 @@ FocusScope {
         width: flick.width - (flick.contentHeight > flick.height ? Style.space(10) : 0)
         spacing: Style.space(10)
 
+        GroupLabel { text: "APPEARANCE" }
+
+        SettingRow {
+          chrome: panel.chrome
+          glyph: "󰕴"
+          switchable: false
+          title: "Vertical position"
+          description: "0% is the top, 50% is the default, 100% is the bottom. Results grow downward; small screens limit movement."
+
+          trailing: Stepper {
+            chrome: panel.chrome
+            value: panel.draft.verticalPosition
+            from: 0
+            to: 100
+            step: 5
+            onChanged: function(v) { panel.set("verticalPosition", v) }
+          }
+        }
+
         GroupLabel { text: "SEARCH" }
 
         SettingRow {
