@@ -104,9 +104,17 @@ Item {
   property bool opened: false
   property string query: ""
   property int selectedIndex: 0
+  // The right pane only browses the row selected on the left. Once that row
+  // changes (hover, a click, an async rebuild) the listing belongs to nothing
+  // on screen, so browsing ends with it.
   onSelectedIndexChanged: {
     if (root.folderProcess) root.folderProcess.running = false
     root.folderProcess = null
+    if (root.folderPath) {
+      root.folderStack = []
+      root.folderRows = []
+      root.folderPath = ""
+    }
     root.schedulePreview()
   }
   property bool cursorActive: true
@@ -3144,12 +3152,18 @@ Item {
               event.accepted = true
               return
             }
+            // The arrows are claimed only when they browse; anywhere else they
+            // stay caret keys for the query.
             if ((event.key === Qt.Key_Right || event.key === Qt.Key_Left)
                 && event.modifiers === Qt.NoModifier && root.navigatingResults) {
-              if (event.key === Qt.Key_Right) root.enterFolder()
-              else if (!root.leaveFolder()) root.navigatingResults = false
-              event.accepted = true
-              return
+              var browsed = event.key === Qt.Key_Right
+                ? root.enterFolder() || root.folderPath !== ""
+                : root.leaveFolder()
+              if (browsed) {
+                event.accepted = true
+                return
+              }
+              if (event.key === Qt.Key_Left) root.navigatingResults = false
             }
             if (event.key === Qt.Key_Escape) {
               if (root.folderPath) { root.resetFolders(); root.rebuild() }
@@ -3157,7 +3171,7 @@ Item {
               else root.dismiss()
               event.accepted = true
             } else if (down) {
-              if (root.navigatingResults) root.select(1)
+              root.select(1)
               root.navigatingResults = true
               event.accepted = true
             } else if (up) {

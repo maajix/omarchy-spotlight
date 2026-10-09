@@ -127,3 +127,43 @@ test("Ctrl+N/P retain their left-list behavior outside folder browsing", () => {
   assert.equal(key("Left").accepted, false)
   assert.equal(key("Right").accepted, false)
 })
+
+test("the first Down after typing moves the left selection", () => {
+  const {root, key} = keyboard()
+  Object.assign(root, {folderPath: "", navigatingResults: false})
+  assert.equal(key("Down").accepted, true)
+  assert.equal(root.selectedIndex, 5)
+  assert.equal(root.navigatingResults, true)
+})
+
+test("Left and Right stay caret keys unless they browse", () => {
+  const {root, key} = keyboard()
+  Object.assign(root, {folderPath: "", enterFolder() { return false }})
+  assert.equal(key("Right").accepted, false)
+  root.leaveFolder = () => false
+  assert.equal(key("Left").accepted, false)
+  assert.equal(root.navigatingResults, false)
+  assert.equal(key("Right").accepted, false)
+})
+
+test("Right inside a folder is claimed even on a file entry", () => {
+  const {root, key} = keyboard()
+  root.enterFolder = () => false
+  assert.equal(key("Right").accepted, true)
+})
+
+test("a new left selection ends folder browsing", () => {
+  const match = source.match(/  onSelectedIndexChanged: \{([\s\S]*?)\n  \}/)
+  assert.ok(match)
+  const pending = {running: true}
+  const root = {folderProcess: pending, folderStack: [{path: ""}], folderRows: [{}], folderPath: "/parent",
+    navigatingResults: true, schedulePreview() { this.scheduled = true }}
+  new Function("root", match[1])(root)
+  assert.equal(pending.running, false)
+  assert.equal(root.folderProcess, null)
+  assert.equal(root.folderPath, "")
+  assert.deepEqual(root.folderStack, [])
+  assert.deepEqual(root.folderRows, [])
+  assert.equal(root.navigatingResults, true)
+  assert.equal(root.scheduled, true)
+})
