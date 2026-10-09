@@ -426,3 +426,17 @@ test("QML filters, unit precedence, loading rows and copy payloads", () => {
   root.updateCurrency()
   assert.equal(timer.running, false)
 })
+
+test("expression steps list each amount in typed order once every rate is known", () => {
+  const session = Currency.createSession()
+  const expression = target("200 EUR + 2 * 99 USD - (1100 JPY) to EUR")
+  Currency.select(session, expression, NOW)
+  const usd = Currency.begin(session, NOW)
+  Currency.accept(session, usd, reply({ rate: 0.9 }), NOW)
+  assert.equal(Currency.steps(session.target, session), null)
+  Currency.select(session, session.target, NOW)
+  Currency.accept(session, Currency.begin(session, NOW), reply({ base: "JPY", rate: 0.006 }), NOW)
+  assert.deepEqual(Currency.steps(session.target, session).map(s => [s.amount, s.base, s.rate, s.date]),
+    [[200, "EUR", 1, ""], [99, "USD", 0.9, "2026-09-21"], [1100, "JPY", 0.006, "2026-09-21"]])
+  assert.equal(Currency.steps(target("100 USD to EUR"), session), null)
+})

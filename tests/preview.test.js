@@ -44,6 +44,21 @@ test("currency preview mirrors the answer and converts the same amount", () => {
     { text: "= 41 418 JPY", note: "cached" }])
 })
 
+test("currency expressions show each amount and its rate under the total", () => {
+  const row = { key: "currency", kind: "copy", title: "294.57 EUR", payload: { expression: true, quote: "EUR",
+    source: "200 EUR + 99 USD + 1100 JPY", rate: NaN, steps: [
+      { amount: 200, base: "EUR", rate: 1, value: 200, date: "" },
+      { amount: 99, base: "USD", rate: 0.8926, value: 88.3674, date: "2026-10-09" },
+      { amount: 1100, base: "JPY", rate: 0.00564, value: 6.204, date: "2026-10-09" }] } }
+  assert.equal(Preview.need(row, ctx), null)
+  const preview = Preview.build(row, ctx, null)
+  assert.deepEqual(types(preview), ["label", "hero", "lines", "meta"])
+  assert.equal(block(preview, "hero").text, "= 294.57 EUR")
+  assert.deepEqual(block(preview, "lines").items, [{ text: "200 EUR", note: "" },
+    { text: "99 USD = 88.37 EUR", note: "× 0.89" }, { text: "1100 JPY = 6.20 EUR", note: "× 0.01" }])
+  assert.equal(block(preview, "meta").text, "Rates: European Central Bank, 2026-10-09")
+})
+
 test("money rounds to the currency's minor unit", () => {
   assert.equal(Preview.formatMoney(16.94124, "GBP"), "16.94 GBP")
   assert.equal(Preview.formatMoney(3546.2, "JPY"), "3 546 JPY")

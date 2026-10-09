@@ -1006,7 +1006,8 @@ Item {
             : Units.formatNumber(currency.amount) + " " + currency.base,
           rate: !currency.expression && cached && cached.rate ? cached.rate.rate
             : (currency.base === currency.quote ? 1 : NaN),
-          date: !currency.expression && cached && cached.rate ? cached.rate.date : ""
+          date: !currency.expression && cached && cached.rate ? cached.rate.date : "",
+          steps: currency.expression ? Currency.steps(currency, root.currencySession) : null
         } : ({})
       }))
     }
