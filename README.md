@@ -18,6 +18,10 @@ omarchy plugin add https://github.com/maajix/omarchy-spotlight.git --enable
 
 Press **Alt+Space** to open Spotlight. The first-run tour sets up the shortcut; if it is already taken, choose another. Search for `spotlight settings` to change sources, behavior or the shortcut later.
 
+Settings are grouped into **General** (shortcut and data), **Search** (sources, results, web and currency), **Appearance**, and **AI** (provider and artifact settings, including weather location).
+
+Under **Appearance**, **Vertical position** moves the launcher from 0% (top) to 100% (bottom); 50% keeps the default placement. **Horizontal position** moves it from 0% (left) to 100% (right); 50% keeps it centered. The vertical position reserves space for expanded results, so the search field stays fixed while you type. Screen margins keep the launcher visible, and small screens limit movement.
+
 If the shortcut does not open Spotlight:
 
 ```bash
@@ -39,7 +43,7 @@ omarchy-shell shell toggle io.github.maajix.spotlight '{}'
 
 Use **↑ / ↓** to select a result, **Enter** for its main action and **Shift+Enter** for its secondary action. **Esc** clears the query, then closes Spotlight.
 
-A preview pane beside the list shows more about the selected result, such as other currencies, the start of a file or a live window thumbnail. Turn it off with **Preview pane** in Spotlight Settings.
+A preview pane beside the list shows more about the selected result, such as other currencies, the start of a file or a live window thumbnail. Turn it off with **Preview pane** under **Appearance** in Spotlight Settings.
 
 After moving to a folder result with **↑ / ↓**, press **→** to move the selection into its right-hand preview. The search results on the left stay in place. Use **↑ / ↓** to select entries and **←** to return one folder level, or back to the left-hand results. **Enter** opens the selected entry externally; **Tab** completes a folder name. Typing starts a new search, and **Esc** returns from browsing to the original search. The current folder path appears above the right-hand entries; listings are limited to 1,000 entries.
 

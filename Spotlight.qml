@@ -341,6 +341,8 @@ Item {
     maxResults: 20,
     maxApps: 8,
     maxSuggestions: 4,
+    verticalPosition: 50,
+    horizontalPosition: 50,
     // true until the helper answers, so the tour never flashes before the
     // first-run flag has actually been read.
     setupCompleted: true
@@ -414,9 +416,7 @@ Item {
   // input. Scales with the user's font size rather than being pinned to 18px.
   readonly property int searchFontSize: Math.round(Style.font.baseSize * 1.5)
 
-  // Fixing the top edge at the position the *fully expanded* panel would need
-  // to sit centred means the panel grows downward into the middle of the
-  // screen instead of shoving the search field around as results arrive.
+  // Reserve the fully expanded height so results never move the search field.
   readonly property int maxCardHeight: searchHeight + hairline
     + listPadding * 2 + maxListHeight + hairline + footerHeight
 
@@ -939,6 +939,10 @@ Item {
         ? Util.clamp(parsed.maxApps, 3, root.maxAppRows) : 8,
       maxSuggestions: isFinite(parsed.maxSuggestions)
         ? Util.clamp(parsed.maxSuggestions, 0, 8) : 4,
+      verticalPosition: isFinite(parsed.verticalPosition)
+        ? Util.clamp(parsed.verticalPosition, 0, 100) : 50,
+      horizontalPosition: isFinite(parsed.horizontalPosition)
+        ? Util.clamp(parsed.horizontalPosition, 0, 100) : 50,
       setupCompleted: parsed.setupCompleted !== false
     }
     // First run: the flag usually lands after open() has already drawn the
@@ -3059,8 +3063,10 @@ Item {
         + (hasResults || root.aiActive ? root.hairline + root.listPadding * 2 + bodyHeight : 0)
         + root.hairline + root.footerHeight
       // Keep the search field fixed while results grow and shrink below it.
-      anchors.horizontalCenter: parent.horizontalCenter
-      y: Math.max(Style.space(24), (panel.height - root.maxCardHeight) / 2)
+      x: Style.space(24) + Math.max(0, panel.width - width - Style.space(48))
+        * root.settings.horizontalPosition / 100
+      y: Style.space(24) + Math.max(0, panel.height - root.maxCardHeight - Style.space(48))
+        * root.settings.verticalPosition / 100
 
       radius: root.cardRadius
       color: root.glassBackground
