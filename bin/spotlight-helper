@@ -792,6 +792,7 @@ def normalize_settings(parsed):
         "clipboardSearch": True,
         "clipboardSearchAlways": True,
         "previewPane": True,
+        "reduceMotion": False,
         "learningEnabled": True,
         "aiEnabled": False,
         "aiProvider": "claude",
@@ -814,6 +815,7 @@ def normalize_settings(parsed):
     out["clipboardSearch"] = clamp_bool(parsed.get("clipboardSearch"), True)
     out["clipboardSearchAlways"] = clamp_bool(parsed.get("clipboardSearchAlways"), True)
     out["previewPane"] = clamp_bool(parsed.get("previewPane"), True)
+    out["reduceMotion"] = clamp_bool(parsed.get("reduceMotion"), False)
     out["learningEnabled"] = clamp_bool(parsed.get("learningEnabled"), True)
     out["aiEnabled"] = clamp_bool(parsed.get("aiEnabled"), False)
     out["aiWebSearch"] = clamp_bool(parsed.get("aiWebSearch"), False)

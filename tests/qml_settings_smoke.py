@@ -37,6 +37,10 @@ ShellRoot {
       interval: 300; running: true
       onTriggered: {
         try {
+          var motion = root.find(settings, function(item) { return item.title === "Reduce motion" })
+          if (!motion || motion.checked) throw new Error("Reduce motion default is wrong")
+          motion.toggled()
+          if (!settings.draft.reduceMotion || !motion.checked) throw new Error("Reduce motion did not persist")
           tour.start(settings.settings, 3, false)
           for (var panel of [settings, tour]) {
             var web = root.find(panel, function(item) { return item.title === "AI web search" })

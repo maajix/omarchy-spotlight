@@ -686,6 +686,9 @@ class HelperTests(unittest.TestCase):
 
     def test_settings_are_private_by_default_and_bounded(self):
         defaults = HELPER.normalize_settings({})
+        self.assertFalse(defaults["reduceMotion"])
+        self.assertTrue(HELPER.normalize_settings({"reduceMotion": True})["reduceMotion"])
+        self.assertFalse(HELPER.normalize_settings({"reduceMotion": "yes"})["reduceMotion"])
         self.assertFalse(defaults["aiEnabled"])
         self.assertEqual(defaults["aiProvider"], "claude")
         self.assertEqual(defaults["aiModel"], "")

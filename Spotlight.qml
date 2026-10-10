@@ -102,6 +102,15 @@ Item {
 
   // ------------------------------------------------------------- state
   property bool opened: false
+  property real presentationProgress: opened ? 1 : 0
+  onPresentationProgressChanged: if (presentationProgress === 0 && !opened) root.finishClose()
+  Behavior on presentationProgress {
+    id: presentationMotion
+    NumberAnimation {
+      duration: root.settings.reduceMotion ? 0 : (presentationMotion.targetValue === 1 ? 220 : 140)
+      easing.type: presentationMotion.targetValue === 1 ? Easing.OutCubic : Easing.InCubic
+    }
+  }
   property string query: ""
   property int selectedIndex: 0
   // The right pane only browses the row selected on the left. Once that row
@@ -321,6 +330,7 @@ Item {
     clipboardSearch: true,
     clipboardSearchAlways: true,
     previewPane: true,
+    reduceMotion: false,
     learningEnabled: true,
     aiEnabled: false,
     aiProvider: "claude",
@@ -414,6 +424,7 @@ Item {
   // The payload may carry {"query": "..."} so a keybind can summon Spotlight
   // already primed, e.g. bound to open straight into "remind me ".
   function open(payloadJson) {
+    if (!root.opened) root.finishClose()
     root.resetFolders()
     var initial = ""
     try {
@@ -474,6 +485,7 @@ Item {
     pointerGate.reset()
     if (root.setupPending() || (tour.started && !tour.singleStep)) root.resumeTour()
     Qt.callLater(function() {
+      if (!root.opened) return
       if (root.tourActive) tour.focusStep()
       else input.forceActiveFocus()
       resultList.positionViewAtBeginning()
@@ -485,6 +497,13 @@ Item {
     // close() again; the second call has nothing left to stop.
     if (!root.opened) return
     root.opened = false
+    if (root.settingsActive) root.flushSettings()
+    if (root.presentationProgress === 0) root.finishClose()
+  }
+
+  // Keep the last layout until it is transparent; reopening cancels cleanup.
+  function finishClose() {
+    if (root.opened) return
     root.armedKey = ""
     root.leaveSettingsPanel()
     root.stopQueryWork()
@@ -906,6 +925,7 @@ Item {
       clipboardSearch: parsed.clipboardSearch !== false,
       clipboardSearchAlways: parsed.clipboardSearchAlways !== false,
       previewPane: parsed.previewPane !== false,
+      reduceMotion: parsed.reduceMotion === true,
       learningEnabled: parsed.learningEnabled !== false,
       aiEnabled: parsed.aiEnabled === true,
       aiProvider: parsed.aiProvider === "codex" ? "codex" : "claude",
@@ -1653,6 +1673,7 @@ Item {
 
   // ------------------------------------------------------------- assembly
   function rebuild() {
+    if (!root.opened) return
     var q = String(root.query || "").trim()
     var parsed = Query.parse(q)
 
@@ -2244,7 +2265,7 @@ Item {
   property var previewData: null
   property bool previewQueued: false
   property var previewProcess: null
-  readonly property bool previewShown: root.opened && root.settings.previewPane !== false
+  readonly property bool previewShown: panel.visible && root.settings.previewPane !== false
     && root.previewRich && !root.aiActive && panel.width >= Style.space(960)
 
   function schedulePreview() {
@@ -2292,6 +2313,7 @@ Item {
   }
 
   function updatePreview() {
+    if (!root.opened) return
     if (!root.previewShown) {
       root.preview = null
       root.previewData = null
@@ -2925,23 +2947,31 @@ Item {
   // ------------------------------------------------------------- surface
   PanelWindow {
     id: panel
-    visible: root.opened
+    visible: root.opened || root.presentationProgress > 0
+    property bool focusPrimed: false
     anchors { top: true; bottom: true; left: true; right: true }
     color: "transparent"
     // The Hyprland layer rule that frosts this surface matches on this
     // namespace. Renaming it silently turns the glass off.
     WlrLayershell.namespace: "omarchy-spotlight"
     WlrLayershell.layer: WlrLayer.Overlay
-    // Exclusive grabs the compositor's own keyboard input wholesale, so a
-    // bind like SUPER+arrow to move focus between windows goes dead while
-    // this is open and the overlay never yields. OnDemand still gets typing
-    // and Hyprland still focuses it the moment it maps (this window is only
-    // ever mapped fresh - `visible` follows `opened` directly, never staying
-    // mapped through a fade-out - which is the case Hyprland does grant
-    // OnDemand focus for), so nothing here needs the Exclusive-then-OnDemand
-    // prime a surface that stays mapped across a close would.
-    WlrLayershell.keyboardFocus: WlrKeyboardFocus.OnDemand
+    // Match the shell's KeyboardPanel: reacquire focus even during a fade-out,
+    // then yield compositor shortcuts. Closing releases input immediately.
+    WlrLayershell.keyboardFocus: !root.opened ? WlrKeyboardFocus.None
+      : panel.focusPrimed ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.Exclusive
     exclusionMode: ExclusionMode.Ignore
+    mask: Region { width: root.opened ? panel.width : 0; height: root.opened ? panel.height : 0 }
+    contentItem.enabled: root.opened
+
+    Connections {
+      target: root
+      function onOpenedChanged() { panel.focusPrimed = false }
+    }
+    Timer {
+      interval: 75
+      running: root.opened && panel.backingWindowVisible && !panel.focusPrimed
+      onTriggered: panel.focusPrimed = true
+    }
 
     // Anything that moves focus elsewhere - the compositor's own focus
     // bind, alt-tab, a click on another output - must dismiss the launcher,
@@ -2970,9 +3000,10 @@ Item {
     //   switch, windows or not, so it is the third watcher, for exactly the
     //   case the other two both miss.
     HyprlandFocusGrab {
-      active: root.opened
+      // A previous grab can report cleared while the same surface reacquires focus.
+      active: root.opened && panel.focusPrimed
       windows: [panel]
-      onCleared: if (root.opened) root.dismiss()
+      onCleared: if (root.opened && panel.focusPrimed) root.dismiss()
     }
 
     Connections {
@@ -2988,6 +3019,7 @@ Item {
     Rectangle {
       anchors.fill: parent
       color: root.scrim
+      opacity: root.presentationProgress
     }
 
     // A screen-fixed frame for the pointer gate to measure against. The card
@@ -3036,10 +3068,16 @@ Item {
       border.color: root.glassBorder
       antialiasing: true
 
+      opacity: root.presentationProgress
+      scale: 0.98 + 0.02 * root.presentationProgress
+      transformOrigin: Item.Top
+
       Behavior on height {
+        enabled: !root.settings.reduceMotion
         NumberAnimation { duration: 110; easing.type: Easing.OutCubic }
       }
       Behavior on width {
+        enabled: !root.settings.reduceMotion
         NumberAnimation { duration: 110; easing.type: Easing.OutCubic }
       }
 
@@ -3455,7 +3493,7 @@ Item {
 
       AiPanel {
         id: aiPanel
-        visible: root.opened && root.aiActive
+        visible: panel.visible && root.aiActive
         anchors {
           top: searchDivider.bottom
           left: parent.left
@@ -3564,6 +3602,8 @@ Item {
 
     SetupTour {
       id: tour
+      opacity: root.presentationProgress
+      scale: 0.98 + 0.02 * root.presentationProgress
       visible: root.tourActive
       anchors.centerIn: parent
       foreground: root.foreground
@@ -3588,6 +3628,8 @@ Item {
 
     SettingsPanel {
       id: settingsPanel
+      opacity: root.presentationProgress
+      scale: 0.98 + 0.02 * root.presentationProgress
       visible: root.settingsActive
       anchors.centerIn: parent
       foreground: root.foreground
