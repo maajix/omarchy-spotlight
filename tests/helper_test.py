@@ -2883,6 +2883,27 @@ class PreviewTests(unittest.TestCase):
         (self.home / ".ssh").mkdir(exist_ok=True)
         self.assertEqual(self.call("browse-directory", str(self.home / ".ssh"))["kind"], "hidden")
 
+    def test_browse_directory_bounds_serialized_payload(self):
+        qml = (Path(__file__).resolve().parents[1] / "Spotlight.qml").read_text()
+        import re
+        limit = int(re.search(r"maxHelperPayloadChars:\s*(\d+)", qml)[1])
+        for char in ("x", "\U0001f600", "\x01"):
+            with self.subTest(char=char):
+                folder = self.home / (char * 50) / (char * 50) / (char * 50)
+                folder.mkdir(parents=True)
+                for i in range(HELPER.PREVIEW_DIR_COUNT):
+                    (folder / (char * 50 + str(i))).touch()
+                out = io.StringIO()
+                with contextlib.redirect_stdout(out):
+                    HELPER.cmd_preview_file([str(folder)], browse=True)
+                self.assertLess(len(out.getvalue().encode("utf-16-le")) // 2, limit)
+                reply = json.loads(out.getvalue())
+                self.assertTrue(reply["more"])
+                self.assertGreater(len(reply["entries"]), 0)
+                self.assertLess(len(reply["entries"]), HELPER.PREVIEW_DIR_COUNT)
+                self.assertEqual(reply["count"], HELPER.PREVIEW_DIR_COUNT)
+                self.assertTrue(all(Path(entry["path"]).is_file() for entry in reply["entries"]))
+
     def test_folders_binaries_images_and_special_files(self):
         folder = self.home / "folder"
         (folder / "sub").mkdir(parents=True)

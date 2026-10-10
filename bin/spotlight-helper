@@ -2307,7 +2307,7 @@ def cmd_preview_file(argv, browse=False):
                   description="Folder" if stat.S_ISDIR(info.st_mode) else mime or "Private file"))
         return
     if stat.S_ISDIR(info.st_mode):
-        # shortcut: browsing is capped at 1000 entries; add paging if larger folders need full navigation.
+        # shortcut: browsing is capped by entry count and JSON size; add paging for full navigation.
         entries, count = [], 0
         try:
             with os.scandir(path) as listing:
@@ -2324,8 +2324,15 @@ def cmd_preview_file(argv, browse=False):
         except OSError:
             raise Denied("folder cannot be read") from None
         entries.sort(key=lambda e: (not e["isDir"], e["name"].lower()))
-        emit(dict(out, kind="dir", description="Folder", entries=entries[:PREVIEW_DIR_COUNT if browse else PREVIEW_DIR_ENTRIES],
-                  count=min(count, PREVIEW_DIR_COUNT), more=count > PREVIEW_DIR_COUNT))
+        bounded, json_chars = [], 0
+        for entry in entries[:PREVIEW_DIR_COUNT if browse else PREVIEW_DIR_ENTRIES]:
+            json_chars += len(json.dumps(entry, ensure_ascii=False, separators=(",", ":"))) + 1
+            if json_chars > FILES_JSON_BUDGET_CHARS:
+                break
+            bounded.append(entry)
+        emit(dict(out, kind="dir", description="Folder", entries=bounded,
+                  count=min(count, PREVIEW_DIR_COUNT),
+                  more=count > PREVIEW_DIR_COUNT or (browse and len(bounded) < len(entries))))
         return
     if not stat.S_ISREG(info.st_mode):
         emit(dict(out, kind="other", description="Special file"))

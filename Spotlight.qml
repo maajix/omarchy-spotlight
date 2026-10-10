@@ -160,7 +160,7 @@ Item {
           primaryLabel: "Open", secondaryLabel: "Open folder",
           payload: { path: e.path, dir: proc.path } }))
       }
-      if (reply.more) next.push(root.row({ kind: "noop", title: "Showing the first 1000 entries", section: proc.path }))
+      if (reply.more) next.push(root.row({ kind: "noop", title: "Showing the first " + entries.length + " entries", section: proc.path }))
     }
     if (!next.length) next.push(root.row({ kind: "noop", section: proc.path,
       title: !reply ? "Folder unavailable" : reply.kind === "hidden" ? "Contents hidden for private files"
@@ -3143,7 +3143,8 @@ Item {
               return
             }
             if (root.folderPath && (event.key === Qt.Key_Return || event.key === Qt.Key_Enter
-                || (event.key === Qt.Key_C && event.modifiers === Qt.ControlModifier))) {
+                || (event.key === Qt.Key_C && event.modifiers === Qt.ControlModifier
+                    && input.selectedText.length === 0))) {
               var entry = root.folderRows[root.folderIndex]
               if (entry && entry.kind === "file") {
                 if (event.key === Qt.Key_C) Util.execArgv(["wl-copy", "--", entry.payload.path])

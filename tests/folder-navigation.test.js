@@ -57,8 +57,9 @@ function keyboard() {
   Object.assign(root, {
     folderPath: "/parent", folderRows: Array.from({length: 12}, (_, i) => ({kind: "file", payload: {path: "/parent/" + i}})),
     folderIndex: 0, selectedIndex: 4, aiActive: false,
-    select(delta) { this.selectedIndex += delta },
-    enterFolder() { this.entered = true },
+    rows: Array.from({length: 12}, (_, i) => ({kind: "file", key: "file:" + i})),
+    selectedRowKey() { return this.rows[this.selectedIndex].key },
+    enterFolder() { this.entered = true; return true },
     leaveFolder() { this.left = true; return true },
     openPath(path) { this.openedPath = path }
   })
@@ -68,9 +69,14 @@ function keyboard() {
   const match = source.match(/Keys.onPressed: function\(event\) \{([\s\S]*?)\n          \}/)
   assert.ok(match)
   const input = {text: "query", selectedText: ""}
-  const press = new Function("root", "Qt", "typingGuard", "input",
-    "return function(event) {" + match[1] + "}")(root, Qt, {restart() {}}, input)
-  return {root, key(name, modifiers = 0, text = "") {
+  const select = source.match(/  function select\(delta\) \{([\s\S]*?)\n  \}/)
+  root.select = new Function("root", "pointerGate", "resultList", "ListView",
+    "return function(delta) {" + select[1] + "}")(root, {reset() {}}, {positionViewAtIndex() {}}, {})
+  const copied = []
+  const press = new Function("root", "Qt", "typingGuard", "input", "Util",
+    "return function(event) {" + match[1] + "}")(root, Qt, {restart() {}}, input,
+      {execArgv: argv => copied.push(argv)})
+  return {root, input, copied, key(name, modifiers = 0, text = "") {
     const event = {key: Qt["Key_" + name], modifiers, text, accepted: false}
     press(event)
     return event
@@ -128,11 +134,32 @@ test("Ctrl+N/P retain their left-list behavior outside folder browsing", () => {
   assert.equal(key("Right").accepted, false)
 })
 
+test("folder copy preserves selected query text and otherwise copies the entry path", () => {
+  const {input, copied, key} = keyboard()
+  input.selectedText = "query"
+  assert.equal(key("C", 1).accepted, false)
+  assert.deepEqual(copied, [])
+  input.selectedText = ""
+  assert.equal(key("C", 1).accepted, true)
+  assert.deepEqual(copied, [["wl-copy", "--", "/parent/0"]])
+})
+
+test("partial folder listings show the actual displayed count", () => {
+  const root = navigation()
+  const proc = {path: "/parent"}
+  root.folderProcess = proc
+  root.loadFolder(JSON.stringify({kind: "dir", more: true, entries: [
+    {name: "file", path: "/parent/file", isDir: false}
+  ]}), proc)
+  assert.equal(root.folderRows[1].title, "Showing the first 1 entries")
+})
+
 test("the first Down after typing moves the left selection", () => {
   const {root, key} = keyboard()
-  Object.assign(root, {folderPath: "", navigatingResults: false})
+  Object.assign(root, {folderPath: "", navigatingResults: false, pinnedKey: ""})
   assert.equal(key("Down").accepted, true)
   assert.equal(root.selectedIndex, 5)
+  assert.equal(root.pinnedKey, "file:5")
   assert.equal(root.navigatingResults, true)
 })
 
