@@ -85,7 +85,8 @@ ShellRoot {
             { key: "search", label: "Search", rows: ["Files and folders", "Clipboard history", "Learn from your choices",
               "Search suggestions", "Search suggestions shown", "Web search engine", "Currency rates", "Default currency",
               "Results shown", "Applications shown"] },
-            { key: "appearance", label: "Appearance", rows: ["Vertical position", "Horizontal position"] },
+            { key: "appearance", label: "Appearance", rows: ["Vertical position", "Horizontal position", "Preview pane",
+              "Reduce motion"] },
             { key: "ai", label: "AI", rows: ["Ask AI", "AI provider", "AI model", "Thinking level", "AI web search", "Weather default location"] }
           ]
           for (var page of pages) {
@@ -115,6 +116,10 @@ ShellRoot {
                 throw new Error(axis[0] + " did not update or stay in bounds")
             }
           }
+          var motion = root.find(settings, function(item) { return item.title === "Reduce motion" })
+          if (!motion || motion.checked) throw new Error("Reduce motion default is wrong")
+          motion.toggled()
+          if (!settings.draft.reduceMotion || !motion.checked) throw new Error("Reduce motion did not persist")
           settings.showTab("ai")
           tour.start(settings.settings, 3, false)
           for (var panel of [settings, tour]) {

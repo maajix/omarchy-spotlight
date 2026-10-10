@@ -312,6 +312,26 @@ FocusScope {
           }
         }
 
+        SettingRow {
+          visible: panel.activeTab === "appearance"
+          chrome: panel.chrome
+          glyph: "󰕮"
+          title: "Preview pane"
+          description: "Show details for the selected result beside the list: conversions, file contents, clipboard entries and more."
+          checked: panel.draft.previewPane === true
+          onToggled: panel.toggle("previewPane")
+        }
+
+        SettingRow {
+          visible: panel.activeTab === "appearance"
+          chrome: panel.chrome
+          glyph: "󰔎"
+          title: "Reduce motion"
+          description: "Skip Spotlight's opening, closing and resizing animations."
+          checked: panel.draft.reduceMotion === true
+          onToggled: panel.toggle("reduceMotion")
+        }
+
         GroupLabel { text: "SOURCES"; visible: panel.activeTab === "search" }
 
         SettingRow {
