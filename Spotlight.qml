@@ -19,6 +19,7 @@ import "lib/Apps.js" as Apps
 import "lib/FileRank.js" as FileRank
 import "lib/Query.js" as Query
 import "lib/Views.js" as Views
+import "lib/Preview.js" as Preview
 import "lib/Ranking.js" as Ranking
 import "lib/Chord.js" as Chord
 import "lib/SettingsQueue.js" as SettingsQueue
@@ -101,9 +102,118 @@ Item {
 
   // ------------------------------------------------------------- state
   property bool opened: false
+  property real presentationProgress: opened ? 1 : 0
+  onPresentationProgressChanged: if (presentationProgress === 0 && !opened) root.finishClose()
+  Behavior on presentationProgress {
+    id: presentationMotion
+    NumberAnimation {
+      duration: root.settings.reduceMotion ? 0 : (presentationMotion.targetValue === 1 ? 220 : 140)
+      easing.type: presentationMotion.targetValue === 1 ? Easing.OutCubic : Easing.InCubic
+    }
+  }
   property string query: ""
   property int selectedIndex: 0
+  // The right pane only browses the row selected on the left. Once that row
+  // changes (hover, a click, an async rebuild) the listing belongs to nothing
+  // on screen, so browsing ends with it.
+  onSelectedIndexChanged: {
+    if (root.folderProcess) root.folderProcess.running = false
+    root.folderProcess = null
+    if (root.folderPath) {
+      root.folderStack = []
+      root.folderRows = []
+      root.folderPath = ""
+    }
+    root.schedulePreview()
+  }
   property bool cursorActive: true
+  property bool navigatingResults: false
+  property var folderStack: []
+  property var folderRows: []
+  property string folderPath: ""
+  property int folderIndex: 0
+  property var folderProcess: null
+
+  function resetFolders() {
+    if (root.folderProcess) root.folderProcess.running = false
+    root.folderProcess = null
+    root.folderStack = []
+    root.folderRows = []
+    root.folderPath = ""
+    root.navigatingResults = false
+  }
+
+  function enterFolder() {
+    if (!root.previewShown) return false
+    var r = root.folderPath ? root.folderRows[root.folderIndex] : root.selectedRow()
+    if (!r || r.kind !== "file" || r.accessory !== "Folder") return false
+    if (root.folderProcess) root.folderProcess.running = false
+    var proc = folderProcessComponent.createObject(root, { path: r.payload.path })
+    root.folderProcess = proc
+    proc.running = true
+    return true
+  }
+
+  function loadFolder(raw, proc) {
+    if (root.folderProcess !== proc || !root.opened) return
+    root.folderProcess = null
+    var reply = root.helperReply(raw)
+    var next = []
+    if (reply && reply.kind === "dir") {
+      var entries = reply.entries || []
+      for (var i = 0; i < entries.length; i++) {
+        var e = entries[i]
+        next.push(root.row({ key: "file:" + e.path, kind: "file", title: e.name,
+          subtitle: proc.path, section: proc.path, resultType: "file",
+          accessory: e.isDir ? "Folder" : "File", icon: e.isDir ? "󰉋" : "󰈔",
+          primaryLabel: "Open", secondaryLabel: "Open folder",
+          payload: { path: e.path, dir: proc.path } }))
+      }
+      if (reply.more) next.push(root.row({ kind: "noop", title: "Showing the first " + entries.length + " entries", section: proc.path }))
+    }
+    if (!next.length) next.push(root.row({ kind: "noop", section: proc.path,
+      title: !reply ? "Folder unavailable" : reply.kind === "hidden" ? "Contents hidden for private files"
+        : reply.kind === "dir" ? "Empty folder" : "Not a folder" }))
+    root.folderStack = root.folderStack.concat([{ path: root.folderPath, rows: root.folderRows,
+      index: root.folderIndex }])
+    root.folderPath = proc.path
+    root.folderRows = next
+    root.folderIndex = 0
+  }
+
+  function leaveFolder() {
+    if (root.folderProcess) root.folderProcess.running = false
+    root.folderProcess = null
+    if (!root.folderStack.length) return false
+    var stack = root.folderStack.slice()
+    var previous = stack.pop()
+    root.folderStack = stack
+    root.folderPath = previous.path
+    root.folderRows = previous.rows
+    root.folderIndex = previous.index
+    return true
+  }
+
+  Component {
+    id: folderProcessComponent
+    Process {
+      id: folderRun
+      required property string path
+      property bool delivered: false
+      command: root.helperArgv(["browse-directory", path])
+      stdout: StdioCollector {
+        waitForEnd: true
+        onStreamFinished: {
+          folderRun.delivered = true
+          root.loadFolder(text, folderRun)
+        }
+      }
+      onExited: Qt.callLater(function() {
+        if (!folderRun.delivered) root.loadFolder("", folderRun)
+        folderRun.destroy()
+      })
+    }
+  }
 
   // Rows currently on screen, as plain JS objects. displayModel mirrors only
   // the display fields; the payload stays here and is read back by index, so
@@ -219,6 +329,8 @@ Item {
     fileSearchAlways: true,
     clipboardSearch: true,
     clipboardSearchAlways: true,
+    previewPane: true,
+    reduceMotion: false,
     learningEnabled: true,
     aiEnabled: false,
     aiProvider: "claude",
@@ -295,6 +407,7 @@ Item {
   // command, 2 files and 2 windows at rowHeight, plus their four section
   // headings at sectionHeight. A query may still scroll.
   readonly property int maxListHeight: Style.space(456)
+  readonly property int minPreviewHeight: Style.space(260)
   readonly property int hairline: Style.spacing.hairline
 
   // Between heading (16) and display (24): a hero input that is still an
@@ -311,6 +424,8 @@ Item {
   // The payload may carry {"query": "..."} so a keybind can summon Spotlight
   // already primed, e.g. bound to open straight into "remind me ".
   function open(payloadJson) {
+    if (!root.opened) root.finishClose()
+    root.resetFolders()
     var initial = ""
     try {
       var rawPayload = String(payloadJson || "{}")
@@ -370,6 +485,7 @@ Item {
     pointerGate.reset()
     if (root.setupPending() || (tour.started && !tour.singleStep)) root.resumeTour()
     Qt.callLater(function() {
+      if (!root.opened) return
       if (root.tourActive) tour.focusStep()
       else input.forceActiveFocus()
       resultList.positionViewAtBeginning()
@@ -381,6 +497,13 @@ Item {
     // close() again; the second call has nothing left to stop.
     if (!root.opened) return
     root.opened = false
+    if (root.settingsActive) root.flushSettings()
+    if (root.presentationProgress === 0) root.finishClose()
+  }
+
+  // Keep the last layout until it is transparent; reopening cancels cleanup.
+  function finishClose() {
+    if (root.opened) return
     root.armedKey = ""
     root.leaveSettingsPanel()
     root.stopQueryWork()
@@ -401,6 +524,11 @@ Item {
     fileProc.running = false
     clipboardProc.running = false
     tldrProc.running = false
+    root.resetFolders()
+    previewDebounce.stop()
+    root.stopPreviewProcess()
+    root.preview = null
+    root.previewData = null
     root.resetView("")
     root.clipboardRows = []
     root.clipboardFor = ""
@@ -796,6 +924,8 @@ Item {
       fileSearchAlways: parsed.fileSearchAlways !== false,
       clipboardSearch: parsed.clipboardSearch !== false,
       clipboardSearchAlways: parsed.clipboardSearchAlways !== false,
+      previewPane: parsed.previewPane !== false,
+      reduceMotion: parsed.reduceMotion === true,
       learningEnabled: parsed.learningEnabled !== false,
       aiEnabled: parsed.aiEnabled === true,
       aiProvider: parsed.aiProvider === "codex" ? "codex" : "claude",
@@ -962,7 +1092,7 @@ Item {
         title: calc.text, subtitle: q.replace(/^=/, "").trim(),
         accessory: "Calculator", icon: "󰃬", mono: true,
         primaryLabel: "Copy result",
-        payload: { text: calc.text.replace(/\s/g, "") }
+        payload: { text: calc.text.replace(/\s/g, ""), value: calc.value }
       }))
     }
 
@@ -973,7 +1103,7 @@ Item {
         title: unit.text, subtitle: unit.detail,
         accessory: "Conversion", icon: "󰑤", mono: true,
         primaryLabel: "Copy result",
-        payload: { text: unit.text.replace(/\s/g, "") }
+        payload: { text: unit.text.replace(/\s/g, ""), related: Units.related(unit, 5) }
       }))
     }
 
@@ -990,7 +1120,16 @@ Item {
           : currency.base) + " → " + currency.quote + " · Frankfurter",
         accessory: "Currency", section: "Conversions", icon: "󰑤", mono: true,
         primaryLabel: converted ? "Copy result" : waiting ? "Copy when ready" : "",
-        payload: converted ? { text: converted.copy } : ({})
+        payload: converted ? {
+          text: converted.copy, amount: currency.amount, base: currency.base || "",
+          quote: currency.quote, expression: !!currency.expression,
+          source: currency.expression ? currency.source
+            : Units.formatNumber(currency.amount) + " " + currency.base,
+          rate: !currency.expression && cached && cached.rate ? cached.rate.rate
+            : (currency.base === currency.quote ? 1 : NaN),
+          date: !currency.expression && cached && cached.rate ? cached.rate.date : "",
+          steps: currency.expression ? Currency.steps(currency, root.currencySession) : null
+        } : ({})
       }))
     }
 
@@ -1153,7 +1292,13 @@ Item {
         keywords: Apps.entrySearchText(entry),
         resultType: "app",
         stableId: key,
-        payload: { appId: String(entry.id || ""), name: root.appName(entry) }
+        payload: {
+          appId: String(entry.id || ""), name: root.appName(entry),
+          icon: root.appIcon(entry.icon),
+          comment: String(entry.comment || entry.genericName || "").slice(0, 512),
+          exec: String(entry.execString || "").slice(0, 512),
+          categories: (entry.categories || []).slice(0, 8).map(String)
+        }
       }))
       if (out.length >= limit) break
     }
@@ -1528,6 +1673,7 @@ Item {
 
   // ------------------------------------------------------------- assembly
   function rebuild() {
+    if (!root.opened) return
     var q = String(root.query || "").trim()
     var parsed = Query.parse(q)
 
@@ -1615,6 +1761,8 @@ Item {
     if (root.pinnedKey && restored < 0) root.pinnedKey = ""
     root.selectedIndex = restored >= 0 ? restored : root.firstSelectableIndex()
     root.cursorActive = next.length > 0
+    root.previewRich = next.some(Preview.rich)
+    root.schedulePreview()
     pointerGate.reset()
     Qt.callLater(function() {
       if (displayModel.count > 0) resultList.positionViewAtIndex(root.selectedIndex, ListView.Contain)
@@ -2105,6 +2253,107 @@ Item {
     root.rebuild()
   }
 
+  // ------------------------------------------------------------- preview
+  // The pane opens when any row on screen has a preview of its own, and then
+  // stays for the whole result set, so moving the cursor never resizes the
+  // card. Rows without one show their name and description.
+  property bool previewRich: false
+  property var preview: null
+  // { key, state, reply } for the selected row's helper call. Only the one
+  // selected row's data is held — a clipboard entry in particular is dropped
+  // as soon as the cursor leaves it.
+  property var previewData: null
+  property bool previewQueued: false
+  property var previewProcess: null
+  readonly property bool previewShown: panel.visible && root.settings.previewPane !== false
+    && root.previewRich && !root.aiActive && panel.width >= Style.space(960)
+
+  function schedulePreview() {
+    if (root.previewQueued) return
+    root.previewQueued = true
+    Qt.callLater(function() {
+      root.previewQueued = false
+      root.updatePreview()
+    })
+  }
+
+  function previewContext() {
+    return { defaultCurrency: root.settings.defaultCurrency,
+             currencyRates: root.settings.currencyRates !== false,
+             formatNumber: Units.formatNumber }
+  }
+
+  // Window rows carry the Wayland handle; where it sits comes from Hyprland
+  // when the pane asks, not on every keystroke that ranks windows.
+  function windowPreviewRow(r) {
+    var t = r.payload ? r.payload.toplevel : null
+    var extra = { toplevel: t, appId: r.subtitle }
+    try {
+      var values = Hyprland.toplevels.values || []
+      for (var i = 0; i < values.length; i++) {
+        if (values[i].wayland !== t) continue
+        var ipc = values[i].lastIpcObject || {}
+        var ws = values[i].workspace
+        extra.workspace = ws ? String(ws.name || ws.id || "") : ""
+        extra.monitor = ws && ws.monitor ? String(ws.monitor.name || "") : ""
+        var flags = []
+        if (ipc.floating) flags.push("Floating")
+        if (ipc.fullscreen) flags.push("Fullscreen")
+        if (ipc.pinned) flags.push("Pinned")
+        if (ipc.size && ipc.size.length === 2) flags.push(ipc.size[0] + " × " + ipc.size[1])
+        extra.state = flags.join(" · ")
+        break
+      }
+    } catch (e) {
+    }
+    var copy = {}
+    for (var k in r) copy[k] = r[k]
+    copy.payload = extra
+    return copy
+  }
+
+  function updatePreview() {
+    if (!root.opened) return
+    if (!root.previewShown) {
+      root.preview = null
+      root.previewData = null
+      previewDebounce.stop()
+      return
+    }
+    var r = root.cursorActive ? root.selectedRow() : null
+    if (r && r.kind === "window") r = root.windowPreviewRow(r)
+    var ctx = root.previewContext()
+    var need = r ? Preview.need(r, ctx) : null
+    if (!need) {
+      root.previewData = null
+      previewDebounce.stop()
+    } else if (!root.previewData || root.previewData.key !== need.key) {
+      root.previewData = { key: need.key, state: "loading", reply: null }
+      previewDebounce.args = need.args
+      previewDebounce.key = need.key
+      previewDebounce.restart()
+    }
+    root.preview = r ? Preview.build(r, ctx, root.previewData) : null
+  }
+
+  function stopPreviewProcess() {
+    var proc = root.previewProcess
+    root.previewProcess = null
+    if (proc) proc.running = false
+  }
+
+  // A run that was cancelled may still answer; its reply counts only if it is
+  // a whole one, never as a failure for the run that replaced it.
+  function loadPreview(raw, key, current) {
+    if (!root.previewData || root.previewData.key !== key) return
+    var reply = root.helperReply(raw)
+    if (!reply && !current) return
+    root.previewData = { key: key, state: reply ? "ready" : "error", reply: reply }
+    root.updatePreview()
+  }
+
+  onPreviewShownChanged: root.schedulePreview()
+
   function stopCurrencyProcess() {
     var proc = root.currencyProcess
     root.currencyProcess = null
@@ -2141,6 +2390,7 @@ Item {
   // Query changes fan out to the async providers on a short debounce so a
   // fast typist does not spawn a process per keystroke.
   onQueryChanged: {
+    root.resetFolders()
     if (root.query !== root.aiQuery) root.aiActive = false
     root.armedKey = ""
     root.pendingCurrency = null
@@ -2272,6 +2522,54 @@ Item {
           if (!currencyRun.delivered) root.loadCurrency("", currencyRun.request)
           if (root.currencyProcess === currencyRun) root.currencyProcess = null
           currencyRun.destroy()
+        })
+      }
+    }
+  }
+
+  // Arrowing through a list should not start a helper per row passed over.
+  Timer {
+    id: previewDebounce
+    interval: 120
+    property var args: []
+    property string key: ""
+    onTriggered: {
+      root.stopPreviewProcess()
+      if (!root.opened) return
+      var proc = previewProcessComponent.createObject(root, {
+        key: previewDebounce.key, args: previewDebounce.args
+      })
+      if (!proc) {
+        root.loadPreview("", previewDebounce.key, true)
+        return
+      }
+      root.previewProcess = proc
+      proc.running = true
+    }
+  }
+
+  // Each run carries its own key, so a cancelled run that still finishes
+  // collecting stdout cannot land on the row selected after it.
+  Component {
+    id: previewProcessComponent
+    Process {
+      id: previewRun
+      required property string key
+      required property var args
+      property bool delivered: false
+      command: root.helperArgv(args)
+      stdout: StdioCollector {
+        waitForEnd: true
+        onStreamFinished: {
+          previewRun.delivered = true
+          root.loadPreview(text, previewRun.key, root.previewProcess === previewRun)
+        }
+      }
+      onExited: {
+        Qt.callLater(function() {
+          if (!previewRun.delivered) root.loadPreview("", previewRun.key, root.previewProcess === previewRun)
+          if (root.previewProcess === previewRun) root.previewProcess = null
+          previewRun.destroy()
         })
       }
     }
@@ -2649,23 +2947,31 @@ Item {
   // ------------------------------------------------------------- surface
   PanelWindow {
     id: panel
-    visible: root.opened
+    visible: root.opened || root.presentationProgress > 0
+    property bool focusPrimed: false
     anchors { top: true; bottom: true; left: true; right: true }
     color: "transparent"
     // The Hyprland layer rule that frosts this surface matches on this
     // namespace. Renaming it silently turns the glass off.
     WlrLayershell.namespace: "omarchy-spotlight"
     WlrLayershell.layer: WlrLayer.Overlay
-    // Exclusive grabs the compositor's own keyboard input wholesale, so a
-    // bind like SUPER+arrow to move focus between windows goes dead while
-    // this is open and the overlay never yields. OnDemand still gets typing
-    // and Hyprland still focuses it the moment it maps (this window is only
-    // ever mapped fresh - `visible` follows `opened` directly, never staying
-    // mapped through a fade-out - which is the case Hyprland does grant
-    // OnDemand focus for), so nothing here needs the Exclusive-then-OnDemand
-    // prime a surface that stays mapped across a close would.
-    WlrLayershell.keyboardFocus: WlrKeyboardFocus.OnDemand
+    // Match the shell's KeyboardPanel: reacquire focus even during a fade-out,
+    // then yield compositor shortcuts. Closing releases input immediately.
+    WlrLayershell.keyboardFocus: !root.opened ? WlrKeyboardFocus.None
+      : panel.focusPrimed ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.Exclusive
     exclusionMode: ExclusionMode.Ignore
+    mask: Region { width: root.opened ? panel.width : 0; height: root.opened ? panel.height : 0 }
+    contentItem.enabled: root.opened
+
+    Connections {
+      target: root
+      function onOpenedChanged() { panel.focusPrimed = false }
+    }
+    Timer {
+      interval: 75
+      running: root.opened && panel.backingWindowVisible && !panel.focusPrimed
+      onTriggered: panel.focusPrimed = true
+    }
 
     // Anything that moves focus elsewhere - the compositor's own focus
     // bind, alt-tab, a click on another output - must dismiss the launcher,
@@ -2694,9 +3000,10 @@ Item {
     //   switch, windows or not, so it is the third watcher, for exactly the
     //   case the other two both miss.
     HyprlandFocusGrab {
-      active: root.opened
+      // A previous grab can report cleared while the same surface reacquires focus.
+      active: root.opened && panel.focusPrimed
       windows: [panel]
-      onCleared: if (root.opened) root.dismiss()
+      onCleared: if (root.opened && panel.focusPrimed) root.dismiss()
     }
 
     Connections {
@@ -2712,6 +3019,7 @@ Item {
     Rectangle {
       anchors.fill: parent
       color: root.scrim
+      opacity: root.presentationProgress
     }
 
     // A screen-fixed frame for the pointer gate to measure against. The card
@@ -2735,13 +3043,18 @@ Item {
 
       readonly property int availableBodyHeight: Math.max(0, panel.height - y - Style.space(24)
         - root.searchHeight - root.footerHeight - root.hairline * 2 - root.listPadding * 2)
-      readonly property int listHeight: Math.min(root.maxListHeight, root.contentHeight, availableBodyHeight)
+      // The pane needs room for an answer and its details even when the list
+      // beside it is a single row.
+      readonly property int listHeight: Math.min(root.maxListHeight,
+        root.previewShown ? Math.max(root.contentHeight, root.minPreviewHeight) : root.contentHeight,
+        availableBodyHeight)
       readonly property bool hasResults: !root.aiActive && displayModel.count > 0
       readonly property int bodyHeight: root.aiActive
         ? Math.min(root.maxListHeight, availableBodyHeight)
         : listHeight
 
-      width: Math.min(Style.space(750), panel.width - Style.space(48))
+      width: Math.min(root.previewShown ? Style.space(960) : Style.space(750),
+        panel.width - Style.space(48))
       height: root.searchHeight
         + (hasResults || root.aiActive ? root.hairline + root.listPadding * 2 + bodyHeight : 0)
         + root.hairline + root.footerHeight
@@ -2755,7 +3068,16 @@ Item {
       border.color: root.glassBorder
       antialiasing: true
 
+      opacity: root.presentationProgress
+      scale: 0.98 + 0.02 * root.presentationProgress
+      transformOrigin: Item.Top
+
       Behavior on height {
+        enabled: !root.settings.reduceMotion
+        NumberAnimation { duration: 110; easing.type: Easing.OutCubic }
+      }
+      Behavior on width {
+        enabled: !root.settings.reduceMotion
         NumberAnimation { duration: 110; easing.type: Easing.OutCubic }
       }
 
@@ -2844,22 +3166,63 @@ Item {
                 return
               }
             }
+            var down = event.key === Qt.Key_Down
+              || (event.key === Qt.Key_N && event.modifiers === Qt.ControlModifier)
+            var up = event.key === Qt.Key_Up
+              || (event.key === Qt.Key_P && event.modifiers === Qt.ControlModifier)
+            if (root.folderPath && (down || up
+                || event.key === Qt.Key_PageDown || event.key === Qt.Key_PageUp)) {
+              if (root.folderProcess) root.folderProcess.running = false
+              root.folderProcess = null
+              var step = down ? 1 : up ? -1
+                : event.key === Qt.Key_PageDown ? 8 : -8
+              root.folderIndex = Math.max(0, Math.min(root.folderRows.length - 1, root.folderIndex + step))
+              event.accepted = true
+              return
+            }
+            if (root.folderPath && (event.key === Qt.Key_Return || event.key === Qt.Key_Enter
+                || (event.key === Qt.Key_C && event.modifiers === Qt.ControlModifier
+                    && input.selectedText.length === 0))) {
+              var entry = root.folderRows[root.folderIndex]
+              if (entry && entry.kind === "file") {
+                if (event.key === Qt.Key_C) Util.execArgv(["wl-copy", "--", entry.payload.path])
+                else root.openPath(event.modifiers & Qt.ShiftModifier ? entry.payload.dir : entry.payload.path)
+              }
+              event.accepted = true
+              return
+            }
+            // The arrows are claimed only when they browse; anywhere else they
+            // stay caret keys for the query.
+            if ((event.key === Qt.Key_Right || event.key === Qt.Key_Left)
+                && event.modifiers === Qt.NoModifier && root.navigatingResults) {
+              var browsed = event.key === Qt.Key_Right
+                ? root.enterFolder() || root.folderPath !== ""
+                : root.leaveFolder()
+              if (browsed) {
+                event.accepted = true
+                return
+              }
+              if (event.key === Qt.Key_Left) root.navigatingResults = false
+            }
             if (event.key === Qt.Key_Escape) {
-              if (input.text.length > 0) input.text = ""
+              if (root.folderPath) { root.resetFolders(); root.rebuild() }
+              else if (input.text.length > 0) input.text = ""
               else root.dismiss()
               event.accepted = true
-            } else if (event.key === Qt.Key_Down
-                || (event.key === Qt.Key_N && event.modifiers === Qt.ControlModifier)) {
+            } else if (down) {
               root.select(1)
+              root.navigatingResults = true
               event.accepted = true
-            } else if (event.key === Qt.Key_Up
-                || (event.key === Qt.Key_P && event.modifiers === Qt.ControlModifier)) {
+            } else if (up) {
               root.select(-1)
+              root.navigatingResults = true
               event.accepted = true
             } else if (event.key === Qt.Key_PageDown) {
+              root.navigatingResults = true
               root.selectPage(1)
               event.accepted = true
             } else if (event.key === Qt.Key_PageUp) {
+              root.navigatingResults = true
               root.selectPage(-1)
               event.accepted = true
             } else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
@@ -2875,7 +3238,8 @@ Item {
               event.accepted = true
             } else if (event.key === Qt.Key_Tab) {
               // Tab completes the row Enter would act on.
-              var completion = Query.completionText(root.rows[root.targetIndex()])
+              var completion = Query.completionText(root.folderPath
+                ? root.folderRows[root.folderIndex] : root.rows[root.targetIndex()])
               if (completion) {
                 input.text = completion
                 input.cursorPosition = input.text.length
@@ -2900,13 +3264,14 @@ Item {
 
       // ------------------------------------------------------- results
       Item {
+        id: resultsArea
         anchors {
           top: searchDivider.bottom
           left: parent.left
-          right: parent.right
         }
         anchors.topMargin: root.listPadding
         anchors.bottomMargin: root.listPadding
+        width: root.previewShown ? Math.round(card.width * 0.58) : card.width
         height: card.listHeight
         visible: card.hasResults
 
@@ -3098,9 +3463,37 @@ Item {
         }
       }
 
+      Rectangle {
+        id: previewDivider
+        visible: root.previewShown && card.hasResults
+        anchors { top: searchDivider.bottom; bottom: footerDivider.top; left: resultsArea.right }
+        width: root.hairline
+        color: root.dividerColor
+      }
+
+      PreviewPane {
+        id: previewPane
+        visible: previewDivider.visible
+        anchors {
+          top: searchDivider.bottom
+          bottom: footerDivider.top
+          left: previewDivider.right
+          right: parent.right
+        }
+        folderPath: root.folderPath
+        folderRows: root.folderRows
+        folderIndex: root.folderIndex
+        preview: root.preview
+        live: root.opened && visible
+        foreground: root.foreground
+        accent: root.accent
+        fontFamily: root.fontFamily
+        gutter: root.gutter - root.listPadding
+      }
+
       AiPanel {
         id: aiPanel
-        visible: root.opened && root.aiActive
+        visible: panel.visible && root.aiActive
         anchors {
           top: searchDivider.bottom
           left: parent.left
@@ -3126,6 +3519,7 @@ Item {
 
       // ------------------------------------------------------- footer
       Rectangle {
+        id: footerDivider
         anchors { bottom: footer.top; left: parent.left; right: parent.right }
         anchors.leftMargin: root.listPadding
         anchors.rightMargin: root.listPadding
@@ -3160,7 +3554,19 @@ Item {
           spacing: Style.space(14)
 
           Text {
-            readonly property var sel: root.selectedRow()
+            readonly property var sel: root.folderPath ? root.folderRows[root.folderIndex] : root.selectedRow()
+            text: "→  Browse folder"
+            visible: !root.aiActive && root.previewShown && sel !== null && sel !== undefined
+              && sel.kind === "file" && sel.accessory === "Folder"
+            textFormat: Text.PlainText
+            color: root.foreground
+            opacity: 0.55
+            font.family: root.fontFamily
+            font.pixelSize: Style.font.caption
+          }
+
+          Text {
+            readonly property var sel: root.folderPath ? root.folderRows[root.folderIndex] : root.selectedRow()
             text: sel && sel.primaryLabel ? "↵  " + root.primaryLabelFor(sel) : ""
             visible: !root.aiActive && text.length > 0
             textFormat: Text.PlainText
@@ -3171,7 +3577,7 @@ Item {
           }
 
           Text {
-            readonly property var sel: root.selectedRow()
+            readonly property var sel: root.folderPath ? root.folderRows[root.folderIndex] : root.selectedRow()
             text: sel && sel.secondaryLabel ? "⇧↵  " + sel.secondaryLabel : ""
             visible: !root.aiActive && text.length > 0
             textFormat: Text.PlainText
@@ -3196,6 +3602,8 @@ Item {
 
     SetupTour {
       id: tour
+      opacity: root.presentationProgress
+      scale: 0.98 + 0.02 * root.presentationProgress
       visible: root.tourActive
       anchors.centerIn: parent
       foreground: root.foreground
@@ -3220,6 +3628,8 @@ Item {
 
     SettingsPanel {
       id: settingsPanel
+      opacity: root.presentationProgress
+      scale: 0.98 + 0.02 * root.presentationProgress
       visible: root.settingsActive
       anchors.centerIn: parent
       foreground: root.foreground

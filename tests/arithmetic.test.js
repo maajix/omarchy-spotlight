@@ -24,3 +24,11 @@ test("small nonzero conversions remain nonzero when displayed and copied", () =>
   assert.equal(Units.formatNumber(0), "0")
   assert.equal(Units.formatNumber(0.000001), "0.000001")
 })
+
+test("conversions list related units in a readable range, never the two on screen", () => {
+  const related = query => Array.from(Units.related(Units.convert(query), 5), r => r.text)
+  assert.deepEqual(related("2000 m in km"), ["200 000 cm", "1.2427 mi", "2 187.23 yd", "6 561.68 ft", "78 740.16 in"])
+  assert.deepEqual(related("5 gib to mb"), ["5.3687 GB", "5 120 MiB"])
+  assert.deepEqual(related("72f in c"), ["295.37 K"])
+  assert.deepEqual(Array.from(Units.related(null, 5)), [])
+})

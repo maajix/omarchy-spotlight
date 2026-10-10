@@ -686,6 +686,9 @@ class HelperTests(unittest.TestCase):
 
     def test_settings_are_private_by_default_and_bounded(self):
         defaults = HELPER.normalize_settings({})
+        self.assertFalse(defaults["reduceMotion"])
+        self.assertTrue(HELPER.normalize_settings({"reduceMotion": True})["reduceMotion"])
+        self.assertFalse(HELPER.normalize_settings({"reduceMotion": "yes"})["reduceMotion"])
         self.assertFalse(defaults["aiEnabled"])
         self.assertEqual(defaults["aiProvider"], "claude")
         self.assertEqual(defaults["aiModel"], "")
@@ -2834,6 +2837,256 @@ class CurrencyTests(unittest.TestCase):
         self.assertLess(time.monotonic() - start, 1)
         self.assertEqual(signal.getsignal(signal.SIGALRM), previous)
         self.assertEqual(signal.getitimer(signal.ITIMER_REAL), (0.0, 0.0))
+
+
+class PreviewTests(unittest.TestCase):
+    """The preview pane's helper calls: bounded, re-identified, and private by default."""
+
+    def setUp(self):
+        self.directory = tempfile.TemporaryDirectory()
+        self.addCleanup(self.directory.cleanup)
+        self.home = Path(self.directory.name)
+        patch = mock.patch.dict(os.environ, {"HOME": str(self.home)})
+        patch.start()
+        self.addCleanup(patch.stop)
+
+    def call(self, *argv):
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            self.assertEqual(HELPER.main(list(argv)), 0)
+        return json.loads(out.getvalue().splitlines()[-1])
+
+    def test_text_files_show_a_bounded_excerpt(self):
+        path = self.home / "notes.txt"
+        path.write_text("".join("line %d\twith tab\n" % i for i in range(100)))
+        reply = self.call("preview-file", str(path))
+        self.assertEqual(reply["kind"], "text")
+        self.assertEqual(reply["text"].split("\n")[0], "line 0    with tab")
+        self.assertEqual(len(reply["text"].split("\n")), HELPER.PREVIEW_TEXT_LINES)
+        self.assertEqual(reply["lines"], 100)
+        self.assertTrue(reply["truncated"])
+        big = self.home / "big.log"
+        big.write_bytes(b"x" * 100 + b"\n" + "é".encode() * HELPER.PREVIEW_TEXT_BYTES)
+        reply = self.call("preview-file", str(big))
+        self.assertEqual(reply["text"], "x" * 100)
+        self.assertTrue(reply["truncated"])
+
+    def test_browse_directory_keeps_exact_paths_and_lists_beyond_preview(self):
+        folder = self.home / "browse"
+        folder.mkdir()
+        for i in range(30):
+            (folder / ("item-%02d" % i)).write_text("")
+        long_name = "x" * 220
+        (folder / long_name).mkdir()
+        reply = self.call("browse-directory", str(folder))
+        self.assertEqual(len(reply["entries"]), 31)
+        self.assertEqual(reply["entries"][0]["path"], str(folder / long_name))
+        self.assertTrue(reply["entries"][0]["isDir"])
+        self.assertEqual(len(self.call("preview-file", str(folder))["entries"]), 24)
+        (self.home / ".ssh").mkdir(exist_ok=True)
+        self.assertEqual(self.call("browse-directory", str(self.home / ".ssh"))["kind"], "hidden")
+
+    def test_browse_directory_bounds_serialized_payload(self):
+        qml = (Path(__file__).resolve().parents[1] / "Spotlight.qml").read_text()
+        import re
+        limit = int(re.search(r"maxHelperPayloadChars:\s*(\d+)", qml)[1])
+        for char in ("x", "\U0001f600", "\x01"):
+            with self.subTest(char=char):
+                folder = self.home / (char * 50) / (char * 50) / (char * 50)
+                folder.mkdir(parents=True)
+                for i in range(HELPER.PREVIEW_DIR_COUNT):
+                    (folder / (char * 50 + str(i))).touch()
+                out = io.StringIO()
+                with contextlib.redirect_stdout(out):
+                    HELPER.cmd_preview_file([str(folder)], browse=True)
+                self.assertLess(len(out.getvalue().encode("utf-16-le")) // 2, limit)
+                reply = json.loads(out.getvalue())
+                self.assertTrue(reply["more"])
+                self.assertGreater(len(reply["entries"]), 0)
+                self.assertLess(len(reply["entries"]), HELPER.PREVIEW_DIR_COUNT)
+                self.assertEqual(reply["count"], HELPER.PREVIEW_DIR_COUNT)
+                self.assertTrue(all(Path(entry["path"]).is_file() for entry in reply["entries"]))
+
+    def test_folders_binaries_images_and_special_files(self):
+        folder = self.home / "folder"
+        (folder / "sub").mkdir(parents=True)
+        (folder / "b.txt").write_text("b")
+        (folder / "A.txt").write_text("a")
+        reply = self.call("preview-file", str(folder))
+        self.assertEqual([e["name"] for e in reply["entries"]], ["sub", "A.txt", "b.txt"])
+        self.assertEqual(reply["count"], 3)
+        self.assertFalse(reply["more"])
+        (self.home / "blob.bin").write_bytes(b"\x7fELF\x00\x01")
+        self.assertEqual(self.call("preview-file", str(self.home / "blob.bin"))["kind"], "binary")
+        (self.home / "pic.png").write_bytes(b"\x89PNG")
+        self.assertEqual(self.call("preview-file", str(self.home / "pic.png"))["kind"], "image")
+        fifo = self.home / "pipe"
+        os.mkfifo(fifo)
+        self.assertEqual(self.call("preview-file", str(fifo))["kind"], "other")
+
+    def test_private_files_never_show_contents(self):
+        (self.home / ".ssh").mkdir()
+        for name in (".ssh/config", "id_ed25519", "server.pem", ".env", "aws-credentials"):
+            path = self.home / name
+            path.write_text("SECRET")
+            reply = self.call("preview-file", str(path))
+            self.assertEqual(reply["kind"], "hidden", name)
+            self.assertNotIn("SECRET", json.dumps(reply))
+        (self.home / "id_ed25519.pub").write_text("ssh-ed25519 AAAA")
+        self.assertEqual(self.call("preview-file", str(self.home / "id_ed25519.pub"))["kind"], "text")
+
+    def test_privacy_comes_before_images_folders_and_symlinks(self):
+        (self.home / ".ssh").mkdir()
+        (self.home / ".ssh" / "config").write_text("SECRET")
+        (self.home / ".ssh" / "recovery.png").write_bytes(b"\x89PNG")
+        (self.home / "secret-photo.png").write_bytes(b"\x89PNG")
+        for name in (".ssh/recovery.png", "secret-photo.png", ".ssh"):
+            reply = self.call("preview-file", str(self.home / name))
+            self.assertEqual(reply["kind"], "hidden", name)
+            self.assertNotIn("entries", reply)
+        # A link elsewhere is judged by its target, and a link into a private
+        # place is judged the same way whatever it is called.
+        (self.home / "notes.txt").symlink_to(self.home / ".ssh" / "config")
+        (self.home / "keys").symlink_to(self.home / ".ssh")
+        for name in ("notes.txt", "keys"):
+            reply = self.call("preview-file", str(self.home / name))
+            self.assertEqual(reply["kind"], "hidden", name)
+            self.assertNotIn("SECRET", json.dumps(reply))
+
+    def test_bad_paths_are_refused(self):
+        for path in ("relative", "", "/" + "a" * HELPER.FILES_PATH_CHARS):
+            self.assertFalse(self.call("preview-file", path)["ok"], path)
+        self.assertEqual(self.call("preview-file", str(self.home / "gone"))["error"], "file is gone")
+
+    def test_clipboard_preview_requires_the_title_the_user_saw(self):
+        state = self.home / ".local" / "state" / "omarchy"
+        state.mkdir(parents=True)
+        (state / "clipboard-history.json").write_text(json.dumps(
+            [{"type": "text", "text": "first\nsecond"}, {"type": "text", "text": "x" * 9000}]))
+        reply = self.call("clipboard-preview", "0", "first second")
+        self.assertEqual((reply["text"], reply["lines"], reply["truncated"]), ("first\nsecond", 2, False))
+        self.assertEqual(self.call("clipboard-preview", "0", "other")["error"], "clipboard entry changed")
+        self.assertFalse(self.call("clipboard-preview", "9", "x")["ok"])
+        long = self.call("clipboard-preview", "1", "x" * HELPER.CLIP_TITLE_CHARS + "…")
+        self.assertEqual(len(long["text"]), HELPER.PREVIEW_LINE_CHARS)
+        self.assertTrue(long["truncated"])
+        self.assertEqual(long["chars"], 9000)
+
+    def test_ssh_preview_reads_the_first_matching_values(self):
+        (self.home / ".ssh").mkdir(mode=0o700)
+        (self.home / ".ssh" / "config").write_text(
+            "Host prod\n  HostName 10.0.0.5\n  User deploy\n"
+            "Host *\n  User fallback\n  Port 2222\n  IdentityFile ~/.ssh/id_ed25519\n")
+        reply = self.call("preview-view", "ssh", "prod")
+        self.assertEqual((reply["hostname"], reply["user"], reply["port"]), ("10.0.0.5", "deploy", "2222"))
+        other = self.call("preview-view", "ssh", "lab")
+        self.assertEqual((other["hostname"], other["user"]), ("lab", "fallback"))
+        self.assertFalse(self.call("preview-view", "ssh", "-oProxyCommand=x")["ok"])
+
+    def test_view_previews_validate_their_identity(self):
+        self.assertEqual(self.call("preview-view", "nope")["error"], "unknown preview")
+        self.assertEqual(self.call("preview-view", "service", "user")["error"], "bad preview arguments")
+        self.assertEqual(self.call("preview-view", "service", "root", "a.service")["error"], "bad service")
+        self.assertEqual(self.call("preview-view", "service", "user", "-x")["error"], "bad service")
+        self.assertEqual(self.call("preview-view", "docker", "not-an-id")["error"], "bad container id")
+        self.assertEqual(self.call("preview-view", "process", "0")["error"], "bad pid")
+        self.assertEqual(self.call("preview-view", "mount", "relative")["error"], "bad mount")
+        reply = self.call("preview-view", "process", str(os.getpid()))
+        self.assertIn("python", reply["command"])
+
+    def test_process_start_comes_from_its_stat_record(self):
+        boot = 1_700_000_000
+        ticks = os.sysconf("SC_CLK_TCK")
+        # A command name holding ") " must not shift the fields after it.
+        record = b"42 (odd) name) S" + b" 0" * 18 + b" " + str(3600 * ticks).encode() + b" 0 0\n"
+        real_open = open
+        def fake_open(path, mode="r", *args, **kwargs):
+            if path == "/proc/stat":
+                return io.BytesIO(b"cpu 1 2 3\nbtime %d\n" % boot)
+            return real_open(path, mode, *args, **kwargs)
+        with mock.patch("builtins.open", fake_open):
+            started = HELPER._process_started(record)
+        self.assertEqual(started, HELPER._preview_time(boot + 3600))
+        self.assertEqual(HELPER._process_started(b"garbage"), "")
+
+    def test_container_logs_include_stderr(self):
+        calls = []
+        def fake(argv, cap, deadline, want_status=False, merge_stderr=False, **kwargs):
+            calls.append((argv[1], merge_stderr))
+            if argv[1] == "inspect":
+                return (b'[{"State": {"Status": "running"}}]', False, 0)
+            return (b"error from the app\n" if merge_stderr else b"", False)
+        with mock.patch.object(HELPER, "run_bounded", side_effect=fake):
+            reply = self.call("preview-view", "docker", "a" * 12)
+        self.assertEqual(reply["logs"], "error from the app")
+        self.assertIn(("logs", True), calls)
+
+    def test_run_bounded_can_merge_stderr(self):
+        argv = [sys.executable, "-c", "import sys; sys.stderr.write('err'); sys.stdout.write('out')"]
+        merged, _ = HELPER.run_bounded(argv, 64, 5, merge_stderr=True)
+        self.assertEqual(sorted(merged.decode()), sorted("errout"))
+        self.assertEqual(HELPER.run_bounded(argv, 64, 5)[0], b"out")
+        show = b"ActiveState=active\nSubState=running\nMainPID=0\nMemoryCurrent=[not set]\n"
+        fake = lambda argv, cap, deadline, want_status=False: \
+            (show, False, 0) if want_status else (b"", False)
+        with mock.patch.object(HELPER, "run_bounded", side_effect=fake):
+            reply = self.call("preview-view", "service", "user", "a.service")
+        self.assertEqual((reply["state"], reply["pid"], reply["memory"]), ("active (running)", "", ""))
+
+
+class CurrencyRatesTests(unittest.TestCase):
+    def setUp(self):
+        self.directory = tempfile.TemporaryDirectory()
+        self.addCleanup(self.directory.cleanup)
+        self.now = time.time()
+        self.day = HELPER.datetime.fromtimestamp(self.now, HELPER.timezone.utc).date().isoformat()
+        for patch in (mock.patch.dict(os.environ, {"HOME": self.directory.name}),
+                      mock.patch.object(HELPER.time, "time", return_value=self.now)):
+            patch.start()
+            self.addCleanup(patch.stop)
+
+    def record(self, quote, rate, fetched=None):
+        return {"base": "EUR", "quote": quote, "rate": rate, "date": self.day,
+                "fetchedAt": self.now if fetched is None else fetched}
+
+    def rates(self, *argv):
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            HELPER.main(["currency-rates"] + list(argv))
+        return json.loads(out.getvalue())
+
+    def test_fetches_only_what_the_cache_lacks_and_stores_it(self):
+        HELPER.currency_store(self.record("USD", 1.12))
+        fetched = {"GBP": self.record("GBP", 0.85)}
+        with mock.patch.object(HELPER, "currency_fetch_many", return_value=fetched) as fetch:
+            reply = self.rates("EUR", "USD,GBP,EUR,GBP")
+        fetch.assert_called_once_with("EUR", ["GBP"])
+        self.assertEqual([(r["quote"], r["rate"]) for r in reply["rates"]], [("USD", 1.12), ("GBP", 0.85)])
+        self.assertEqual(HELPER.currency_cached("EUR", "GBP", self.now)["rate"], 0.85)
+
+    def test_cached_only_and_network_failure_fall_back_to_stale_rates(self):
+        HELPER.currency_store(self.record("USD", 1.1, self.now - HELPER.CURRENCY_TTL - 1))
+        with mock.patch.object(HELPER, "currency_fetch_many") as fetch:
+            reply = self.rates("--cached-only", "EUR", "USD,JPY")
+            fetch.assert_not_called()
+        self.assertEqual([(r["quote"], r["stale"]) for r in reply["rates"]], [("USD", True)])
+        with mock.patch.object(HELPER, "currency_fetch_many", side_effect=OSError):
+            reply = self.rates("EUR", "USD,JPY")
+        self.assertEqual([(r["quote"], r["stale"]) for r in reply["rates"]], [("USD", True)])
+
+    def test_rejects_bad_codes_and_long_lists(self):
+        self.assertFalse(self.rates("eur", "USD")["ok"])
+        self.assertFalse(self.rates("EUR", "USD,usd")["ok"])
+        self.assertFalse(self.rates("EUR", "EUR")["ok"])
+        self.assertFalse(self.rates("EUR", "USD,GBP,JPY,CHF,NOK,SEK,DKK,PLN,CZK")["ok"])
+
+    def test_batch_fetch_keeps_only_requested_valid_records(self):
+        payload = [self.record("USD", 1.1), self.record("GBP", -1), self.record("JPY", 170),
+                   {"base": "USD", "quote": "CHF", "rate": 0.9, "date": self.day}]
+        with mock.patch.object(HELPER, "fetch_json", return_value=payload) as fetch:
+            records = HELPER.currency_fetch_many("EUR", ["USD", "GBP", "CHF"])
+        self.assertEqual(fetch.call_args[0][0], "https://api.frankfurter.dev/v2/rates?base=EUR&quotes=USD,GBP,CHF")
+        self.assertEqual(list(records), ["USD"])
 
 
 if __name__ == "__main__":

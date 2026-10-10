@@ -16,7 +16,7 @@ const root = {
   setupPending: () => false, clipboardSearchTarget: () => null, fileSearchTarget: () => null,
   helperArgv: args => ['python3', 'spotlight-helper', ...args]
 };
-for (const name of ['leaveSettingsPanel', 'stopCurrencyProcess', 'resetView', 'updateCurrency', 'syncView', 'refreshPluginCommands',
+for (const name of ['resetFolders', 'leaveSettingsPanel', 'stopCurrencyProcess', 'stopPreviewProcess', 'resetView', 'updateCurrency', 'syncView', 'refreshPluginCommands',
     'rebuild', 'refreshSettings', 'refreshReminders', 'refreshToggleStates', 'resumeTour']) root[name] = noop;
 const context = vm.createContext({root, Query: require('../lib/Query.js'), Currency: require('../lib/Currency.js'),
   WeatherIntent: require('../lib/WeatherIntent.js'), Web: require('../lib/Web.js'),
@@ -27,10 +27,11 @@ const context = vm.createContext({root, Query: require('../lib/Query.js'), Curre
     return {...properties, running: false, write(value) { this.input = value; }, destroy: noop};
   }}
 });
-for (const name of ['currencyDebounce', 'suggestDebounce', 'fileDebounce', 'clipboardDebounce', 'tldrDebounce', 'typingGuard'])
+for (const name of ['currencyDebounce', 'suggestDebounce', 'fileDebounce', 'clipboardDebounce', 'tldrDebounce',
+    'previewDebounce', 'typingGuard'])
   context[name] = {stop: noop, restart: noop};
 for (const name of ['suggestProc', 'fileProc', 'clipboardProc', 'tldrProc']) context[name] = {running: false};
-for (const name of ['open', 'close', 'stopQueryWork', 'stopAi', 'startAi', 'handleAiLine', 'notifyAiFinished',
+for (const name of ['open', 'close', 'finishClose', 'stopQueryWork', 'stopAi', 'startAi', 'handleAiLine', 'notifyAiFinished',
     'failAi', 'helperReply', 'helperError', 'loadSettings']) {
   const match = source.match(new RegExp('^  function ' + name + '\\((.*?)\\) \\{\\n([\\s\\S]*?)^  \\}', 'm'));
   assert.ok(match, 'Missing QML lifecycle function ' + name);
@@ -45,6 +46,11 @@ Object.defineProperty(context.input, 'text', {
 });
 const event = (type, value, generation = root.aiGeneration) =>
   root.handleAiLine(JSON.stringify({ok: true, event: type, ...value}), generation);
+
+root.opened = false;
+root.loadSettings(JSON.stringify({ok: true, settings: {reduceMotion: true, aiEnabled: true}}));
+assert.equal(root.settings.reduceMotion, true, 'The motion preference survives loading settings');
+root.opened = true;
 
 context.input.text = 'ai: explain DNS resolution';
 root.startAi();

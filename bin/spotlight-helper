@@ -27,12 +27,15 @@ files owned by us, which is what keeps a planted symlink, FIFO or device out.
 from contextlib import nullcontext
 import errno
 import fcntl
+import fnmatch
 import glob
 import hashlib
 import ipaddress
 import json
 import math
+import mimetypes
 import os
+import pwd
 import re
 import select
 import shlex
@@ -93,6 +96,7 @@ CURRENCY_CACHE_BYTES = 64 * 1024
 CURRENCY_CACHE_KEEP = 128
 CURRENCY_CACHE_NAME = "spotlight-currency.json"
 CURRENCY_CODE_RE = re.compile(r"^[A-Z]{3}$")
+CURRENCY_PREVIEW_QUOTES = 8
 
 FILES_BYTES = 256 * 1024
 FILES_DEADLINE = 3.0
@@ -139,6 +143,7 @@ SERVICES_BYTES = 512 * 1024
 SERVICES_DEADLINE = 2.0
 # ponytail: first 200 loaded services only; add paging if hosts exceed this.
 SERVICES_COUNT = 200
+SERVICE_NAME_RE = re.compile(r"^[A-Za-z0-9@._:\\][A-Za-z0-9@._:\\-]{0,179}$")
 
 MOUNTS_BYTES = 128 * 1024
 MOUNTS_DEADLINE = 2.0
@@ -162,6 +167,23 @@ SSH_FILES = 32
 SSH_HOSTS = 200
 SSH_ALIAS_RE = re.compile(r"^[A-Za-z0-9_][A-Za-z0-9_.-]{0,127}$")
 SSH_DIRECTIVE_RE = re.compile(r"^\s*(Host|Include)\s*(?:=\s*|\s+)(.*)$", re.I)
+
+# The preview pane: one file, entry or unit at a time, all of it bounded.
+PREVIEW_TEXT_BYTES = 16 * 1024
+PREVIEW_TEXT_LINES = 40
+PREVIEW_LINE_CHARS = 240
+PREVIEW_CLIP_CHARS = 4000
+PREVIEW_DIR_ENTRIES = 24
+PREVIEW_DIR_COUNT = 1000
+PREVIEW_IMAGE_BYTES = 32 * 1024 * 1024
+PREVIEW_CMDLINE_BYTES = 4096
+PREVIEW_PROC_STAT_BYTES = 64 * 1024
+PREVIEW_LOG_LINES = 8
+PREVIEW_LOG_BYTES = 16 * 1024
+# Contents of these stay off screen; the pane shows only name, size and date.
+PREVIEW_SECRET_DIRS = (".ssh", ".gnupg", ".password-store", ".local/share/keyrings")
+PREVIEW_SECRET_NAMES = ("id_*", "*.pem", "*.key", "*.p12", "*.pfx", "*.kdbx", ".env", ".env.*",
+                        ".netrc", ".pgpass", "*credentials*", "*secret*", "*.gpg", "*.age")
 
 REMINDER_BYTES = 256 * 1024
 REMINDER_DEADLINE = 3.0
@@ -574,7 +596,8 @@ def write_new(dirfd, name, payload):
 
 
 # ------------------------------------------------------------ subprocesses
-def run_bounded(argv, cap, deadline, stdin_bytes=None, want_status=False, on_line=None):
+def run_bounded(argv, cap, deadline, stdin_bytes=None, want_status=False, on_line=None,
+                merge_stderr=False):
     """Run `argv`, returning at most `cap` bytes of stdout within `deadline`.
 
     The child gets its own session, so the deadline tears down the whole
@@ -587,6 +610,9 @@ def run_bounded(argv, cap, deadline, stdin_bytes=None, want_status=False, on_lin
     command that runs and fails writes nothing, which is indistinguishable
     from a command that ran and found nothing. None means it never exited
     on its own and the teardown took it.
+
+    `merge_stderr` reads the child's stderr into the same bounded stream,
+    for commands such as `docker logs` that relay a program's stderr there.
     """
     global ACTIVE_PROC
     end = time.monotonic() + deadline
@@ -597,7 +623,7 @@ def run_bounded(argv, cap, deadline, stdin_bytes=None, want_status=False, on_lin
             argv,
             stdin=subprocess.PIPE if stdin_bytes is not None else subprocess.DEVNULL,
             stdout=subprocess.PIPE,
-            stderr=subprocess.DEVNULL,
+            stderr=subprocess.STDOUT if merge_stderr else subprocess.DEVNULL,
             start_new_session=True,
         )
         ACTIVE_PROC = proc
@@ -765,6 +791,8 @@ def normalize_settings(parsed):
         "fileSearchAlways": True,
         "clipboardSearch": True,
         "clipboardSearchAlways": True,
+        "previewPane": True,
+        "reduceMotion": False,
         "learningEnabled": True,
         "aiEnabled": False,
         "aiProvider": "claude",
@@ -786,6 +814,8 @@ def normalize_settings(parsed):
     out["fileSearchAlways"] = clamp_bool(parsed.get("fileSearchAlways"), True)
     out["clipboardSearch"] = clamp_bool(parsed.get("clipboardSearch"), True)
     out["clipboardSearchAlways"] = clamp_bool(parsed.get("clipboardSearchAlways"), True)
+    out["previewPane"] = clamp_bool(parsed.get("previewPane"), True)
+    out["reduceMotion"] = clamp_bool(parsed.get("reduceMotion"), False)
     out["learningEnabled"] = clamp_bool(parsed.get("learningEnabled"), True)
     out["aiEnabled"] = clamp_bool(parsed.get("aiEnabled"), False)
     out["aiWebSearch"] = clamp_bool(parsed.get("aiWebSearch"), False)
@@ -2083,6 +2113,75 @@ def cmd_currency_rate(argv):
     emit(dict(record, stale=False))
 
 
+def currency_fetch_many(base, quotes):
+    def expired(_signum, _frame):
+        raise TimeoutError("currency lookup deadline exceeded")
+
+    # Same deadline as currency_fetch; one request answers the whole list.
+    previous = signal.signal(signal.SIGALRM, expired)
+    signal.setitimer(signal.ITIMER_REAL, CURRENCY_DEADLINE)
+    try:
+        url = ("https://api.frankfurter.dev/v2/rates?base=" + base
+               + "&quotes=" + ",".join(quotes))
+        value = fetch_json(url, CURRENCY_BYTES, CURRENCY_DEADLINE)
+        now = time.time()
+        if not isinstance(value, list):
+            raise Denied("invalid currency response")
+        records = {}
+        for item in value[:CURRENCY_PREVIEW_QUOTES]:
+            if isinstance(item, dict):
+                item["fetchedAt"] = now
+            record = currency_record(item, now, base)
+            if record and record["quote"] in quotes:
+                records[record["quote"]] = record
+        return records
+    finally:
+        signal.setitimer(signal.ITIMER_REAL, 0)
+        signal.signal(signal.SIGALRM, previous)
+
+
+def cmd_currency_rates(argv):
+    """Rates from one base to a short list of quotes, for the preview pane.
+
+    Fresh cache entries are reused; everything else is fetched in a single
+    request and written back to the same cache `currency-rate` reads. A quote
+    the network cannot answer falls back to its stale cache entry, or is left
+    out of the reply.
+    """
+    cached_only = len(argv) == 3 and argv[0] == "--cached-only"
+    args = argv[1:] if cached_only else argv
+    if len(args) != 2 or not CURRENCY_CODE_RE.fullmatch(args[0]):
+        raise Denied("currency-rates takes a currency code and a comma-separated list")
+    base = args[0]
+    quotes = []
+    for code in args[1].split(","):
+        if not CURRENCY_CODE_RE.fullmatch(code):
+            raise Denied("currency-rates takes uppercase currency codes")
+        if code != base and code not in quotes:
+            quotes.append(code)
+    if not quotes or len(quotes) > CURRENCY_PREVIEW_QUOTES:
+        raise Denied("currency-rates takes 1 to %d quotes" % CURRENCY_PREVIEW_QUOTES)
+    now = time.time()
+    found, missing = {}, []
+    for quote in quotes:
+        cached = currency_cached(base, quote, now)
+        if cached and now - cached["fetchedAt"] < CURRENCY_TTL:
+            found[quote] = dict(cached, stale=False)
+        else:
+            missing.append(quote)
+            if cached:
+                found[quote] = dict(cached, stale=True)
+    if missing and not cached_only:
+        try:
+            fetched = currency_fetch_many(base, missing)
+        except (OSError, ValueError, Denied, RecursionError):
+            fetched = {}
+        for quote, record in fetched.items():
+            currency_store(record)
+            found[quote] = dict(record, stale=False)
+    emit({"base": base, "rates": [found[q] for q in quotes if q in found]})
+
+
 def cmd_files(argv):
     if len(argv) != 2:
         raise Denied("files takes a directory and a pattern")
@@ -2156,6 +2255,293 @@ def cmd_files(argv):
         json_chars += row_chars
         rows.append(row)
     emit({"files": rows})
+
+
+# ---------------------------------------------------------------- previews
+def _preview_time(seconds):
+    try:
+        return datetime.fromtimestamp(seconds).strftime("%Y-%m-%d %H:%M")
+    except (OverflowError, OSError, ValueError):
+        return ""
+
+
+def _preview_secret_path(path):
+    home = os.environ.get("HOME", "")
+    for base in {home, os.path.realpath(home)} if home else ():
+        for folder in PREVIEW_SECRET_DIRS:
+            root = os.path.join(base, folder)
+            if path == root or path.startswith(root + "/"):
+                return True
+    name = os.path.basename(path).lower()
+    return any(fnmatch.fnmatchcase(name, pattern) for pattern in PREVIEW_SECRET_NAMES) \
+        and not name.endswith(".pub")
+
+
+def _preview_secret(path):
+    """Files and folders whose contents are not put on screen just because the
+    cursor passed. File search follows symlinks, so a link is judged by both
+    its own name and what it points at."""
+    return _preview_secret_path(path) or _preview_secret_path(os.path.realpath(path))
+
+
+def cmd_preview_file(argv, browse=False):
+    """Metadata plus a bounded look inside one file or folder.
+
+    Only regular files are opened, and with O_NONBLOCK, so a FIFO or device
+    that matched a search can never stall the helper. Images are left for the
+    pane to decode at its own size; text is the first PREVIEW_TEXT_LINES lines
+    of the first PREVIEW_TEXT_BYTES bytes.
+    """
+    if len(argv) != 1:
+        raise Denied("preview-file takes one path")
+    path = argv[0]
+    if not path.startswith("/") or len(path) > FILES_PATH_CHARS or "\x00" in path:
+        raise Denied("bad preview path")
+    try:
+        info = os.stat(path)
+    except OSError:
+        raise Denied("file is gone") from None
+    mime = mimetypes.guess_type(path, strict=False)[0] or ""
+    out = {"modified": _preview_time(info.st_mtime), "size": info.st_size}
+    # Before anything that shows contents: a listing, an image or text.
+    if _preview_secret(path):
+        emit(dict(out, kind="hidden",
+                  description="Folder" if stat.S_ISDIR(info.st_mode) else mime or "Private file"))
+        return
+    if stat.S_ISDIR(info.st_mode):
+        # shortcut: browsing is capped by entry count and JSON size; add paging for full navigation.
+        entries, count = [], 0
+        try:
+            with os.scandir(path) as listing:
+                for entry in listing:
+                    count += 1
+                    if count > PREVIEW_DIR_COUNT:
+                        break
+                    try:
+                        is_dir = entry.is_dir()
+                    except OSError:
+                        is_dir = False
+                    entries.append({"name": clamp_text(entry.name, 200), "isDir": is_dir,
+                                    "path": entry.path})
+        except OSError:
+            raise Denied("folder cannot be read") from None
+        entries.sort(key=lambda e: (not e["isDir"], e["name"].lower()))
+        bounded, json_chars = [], 0
+        for entry in entries[:PREVIEW_DIR_COUNT if browse else PREVIEW_DIR_ENTRIES]:
+            json_chars += len(json.dumps(entry, ensure_ascii=False, separators=(",", ":"))) + 1
+            if json_chars > FILES_JSON_BUDGET_CHARS:
+                break
+            bounded.append(entry)
+        emit(dict(out, kind="dir", description="Folder", entries=bounded,
+                  count=min(count, PREVIEW_DIR_COUNT),
+                  more=count > PREVIEW_DIR_COUNT or (browse and len(bounded) < len(entries))))
+        return
+    if not stat.S_ISREG(info.st_mode):
+        emit(dict(out, kind="other", description="Special file"))
+        return
+    if mime.startswith("image/") and info.st_size <= PREVIEW_IMAGE_BYTES:
+        emit(dict(out, kind="image", description=mime))
+        return
+    try:
+        fd = os.open(path, os.O_RDONLY | os.O_NONBLOCK | os.O_CLOEXEC)
+        try:
+            raw = os.read(fd, PREVIEW_TEXT_BYTES)
+        finally:
+            os.close(fd)
+    except OSError:
+        raise Denied("file cannot be read") from None
+    if b"\x00" in raw:
+        emit(dict(out, kind="binary", description=mime or "Binary file"))
+        return
+    text = raw.decode("utf-8", "replace")
+    if info.st_size > len(raw):
+        # The read may have cut a line, or a character, in half.
+        text = text.rpartition("\n")[0] or text
+    lines = text.split("\n")
+    shown = [clamp_text(line.replace("\t", "    "), PREVIEW_LINE_CHARS)
+             for line in lines[:PREVIEW_TEXT_LINES]]
+    emit(dict(out, kind="text", description=mime or "Text", text="\n".join(shown).rstrip("\n"),
+              lines=len(lines) - (1 if lines and lines[-1] == "" else 0),
+              truncated=info.st_size > len(raw) or len(lines) > PREVIEW_TEXT_LINES))
+
+
+def cmd_clipboard_preview(argv):
+    """One history entry, bounded, for the pane while its row is selected.
+
+    The same re-identification as clipboard-copy: the entry is looked up by
+    index and must still carry the title the user saw.
+    """
+    if len(argv) != 2:
+        raise Denied("clipboard-preview takes an index and a title")
+    index = clamp_int(argv[0], 0, CLIP_ENTRIES - 1, -1)
+    entries = _clipboard_entries()
+    if index < 0 or index >= len(entries):
+        raise Denied("clipboard entry is gone")
+    text = entries[index]
+    flat = re.sub(r"\s+", " ", text).strip()
+    if flat[:CLIP_TITLE_CHARS] + ("…" if len(flat) > CLIP_TITLE_CHARS else "") != argv[1]:
+        raise Denied("clipboard entry changed")
+    lines = text.split("\n")
+    excerpt = "\n".join(clamp_text(line, PREVIEW_LINE_CHARS) for line in lines[:PREVIEW_TEXT_LINES])
+    excerpt = excerpt[:PREVIEW_CLIP_CHARS]
+    emit({"text": excerpt, "chars": len(text), "lines": len(lines),
+          "truncated": len(excerpt) < len(text)})
+
+
+def _preview_process(pid):
+    if not re.fullmatch(r"[1-9][0-9]{0,9}", pid):
+        raise Denied("bad pid")
+    base = "/proc/" + pid
+    try:
+        with open(base + "/cmdline", "rb") as handle:
+            raw = handle.read(PREVIEW_CMDLINE_BYTES)
+        with open(base + "/stat", "rb") as handle:
+            record = handle.read(PREVIEW_CMDLINE_BYTES)
+        info = os.stat(base)
+    except OSError:
+        raise Denied("process is gone") from None
+    command = " ".join(part.decode("utf-8", "replace") for part in raw.split(b"\x00") if part)
+    try:
+        user = pwd.getpwuid(info.st_uid).pw_name
+    except KeyError:
+        user = str(info.st_uid)
+    return {"command": clamp_text(command, 400), "user": user, "started": _process_started(record)}
+
+
+def _process_started(record):
+    """Launch time from /proc/<pid>/stat: starttime (field 22) is in clock
+    ticks since boot. The directory's own timestamps say when the inode was
+    first looked up, not when the process began."""
+    # The command name (field 2) is parenthesised and may itself hold ") ".
+    fields = record.rpartition(b")")[2].split()
+    try:
+        ticks = int(fields[19])
+        with open("/proc/stat", "rb") as handle:
+            boot = next(int(line.split()[1]) for line in handle.read(PREVIEW_PROC_STAT_BYTES).splitlines()
+                        if line.startswith(b"btime "))
+        return _preview_time(boot + ticks / os.sysconf("SC_CLK_TCK"))
+    except (IndexError, ValueError, StopIteration, OSError):
+        return ""
+
+
+def _preview_ssh(host):
+    # ponytail: first matching Host blocks in ~/.ssh/config only; follow
+    # Include and Match the way cmd_ssh_hosts does when someone needs it.
+    if not SSH_ALIAS_RE.fullmatch(host):
+        raise Denied("bad host")
+    try:
+        fd = walk((".ssh",))
+        try:
+            raw = read_file(fd, "config", SSH_CONFIG_BYTES) or b""
+        finally:
+            os.close(fd)
+    except (FileNotFoundError, OSError, Denied):
+        raw = b""
+    wanted = {"hostname": "", "user": "", "port": "", "identityfile": "", "proxyjump": ""}
+    active = True
+    for line in raw.decode("utf-8", "replace").splitlines():
+        match = re.match(r"^\s*([A-Za-z]+)\s*(?:=\s*|\s+)(.*)$", line)
+        if not match:
+            continue
+        key = match.group(1).lower()
+        try:
+            values = shlex.split(match.group(2), comments=True)
+        except ValueError:
+            continue
+        if key == "host":
+            positive = [v for v in values if not v.startswith("!")]
+            negative = [v[1:] for v in values if v.startswith("!")]
+            active = any(fnmatch.fnmatchcase(host, p) for p in positive) \
+                and not any(fnmatch.fnmatchcase(host, p) for p in negative)
+        elif key == "match":
+            active = False
+        elif active and key in wanted and not wanted[key] and values:
+            wanted[key] = clamp_text(" ".join(values), 200)
+    return {"hostname": wanted["hostname"] or host, "user": wanted["user"],
+            "port": wanted["port"] or "22", "identity": wanted["identityfile"],
+            "proxyjump": wanted["proxyjump"]}
+
+
+def _preview_docker(container):
+    if not DOCKER_ID_RE.fullmatch(container):
+        raise Denied("bad container id")
+    raw, _ = view_output(["docker", "inspect", "--type", "container", "--", container],
+                         DOCKER_BYTES, DOCKER_DEADLINE, "Docker unavailable")
+    try:
+        parsed = json.loads(raw.decode("utf-8", "replace"))
+        item = parsed[0] if isinstance(parsed, list) and parsed else {}
+    except ValueError:
+        item = {}
+    state = item.get("State") if isinstance(item.get("State"), dict) else {}
+    config = item.get("Config") if isinstance(item.get("Config"), dict) else {}
+    ports = []
+    network = item.get("NetworkSettings") if isinstance(item.get("NetworkSettings"), dict) else {}
+    for inner, bindings in (network.get("Ports") or {}).items():
+        for binding in bindings or []:
+            if isinstance(binding, dict):
+                ports.append("%s:%s → %s" % (binding.get("HostIp", ""), binding.get("HostPort", ""), inner))
+    # The container's stderr arrives on docker's own stderr.
+    logs, _ = run_bounded(["docker", "logs", "--tail", str(PREVIEW_LOG_LINES), "--", container],
+                          PREVIEW_LOG_BYTES, DOCKER_DEADLINE, merge_stderr=True)
+    started = str(state.get("StartedAt") or "")
+    return {"image": clamp_text(config.get("Image"), 160),
+            "status": clamp_text(state.get("Status"), 32),
+            "started": clamp_text(started[:19].replace("T", " "), 32),
+            "ports": clamp_text(", ".join(ports[:6]), 300),
+            "logs": clamp_text(logs.decode("utf-8", "replace").strip(), PREVIEW_CLIP_CHARS)}
+
+
+def _preview_service(scope, name):
+    if scope not in ("user", "system") or not SERVICE_NAME_RE.fullmatch(name):
+        raise Denied("bad service")
+    raw, _ = view_output(["systemctl", "--" + scope, "show", "--no-pager",
+                          "--property=ActiveState,SubState,ActiveEnterTimestamp,MainPID,MemoryCurrent",
+                          "--", name], PREVIEW_LOG_BYTES, SERVICES_DEADLINE, "services unavailable")
+    props = {}
+    for line in raw.decode("utf-8", "replace").splitlines():
+        key, _, value = line.partition("=")
+        props[key] = value
+    memory = props.get("MemoryCurrent", "")
+    logs, _ = run_bounded(["journalctl", "--" + scope, "--unit=" + name, "--lines",
+                           str(PREVIEW_LOG_LINES), "--no-pager", "--output=short", "--quiet"],
+                          PREVIEW_LOG_BYTES, SERVICES_DEADLINE)
+    return {"state": clamp_text(props.get("ActiveState", "") + " (" + props.get("SubState", "") + ")", 64),
+            "since": clamp_text(props.get("ActiveEnterTimestamp", ""), 64),
+            "pid": props.get("MainPID", "") if props.get("MainPID", "0") != "0" else "",
+            "memory": "%.1f MB" % (int(memory) / 1048576) if memory.isdigit() else "",
+            "logs": clamp_text(logs.decode("utf-8", "replace").strip(), PREVIEW_CLIP_CHARS)}
+
+
+def _preview_mount(target):
+    if not target.startswith("/") or len(target) > FILES_PATH_CHARS or "\x00" in target:
+        raise Denied("bad mount")
+    # df rather than statvfs: a dead network mount hangs the caller, and only
+    # a child process can be torn down at the deadline.
+    raw, _ = view_output(["df", "--block-size=1", "--output=size,used,avail", "--", target],
+                         MOUNTS_BYTES, MOUNTS_DEADLINE, "mount unavailable")
+    fields = raw.decode("utf-8", "replace").splitlines()[-1].split()
+    if len(fields) != 3 or not all(f.isdigit() for f in fields):
+        raise Denied("mount unavailable")
+    size, used, free = (int(f) for f in fields)
+    return {"size": size, "used": used, "free": free}
+
+
+PREVIEW_VIEWS = {
+    "process": (1, _preview_process),
+    "ssh": (1, _preview_ssh),
+    "docker": (1, _preview_docker),
+    "service": (2, _preview_service),
+    "mount": (1, _preview_mount),
+}
+
+
+def cmd_preview_view(argv):
+    if not argv or argv[0] not in PREVIEW_VIEWS:
+        raise Denied("unknown preview")
+    arity, handler = PREVIEW_VIEWS[argv[0]]
+    if len(argv) != arity + 1:
+        raise Denied("bad preview arguments")
+    emit(handler(*argv[1:]))
 
 
 def view_output(argv, cap, deadline, message, allow_partial=False):
@@ -3063,7 +3449,12 @@ COMMANDS = {
     "toggle-states": (cmd_toggle_states, False),
     "suggest": (cmd_suggest, True),
     "currency-rate": (cmd_currency_rate, True),
+    "currency-rates": (cmd_currency_rates, True),
     "files": (cmd_files, True),
+    "preview-file": (cmd_preview_file, True),
+    "browse-directory": (lambda argv: cmd_preview_file(argv, browse=True), True),
+    "preview-view": (cmd_preview_view, True),
+    "clipboard-preview": (cmd_clipboard_preview, True),
     "ports": (cmd_ports, False),
     "docker": (cmd_docker, False),
     "services": (cmd_services, False),
