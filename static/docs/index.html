@@ -288,7 +288,7 @@ main{min-width:0;width:100%;max-width:740px;justify-self:center;padding:52px 0 0
   <a class="brand" href="../"><span class="mk"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><circle cx="10.5" cy="10.5" r="6"/><path d="m15 15 5 5"/></svg></span>Spotlight<span class="sub">Docs</span></a>
   <button class="find" id="find" type="button" aria-label="Search docs"><svg data-i="search"></svg><span>Search docs</span><kbd>Ctrl</kbd><kbd>K</kbd></button>
   <nav class="tlinks" aria-label="Site"><a href="../">Home</a><a href="?p=changelog">Changelog</a></nav>
-  <a class="gh" href="https://github.com/maajix/omarchy-spotlight" rel="noopener"><svg data-i="github"></svg><span class="l">GitHub</span><span class="n">v1.7.0</span></a>
+  <a class="gh" href="https://github.com/maajix/omarchy-spotlight" rel="noopener"><svg data-i="github"></svg><span class="l">GitHub</span><span class="n">v1.7.3</span></a>
 </header>
 
 <div class="docs">
@@ -311,12 +311,15 @@ main{min-width:0;width:100%;max-width:740px;justify-self:center;padding:52px 0 0
 <pre class="code" data-title="Terminal"><code>omarchy plugin add https://github.com/maajix/omarchy-spotlight.git --enable</code></pre>
 <p>Then press <kbd>Alt</kbd><kbd>Space</kbd>. <a href="?p=installation">Installation</a> covers requirements, the first run, updating and removing. New to Spotlight? Take the <a href="?p=quickstart">Quickstart</a>, then read <a href="?p=how-search-works">How search works</a>.</p>
 
-<h2 id="whats-new">What's new in 1.7.0</h2>
+<h2 id="whats-new">What's new in 1.7</h2>
 <ul>
-  <li><a href="?p=ask-ai">Ask AI</a> through your signed-in Claude or Codex CLI, with progress, Markdown answers and copyable commands.</li>
-  <li><a href="?p=ai-artifacts">Twelve visual artifact types</a>, from maps and weather to charts, timelines, checklists and wallpaper galleries.</li>
-  <li>Model and thinking-level menus, optional AI web search and a default weather location in Spotlight Settings.</li>
-  <li>Close Spotlight while a request runs and reopen it to return to the same answer.</li>
+  <li>1.7.2: <b class="ui">Vertical position</b> and <b class="ui">Horizontal position</b> move the card on the screen, and Spotlight Settings is split into four tabs: General, Search, Appearance and AI. See <a href="?p=settings#appearance">Appearance</a>.</li>
+  <li>1.7.1: A <a href="?p=how-search-works#preview-pane">preview pane</a> beside the results shows details for the selected row: file contents, clipboard entries, conversions, live window captures, view details and the breakdown behind a mixed-currency total. Press <kbd>Right</kbd> on a folder to <a href="?p=apps-windows-files#browse-folders">browse it</a> in the pane.</li>
+  <li>1.7.1: Spotlight animates as it opens, closes and resizes. <b class="ui">Reduce motion</b> turns the animations off.</li>
+  <li>1.7.0: <a href="?p=ask-ai">Ask AI</a> through your signed-in Claude or Codex CLI, with progress, Markdown answers and copyable commands.</li>
+  <li>1.7.0: <a href="?p=ai-artifacts">Twelve visual artifact types</a>, from maps and weather to charts, timelines, checklists and wallpaper galleries.</li>
+  <li>1.7.0: Model and thinking-level menus, optional AI web search and a default weather location in Spotlight Settings.</li>
+  <li>1.7.0: Close Spotlight while a request runs and reopen it to return to the same answer.</li>
 </ul>
 <p>Every release is listed in the <a href="?p=changelog">Changelog</a>.</p>
 
@@ -332,6 +335,7 @@ main{min-width:0;width:100%;max-width:740px;justify-self:center;padding:52px 0 0
   <a class="card" href="?p=ask-ai"><b>Ask AI</b><span>Ask Claude or Codex, follow progress and copy the answer.</span></a>
   <a class="card" href="?p=ai-artifacts"><b>AI artifacts</b><span>Maps, weather, charts, palettes, timelines and more.</span></a>
   <a class="card" href="?p=system-views"><b>System views</b><span>Ports, SSH hosts, containers, services, mounts, audio, Wi-Fi and Bluetooth.</span></a>
+  <a class="card" href="?p=how-search-works#preview-pane"><b>Preview pane</b><span>Details for the selected result beside the list, and folders you can browse.</span></a>
 </div>
 
 <h2 id="reference">Reference</h2>
@@ -377,7 +381,7 @@ main{min-width:0;width:100%;max-width:740px;justify-self:center;padding:52px 0 0
   </li>
   <li>
     <h3 id="open-spotlight">Open Spotlight</h3>
-    <p>Press <kbd>Alt</kbd><kbd>Space</kbd>. On the first open, the setup tour appears: a welcome, the shortcut, what Spotlight should search, and a few things to try. Press <kbd>Enter</kbd> to move on, or <kbd>Esc</kbd> (<b class="ui">Skip tour</b>) to keep the defaults. Skipping does not undo the shortcut. You can run the tour again later from <a href="?p=settings#rerun-the-setup-tour">Settings</a>.</p>
+    <p>Press <kbd>Alt</kbd><kbd>Space</kbd>. On the first open, the setup tour appears: a welcome, the shortcut, what Spotlight should search, Ask AI, and a few things to try. Press <kbd>Enter</kbd> to move on, or <kbd>Esc</kbd> (<b class="ui">Skip tour</b>) to keep the defaults. Skipping does not undo the shortcut. You can run the tour again later from <a href="?p=settings#rerun-the-setup-tour">Settings</a>.</p>
   </li>
 </ol>
 
@@ -427,10 +431,11 @@ o.bind("ALT + SPACE", "Spotlight", "omarchy-shell shell toggle io.github.maajix.
   </li>
   <li>
     <h3 id="delete-leftover-data">Delete leftover data (optional)</h3>
-    <p>Your settings, learning data and currency cache stay in place, so a reinstall picks up where you left off. For a clean removal, delete them:</p>
+    <p>Your settings, learning data, currency cache and the cached images of wallpaper gallery cards stay in place, so a reinstall picks up where you left off. For a clean removal, delete them:</p>
     <pre class="code" data-title="Terminal"><code>rm -f ~/.config/omarchy/spotlight.json
 rm -f ~/.local/state/omarchy/spotlight-usage.json ~/.local/state/omarchy/.spotlight-usage.lock
-rm -f ~/.cache/omarchy/spotlight-currency.json ~/.cache/omarchy/spotlight-currency.lock</code></pre>
+rm -f ~/.cache/omarchy/spotlight-currency.json ~/.cache/omarchy/spotlight-currency.lock
+rm -rf ~/.cache/omarchy-spotlight</code></pre>
   </li>
 </ol>
 <p>If you already removed the plugin, clean up <code>~/.config/hypr/bindings.lua</code> by hand: delete everything from the <code>-- &gt;&gt;&gt; spotlight setup tour</code> line to the <code>-- &lt;&lt;&lt; spotlight setup tour &lt;&lt;&lt;</code> line, remove the <code>-- spotlight-tour:disabled </code> prefix from any lines that carry it, then run <code>hyprctl reload</code>. If you set Spotlight up by hand, also remove your own <code>o.bind(...)</code> line and the blur layer rule in <code>~/.config/hypr/looknfeel.lua</code> (see <a href="?p=settings#frosted-glass">frosted glass</a>).</p>
@@ -468,7 +473,7 @@ rm -f ~/.cache/omarchy/spotlight-currency.json ~/.cache/omarchy/spotlight-curren
   </li>
   <li>
     <h3 id="open-settings">Open Spotlight Settings</h3>
-    <p>Type <code class="q">spotlight settings</code> and press <kbd>Enter</kbd>. The settings panel opens: switch search sources on or off, pick a web search engine, set limits, change the shortcut, or press <b class="ui">Run setup tour</b> to see the tour you skipped. Changes save as you make them. Press <kbd>Esc</kbd> to go back to the search field. See <a href="?p=settings">Settings</a>.</p>
+    <p>Type <code class="q">spotlight settings</code> and press <kbd>Enter</kbd>. The settings panel opens on the <b class="ui">General</b> tab: change the shortcut, or press <b class="ui">Run setup tour</b> to see the tour you skipped. The <b class="ui">Search</b> tab switches search sources on or off, picks a web search engine and sets limits, and <b class="ui">Appearance</b> moves the card on the screen. Changes save as you make them. Press <kbd>Esc</kbd> to go back to the search field. See <a href="?p=settings">Settings</a>.</p>
   </li>
 </ol>
 
@@ -554,6 +559,31 @@ rm -f ~/.cache/omarchy/spotlight-currency.json ~/.cache/omarchy/spotlight-curren
 <h2 id="result-limit">The result limit</h2>
 <p>The whole list stops at <b class="ui">Results shown</b> (20 by default, 8 to 50), and so do filtered lists such as <code class="q">f:</code> and <code class="q">cb:</code>. System views are the exception. Because the lower sections come last, a short, broad query that matches many apps and commands can push windows, clipboard entries and the web search row off the end. Type a little more, use a filter, or raise the limit in <a href="?p=settings#results">Settings</a> (<a href="?p=settings-reference#max-results"><code>maxResults</code></a>).</p>
 
+<h2 id="preview-pane">The preview pane <span class="since">Added in 1.7.1</span></h2>
+<p>The preview pane sits to the right of the results and shows details for the selected row. It appears when all of these are true:</p>
+<ul>
+  <li><b class="ui">Preview pane</b> is on. It is on by default.</li>
+  <li>At least one row in the list has a preview of its own (see the table below). The card then widens, and the pane stays for the whole result set, so moving the cursor never resizes the card. A row without a preview, such as a command or the web search row, shows its name and description.</li>
+  <li>The screen is wide enough for the wider card: 960 pixels at the shell's default font and spacing scale. On a narrower screen the pane stays hidden.</li>
+  <li>Ask AI is not open.</li>
+</ul>
+<table>
+  <thead><tr><th>Selected row</th><th>What the pane shows</th></tr></thead>
+  <tbody>
+    <tr><td>App</td><td>Its icon and description, then <b class="ui">Category</b>, <b class="ui">Runs</b> and <b class="ui">Desktop ID</b></td></tr>
+    <tr><td>Window</td><td>A live capture of the window, then <b class="ui">App</b>, <b class="ui">Workspace</b>, <b class="ui">Monitor</b> and <b class="ui">State</b> (floating, fullscreen, pinned and size)</td></tr>
+    <tr><td>File</td><td>The image, or the first 40 lines from the first 16 KB of a text file, or <b class="ui">Binary file</b>. Below it: <b class="ui">Kind</b>, <b class="ui">Size</b>, <b class="ui">Modified</b>, <b class="ui">Lines</b> and the full path</td></tr>
+    <tr><td>Folder</td><td>The first 24 entries, folders first, and the item count, which stops at 1,000. Press <kbd>Right</kbd> to <a href="?p=apps-windows-files#browse-folders">browse the folder</a></td></tr>
+    <tr><td>Clipboard entry</td><td>Up to 40 lines and 4,000 characters of the entry, with its length. Only the selected entry is loaded, and it is dropped when the cursor leaves it</td></tr>
+    <tr><td>Calculator</td><td>The answer, hex and octal for whole numbers (binary too below 65,536), and scientific notation for values of a million or more or below 0.001</td></tr>
+    <tr><td>Unit conversion</td><td>Up to 5 related units</td></tr>
+    <tr><td>Currency</td><td>Up to 4 other currencies, your default currency first, then USD, EUR, GBP, JPY and CHF, with the European Central Bank rate and its date. A mixed total such as <code class="q">23 EUR + 43 JPY to GBP</code> lists each amount, its value in the target currency and the rate used</td></tr>
+    <tr><td><a href="?p=system-views">System view</a> entry</td><td>Details for the entry in <code class="q">ports:</code>, <code class="q">ssh:</code>, <code class="q">docker:</code>, <code class="q">services:</code>, <code class="q">mounts:</code>, <code class="q">audio:</code>, <code class="q">wifi:</code> or <code class="q">bluetooth:</code>, such as a port's command and user, an SSH host's settings, or the last log lines of a container or service</td></tr>
+  </tbody>
+</table>
+<p>Files in <code>~/.ssh</code>, <code>~/.gnupg</code>, <code>~/.password-store</code> and <code>~/.local/share/keyrings</code>, and files named like keys or secrets (<code>id_*</code>, <code>*.pem</code>, <code>*.key</code>, <code>*.p12</code>, <code>*.pfx</code>, <code>*.kdbx</code>, <code>.env</code>, <code>.env.*</code>, <code>.netrc</code>, <code>.pgpass</code>, <code>*credentials*</code>, <code>*secret*</code>, <code>*.gpg</code>, <code>*.age</code>), show only their kind, size and date with <b class="ui">Contents hidden for private files</b>. Folders there show no listing. Outside those folders, a name ending in <code>.pub</code> is not treated as private. A symlink is judged by its own name and by what it points to.</p>
+<p>To turn the pane off, switch off <b class="ui">Preview pane</b> on the <b class="ui">Appearance</b> tab of <a href="?p=settings#appearance">Spotlight Settings</a>. To look inside folders without leaving Spotlight, see <a href="?p=apps-windows-files#browse-folders">Browse folders</a>.</p>
+
 </article>
 <article data-group="Get started" data-slug="settings" data-title="Settings" data-desc="Change the shortcut, search sources, AI and behavior; configure transparency and background blur.">
 
@@ -562,15 +592,31 @@ rm -f ~/.cache/omarchy/spotlight-currency.json ~/.cache/omarchy/spotlight-curren
 <h2 id="open-the-panel">Open the panel</h2>
 <p>Open Spotlight, type <code class="q">spotlight settings</code> and press <kbd>Enter</kbd> on <b class="ui">Spotlight Settings</b>. Changes save as you make them, and anything still pending is saved when you leave. Press <kbd>Esc</kbd> or <b class="ui">Done</b> to go back to an empty search field.</p>
 <ul>
-  <li><kbd>Tab</kbd> moves between controls. A click or <kbd>Space</kbd> flips a switch; <kbd>Enter</kbd> does not.</li>
+  <li><kbd>Tab</kbd> moves between controls, including the four tabs at the top. On a tab, <kbd>Space</kbd> or <kbd>Enter</kbd> opens it.</li>
+  <li>A click or <kbd>Space</kbd> flips a switch; <kbd>Enter</kbd> does not.</li>
   <li>Number controls change with their <b class="ui">-</b> and <b class="ui">+</b> buttons or with <kbd>Left</kbd> and <kbd>Right</kbd>.</li>
   <li>The engine list opens with <kbd>Enter</kbd>, <kbd>Space</kbd> or <kbd>Down</kbd>. Move with <kbd>Up</kbd> and <kbd>Down</kbd> (or <kbd>j</kbd> and <kbd>k</kbd>), pick with <kbd>Enter</kbd>, close with <kbd>Esc</kbd>.</li>
 </ul>
 
 <h2 id="controls">Controls</h2>
-<p>The panel groups its controls into six sections.</p>
+<p>The panel splits its controls across four tabs and always opens on <b class="ui">General</b>.</p>
+<table>
+  <thead><tr><th>Tab</th><th>Groups</th></tr></thead>
+  <tbody>
+    <tr><td><b class="ui">General</b></td><td><a href="#shortcut">Shortcut</a>, <a href="#maintenance">Maintenance</a></td></tr>
+    <tr><td><b class="ui">Search</b></td><td><a href="#search">Sources</a>, <a href="#web">Web</a>, <a href="#currency">Currency</a>, <a href="#results">Results</a></td></tr>
+    <tr><td><b class="ui">Appearance</b></td><td><a href="#appearance">Position, preview pane and motion</a></td></tr>
+    <tr><td><b class="ui">AI</b></td><td><a href="#ai-settings">Ask AI and artifacts</a></td></tr>
+  </tbody>
+</table>
 
-<h3 id="search">Search</h3>
+<h3 id="shortcut">Shortcut</h3>
+<p>On the <b class="ui">General</b> tab, <b class="ui">Open Spotlight</b> shows the combination that opens Spotlight, or <b class="ui">None</b>. Press <b class="ui">Change</b> to pick another, as described in <a href="?p=settings#change-the-shortcut">Change the shortcut</a>.</p>
+
+<h3 id="maintenance">Maintenance</h3>
+<p>The <b class="ui">Setup and data</b> row on the <b class="ui">General</b> tab has three buttons. <b class="ui">Run setup tour</b> starts the tour. <b class="ui">Data folder</b> closes Spotlight and opens <code>~/.local/state/omarchy</code>, where the learning data lives. <b class="ui">Reset learning data</b> deletes that data, as described in <a href="?p=settings#reset-learning">Reset learning</a>.</p>
+
+<h3 id="search">Sources</h3>
 <table>
   <thead><tr><th>Control</th><th>What it does</th><th>Key</th></tr></thead>
   <tbody>
@@ -588,6 +634,7 @@ rm -f ~/.cache/omarchy/spotlight-currency.json ~/.cache/omarchy/spotlight-curren
   <thead><tr><th>Control</th><th>What it does</th><th>Key</th></tr></thead>
   <tbody>
     <tr><td><b class="ui">Search suggestions</b></td><td>Completes your query as you type by sending it to Google, or to Kagi when Kagi is your engine. Off by default.</td><td><a href="?p=settings-reference#web-suggestions"><code>webSuggestions</code></a></td></tr>
+    <tr><td><b class="ui">Search suggestions shown</b></td><td>How many web suggestions appear, 0 to 8. Default 4. Zero hides them.</td><td><a href="?p=settings-reference#max-suggestions"><code>maxSuggestions</code></a></td></tr>
     <tr><td><b class="ui">Web search engine</b></td><td>Where the web search row opens when you press <kbd>Enter</kbd>. See <a href="?p=web-search">Web search and bangs</a>.</td><td><a href="?p=settings-reference#search-engine"><code>searchEngine</code></a></td></tr>
   </tbody>
 </table>
@@ -601,25 +648,29 @@ rm -f ~/.cache/omarchy/spotlight-currency.json ~/.cache/omarchy/spotlight-curren
   </tbody>
 </table>
 
-<h3 id="ai-settings">Ask AI and artifacts</h3>
-<p>Enable <b class="ui">Ask AI</b>, select an installed Claude or Codex provider, then choose its model and thinking level. <b class="ui">CLI default</b> and <b class="ui">Model default</b> use the CLI's choices. The menus read local model catalogs; run the CLI once and reopen Spotlight if a catalog is missing.</p>
-<p><b class="ui">AI web search</b> independently allows the provider to search the web. Under <b class="ui">Artifacts</b>, set an optional default weather location. These settings are described in <a href="?p=settings-reference#ai">Settings reference</a>; see <a href="?p=ask-ai">Ask AI</a> to get started.</p>
-
 <h3 id="results">Results</h3>
 <table>
   <thead><tr><th>Control</th><th>What it does</th><th>Key</th></tr></thead>
   <tbody>
     <tr><td><b class="ui">Results shown</b></td><td>How many rows the list holds, 8 to 50. Default 20. See <a href="?p=how-search-works#result-limit">The result limit</a>.</td><td><a href="?p=settings-reference#max-results"><code>maxResults</code></a></td></tr>
     <tr><td><b class="ui">Applications shown</b></td><td>How many apps one query can add, 3 to 24. Default 8.</td><td><a href="?p=settings-reference#max-apps"><code>maxApps</code></a></td></tr>
-    <tr><td><b class="ui">Search suggestions shown</b></td><td>How many web suggestions appear, 0 to 8. Default 4. Zero hides them.</td><td><a href="?p=settings-reference#max-suggestions"><code>maxSuggestions</code></a></td></tr>
   </tbody>
 </table>
 
-<h3 id="shortcut">Shortcut</h3>
-<p><b class="ui">Open Spotlight</b> shows the combination that opens Spotlight, or <b class="ui">None</b>. Press <b class="ui">Change</b> to pick another, as described in <a href="?p=settings#change-the-shortcut">Change the shortcut</a>.</p>
+<h3 id="appearance">Appearance</h3>
+<table>
+  <thead><tr><th>Control</th><th>What it does</th><th>Key</th></tr></thead>
+  <tbody>
+    <tr><td><b class="ui">Vertical position</b></td><td>Where the card sits, from 0% (top) to 100% (bottom), in 5% steps. Default 50%. The search field stays in place while results grow below it, and a small screen leaves less room to move.</td><td><a href="?p=settings-reference#vertical-position"><code>verticalPosition</code></a></td></tr>
+    <tr><td><b class="ui">Horizontal position</b></td><td>From 0% (left) to 100% (right), in 5% steps. Default 50%, the center. A narrow screen leaves less room to move.</td><td><a href="?p=settings-reference#horizontal-position"><code>horizontalPosition</code></a></td></tr>
+    <tr><td><b class="ui">Preview pane</b></td><td>Shows details for the selected result beside the list. On by default. See <a href="?p=how-search-works#preview-pane">The preview pane</a>.</td><td><a href="?p=settings-reference#preview-pane"><code>previewPane</code></a></td></tr>
+    <tr><td><b class="ui">Reduce motion</b></td><td>Skips the animations when Spotlight opens, closes and resizes. Off by default.</td><td><a href="?p=settings-reference#reduce-motion"><code>reduceMotion</code></a></td></tr>
+  </tbody>
+</table>
 
-<h3 id="maintenance">Maintenance</h3>
-<p>The <b class="ui">Setup and data</b> row has three buttons. <b class="ui">Run setup tour</b> starts the tour. <b class="ui">Data folder</b> closes Spotlight and opens <code>~/.local/state/omarchy</code>, where the learning data lives. <b class="ui">Reset learning data</b> deletes that data, as described in <a href="?p=settings#reset-learning">Reset learning</a>.</p>
+<h3 id="ai-settings">Ask AI and artifacts</h3>
+<p>On the <b class="ui">AI</b> tab, turn on <b class="ui">Ask AI</b>, pick an installed Claude or Codex CLI under <b class="ui">AI provider</b>, then choose <b class="ui">AI model</b> and <b class="ui">Thinking level</b>. <b class="ui">CLI default</b> and <b class="ui">Model default</b> use the CLI's choices. The menus read local model catalogs; run the CLI once and reopen Spotlight if a catalog is missing.</p>
+<p><b class="ui">AI web search</b> independently allows the provider to search the web. Under <b class="ui">Artifacts</b>, set an optional <b class="ui">Weather default location</b>. These settings are described in <a href="?p=settings-reference#ai">Settings reference</a>; see <a href="?p=ask-ai">Ask AI</a> to get started.</p>
 
 <h2 id="change-the-shortcut">Change the shortcut</h2>
 <ol class="steps">
@@ -640,8 +691,8 @@ rm -f ~/.cache/omarchy/spotlight-currency.json ~/.cache/omarchy/spotlight-curren
 <p>If the step reports <b class="ui">Shortcut saved, but Hyprland could not reload it.</b>, run <code>hyprctl reload</code>. If it reports <b class="ui">Could not write the shortcut.</b>, add the binding yourself as shown in <a href="?p=installation#bind-it-by-hand">Bind it by hand</a>.</p>
 
 <h2 id="rerun-the-setup-tour">Run the setup tour again</h2>
-<p>Press <b class="ui">Run setup tour</b> in the panel, or search <code class="q">setup tour</code> and press <kbd>Enter</kbd> on <b class="ui">Run Setup Tour</b>. <b class="ui">Finish</b> saves your choices from the search step. <kbd>Esc</kbd> or <b class="ui">Skip tour</b> discards them, though a shortcut you already set stays. Started from the panel, the tour returns you to it.</p>
-<p>The tour's search step leaves out <b class="ui">Include clipboard in every search</b> and the three limits. Set those in the panel.</p>
+<p>Press <b class="ui">Run setup tour</b> in the panel, or search <code class="q">setup tour</code> and press <kbd>Enter</kbd> on <b class="ui">Run Setup Tour</b>. <b class="ui">Finish</b> saves your choices from the search and Ask AI steps. <kbd>Esc</kbd> or <b class="ui">Skip tour</b> discards them, though a shortcut you already set stays. Started from the panel, the tour returns you to it.</p>
+<p>The tour leaves out <b class="ui">Include clipboard in every search</b>, the three limits, the <b class="ui">Appearance</b> tab and the weather location. Set those in the panel.</p>
 
 <h2 id="reset-learning">Reset learning <span class="since">Changed in 1.6.1</span></h2>
 <p>Press <b class="ui">Reset learning data</b> under Maintenance. The button changes to <b class="ui">Press again to reset</b>; press it again to delete <code>~/.local/state/omarchy/spotlight-usage.json</code>. It then reads <b class="ui">Learning data cleared</b>, and ranking starts from scratch. To pause learning without losing what it knows, turn off <b class="ui">Learn from your choices</b> instead. The <b class="ui">Reset Spotlight Learning</b> result from earlier versions is gone.</p>
@@ -657,16 +708,24 @@ rm -f ~/.cache/omarchy/spotlight-currency.json ~/.cache/omarchy/spotlight-curren
   "fileSearchAlways": true,
   "clipboardSearch": true,
   "clipboardSearchAlways": true,
+  "previewPane": true,
+  "reduceMotion": false,
   "learningEnabled": true,
   "aiEnabled": false,
   "aiProvider": "claude",
   "aiModel": "",
   "aiEffort": "",
   "aiWebSearch": false,
-  "artifactSettings": { "weather": { "defaultLocation": "" } },
+  "artifactSettings": {
+    "weather": {
+      "defaultLocation": ""
+    }
+  },
   "maxResults": 20,
   "maxApps": 8,
   "maxSuggestions": 4,
+  "verticalPosition": 50,
+  "horizontalPosition": 50,
   "setupCompleted": false
 }</code></pre>
 <p>Edit it by hand to copy your settings to another machine, or to set <a href="?p=settings-reference#setup-completed"><code>setupCompleted</code></a> back to <code>false</code>: on the next open the tour appears again, and Spotlight claims <kbd>Alt</kbd><kbd>Space</kbd> if you have no shortcut and it is free. Spotlight reads the file each time it opens and does not watch it, so close and reopen Spotlight to apply an edit. Keys Spotlight does not know are kept when the panel saves.</p>
@@ -723,9 +782,10 @@ hl.layer_rule({
 <h2 id="launch-an-app">Launch an app</h2>
 <p>Type part of the app's name. Apps match from the first character. Each word you type has to appear in the app's name, desktop id, generic name, description or keywords. A word of five letters or fewer also matches the initials, so <code class="q">vsc</code> finds Visual Studio Code. Matching is by substring and forgives no typos: <code class="q">frfx</code> does not find Firefox.</p>
 <p>The row shows the app name, its generic name underneath (for example "Web Browser") and <b class="ui">App</b> on the right. Press <kbd>Enter</kbd> (<b class="ui">Open</b>) to launch it and close Spotlight. <kbd>Shift</kbd><kbd>Enter</kbd> launches it too, without counting the launch toward learned ranking. <kbd>Tab</kbd> writes the app's name into the field.</p>
+<p>In the <a href="?p=how-search-works#preview-pane">preview pane</a>, an app shows its icon, its description, up to three categories, the command it runs and its desktop ID.</p>
 <ul>
   <li>Spotlight lists the apps that Omarchy's own launcher shows. An entry that is hidden there is hidden here too.</li>
-  <li>A query shows up to 8 apps. Change this with <b class="ui">Applications shown</b> (3 to 24).</li>
+  <li>A query shows up to 8 apps. Change this with <b class="ui">Applications shown</b> (3 to 24) on the <b class="ui">Search</b> tab of Spotlight Settings.</li>
   <li>Apps are ordered by how well the name matches, then by how often you pick them, then alphabetically.</li>
   <li>To list only apps, type <code class="q">a:</code> or <code class="q">app:</code> followed by at least two characters, such as <code class="q">a:fi</code>. With one character the list stays empty. <code class="q">a firefox</code> (with a space) is a normal search, not a filter.</li>
 </ul>
@@ -734,7 +794,7 @@ hl.layer_rule({
 <p>Enabled shell panels, overlays and menus are searchable by name and plugin ID. The list refreshes when Spotlight opens, and curated entries keep their titles and icons. Plugins with only a <code>bar-widget</code> kind are excluded because the shell does not report whether a widget has an openable panel. Discovered entries use a default plugin icon; a failed launch produces a desktop notification.</p>
 
 <h2 id="switch-to-a-window">Switch to a window</h2>
-<p>Type two or more characters of a window's title or app id. Each row shows the window title (or the app id when the window has no title), the app id underneath and <b class="ui">Window</b> on the right. The row does not show the workspace.</p>
+<p>Type two or more characters of a window's title or app id. Each row shows the window title (or the app id when the window has no title), the app id underneath and <b class="ui">Window</b> on the right. The row does not show the workspace, but the <a href="?p=how-search-works#preview-pane">preview pane</a> does: it shows a live capture of the window, its title, and its app, workspace, monitor and state (floating, fullscreen or pinned, and its size).</p>
 <ul>
   <li><kbd>Enter</kbd> (<b class="ui">Focus window</b>) focuses the window and closes Spotlight.</li>
   <li><kbd>Shift</kbd><kbd>Enter</kbd> (<b class="ui">Close window</b>) closes that window and Spotlight.</li>
@@ -744,14 +804,16 @@ hl.layer_rule({
 </ul>
 
 <h2 id="find-files">Find files and folders</h2>
-<p>File search needs <b class="ui">Files and folders</b> turned on. With <b class="ui">Include files in every search</b> also on (the default), any query of two or more characters searches your home folder and adds up to 4 file rows to the mixed results.</p>
+<p>File search needs <b class="ui">Files and folders</b> on the <b class="ui">Search</b> tab of Spotlight Settings turned on. With <b class="ui">Include files in every search</b> also on (the default), any query of two or more characters searches your home folder and adds up to 4 file rows to the mixed results.</p>
 <p>For a full file list, start the query with <code class="q">f</code>, <code class="q">file</code> or <code class="q">files</code> and a space, or with <code class="q">f:</code> or <code class="q">file:</code>: for example <code class="q">f invoice</code> or <code class="q">file:invoice</code>. These forms show only files and folders in your home, start at one character and show up to 50 rows, within the <b class="ui">Results shown</b> limit (20 by default). <code class="q">files:</code> and a bare <code class="q">f</code> are not filters. <code class="q">f:</code> with nothing after it shows the hint "Type a search after “f:”".</p>
 <p>Each row shows the name, the full path of its parent folder underneath, and <b class="ui">File</b> or <b class="ui">Folder</b> on the right.</p>
 <ul>
   <li><kbd>Enter</kbd> (<b class="ui">Open</b>) opens it in its default app.</li>
   <li><kbd>Shift</kbd><kbd>Enter</kbd> (<b class="ui">Open folder</b>) opens the folder that contains it.</li>
   <li><kbd>Ctrl</kbd><kbd>C</kbd> (<b class="ui">Copy path</b>) copies the full path and closes Spotlight. It works while no text is selected in the field.</li>
+  <li>On a folder, <kbd>Right</kbd> opens it in the preview pane: see <a href="#browse-folders">Browse folders</a>.</li>
 </ul>
+<p>In the <a href="?p=how-search-works#preview-pane">preview pane</a>, a file shows the picture for an image, the first 40 lines of a text file, or "Binary file", then its kind, size, date modified, line count (for text) and full path. A folder shows its first 24 entries and how many items it holds. A private file or folder, such as anything in <code>~/.ssh</code> or <code>~/.gnupg</code>, a <code>.env</code> file or a private key, shows "Contents hidden for private files" with only its name, size and date.</p>
 
 <h3 id="file-matching">How files are matched and ranked</h3>
 <ul>
@@ -772,19 +834,34 @@ hl.layer_rule({
   <li>Folder queries never show web suggestions.</li>
 </ul>
 
+<h2 id="browse-folders">Browse folders <span class="since">Added in 1.7.1</span></h2>
+<p>You can look inside a folder result without leaving Spotlight. This works only while the <a href="?p=how-search-works#preview-pane">preview pane</a> is shown. Move to a folder row with <kbd>Up</kbd> or <kbd>Down</kbd>: the footer shows <b class="ui">→ Browse folder</b>. Press <kbd>Right</kbd> and the folder's entries fill the preview pane, with the folder's path above them. The results on the left stay where they are. All keys are listed in <a href="?p=keyboard-shortcuts#folder-browsing">Keyboard shortcuts</a>.</p>
+<ul>
+  <li><kbd>Right</kbd> browses only after you have moved the selection with the arrow keys. While you type, <kbd>Left</kbd> and <kbd>Right</kbd> move the cursor in the field.</li>
+  <li><kbd>Up</kbd>, <kbd>Down</kbd>, <kbd>PageUp</kbd> and <kbd>PageDown</kbd> move through the entries. <kbd>Right</kbd> on a subfolder opens it.</li>
+  <li><kbd>Left</kbd> goes back one folder level, and from the first level back to the results.</li>
+  <li><kbd>Enter</kbd> opens the selected entry in its default app, and Spotlight stays open. <kbd>Shift</kbd><kbd>Enter</kbd> opens the folder you are browsing. <kbd>Ctrl</kbd><kbd>C</kbd> copies the entry's full path while no text is selected in the field, also without closing Spotlight.</li>
+  <li><kbd>Tab</kbd> writes the selected folder's name into the field, which starts a new search. Files are not completed.</li>
+  <li><kbd>Esc</kbd> returns to the results and keeps your query.</li>
+  <li>Typing, or picking another result on the left, ends browsing.</li>
+</ul>
+<p>Folders come first, then files, each sorted by name. A listing stops at 1,000 entries and then ends with a row such as "Showing the first 1000 entries". A private folder, such as <code>~/.ssh</code>, shows "Contents hidden for private files" instead of its entries, and an empty one shows "Empty folder".</p>
+
 <h2 id="settings">Settings</h2>
+<p>These are on the <b class="ui">Search</b> tab of Spotlight Settings, except <code>previewPane</code>, which is on the <b class="ui">Appearance</b> tab.</p>
 <ul>
   <li><a href="?p=settings-reference#file-search"><code>fileSearch</code></a>: turns file search on or off everywhere, prefixes included.</li>
   <li><a href="?p=settings-reference#file-search-always"><code>fileSearchAlways</code></a>: adds files to every search. When off, files appear only after <code class="q">f</code>, <code class="q">f:</code> or a path.</li>
   <li><a href="?p=settings-reference#max-apps"><code>maxApps</code></a>: how many apps a query can show.</li>
   <li><a href="?p=settings-reference#max-results"><code>maxResults</code></a>: how many rows the list holds in total.</li>
   <li><a href="?p=settings-reference#learning-enabled"><code>learningEnabled</code></a>: whether the apps, windows and files you pick rank higher over time.</li>
+  <li><a href="?p=settings-reference#preview-pane"><code>previewPane</code></a>: shows the preview pane, which folder browsing needs. On by default. Shown as <b class="ui">Preview pane</b>.</li>
 </ul>
 
 <h2 id="troubleshooting">Troubleshooting</h2>
 <details><summary>An installed app does not show up</summary><p>Check whether Omarchy's launcher shows it: entries hidden there are hidden in Spotlight too. Then check your spelling, since matching needs each word to appear as typed.</p></details>
 <details><summary>A file I know exists is not listed</summary><p>Make sure <b class="ui">Files and folders</b> is on. If the file is in a skipped folder, matched by a <code>.gitignore</code>, or on another mounted filesystem, it won't be found. For a common word, search its folder (<code class="q">~/Documents/report</code>) so the 400-hit limit does not cut it off.</p></details>
-<details><summary><code class="q">f:</code> shows nothing at all</summary><p><code>fileSearch</code> is off. With it off, no query searches files, not even <code class="q">f:</code> or a path. Turn on <b class="ui">Files and folders</b> in <b class="ui">Spotlight Settings</b>. More fixes are in <a href="?p=troubleshooting">Troubleshooting</a>.</p></details>
+<details><summary><code class="q">f:</code> shows nothing at all</summary><p><code>fileSearch</code> is off. With it off, no query searches files, not even <code class="q">f:</code> or a path. Turn on <b class="ui">Files and folders</b> on the <b class="ui">Search</b> tab of Spotlight Settings. More fixes are in <a href="?p=troubleshooting">Troubleshooting</a>.</p></details>
 
 </article>
 <article data-group="Features" data-slug="clipboard" data-title="Clipboard history" data-desc="Search what you copied and paste an earlier entry.">
@@ -808,6 +885,7 @@ hl.layer_rule({
 <h2 id="find-a-copy">Find an earlier copy</h2>
 <p>Type a prefix and a word from the text you copied. The prefix forms start matching at the first character. Without a prefix, Spotlight adds clipboard matches to every query of two or more characters while <b class="ui">Include clipboard in every search</b> is on. Any other prefix, such as <code class="q">f:</code>, leaves the clipboard out.</p>
 <p>Each row shows the copied text on a single line in a monospace font, with line breaks and runs of spaces joined into one space. Text longer than 120 characters is cut with "…". The right side reads <b class="ui">Clipboard</b>.</p>
+<p>In the <a href="?p=how-search-works#preview-pane">preview pane</a>, the selected entry appears with its line breaks: up to 40 lines and 4,000 characters, with long lines cut at 240 characters. Underneath, it says how many characters and lines the entry has, plus "excerpt" when the pane shows only part of it. If the entry changed or left the history, the pane reads "Entry no longer in history".</p>
 <ul>
   <li>Only those first 120 characters are searched. Every word you type has to appear in them.</li>
   <li>Rows are sorted by how well they match, then alphabetically, not by when you copied them.</li>
@@ -828,9 +906,10 @@ hl.layer_rule({
   <li>A history file of at most 8 MB. If the file is bigger, no clipboard rows appear.</li>
 </ul>
 <p>To see or paste images, open Omarchy's own panel with the <b class="ui">Clipboard History</b> command: type <code class="q">history</code> or <code class="q">cmd:clipboard</code>.</p>
-<div class="callout note"><p>Spotlight keeps only the one-line previews in memory, and only while a clipboard query is on screen. The full text stays on disk until you copy it. See <a href="?p=privacy-security">Privacy and security</a>.</p></div>
+<div class="callout note"><p>The result list holds only the one-line previews, and only while a clipboard query is on screen. With the preview pane on (the default), Spotlight also reads the selected entry, up to 4,000 characters, and shows it unmasked, so a copied password or token is readable while its row is selected. That text is dropped as soon as the selection moves. To keep full entries off screen, turn off <b class="ui">Preview pane</b> on the <b class="ui">Appearance</b> tab of Spotlight Settings. See <a href="?p=privacy-security">Privacy and security</a>.</p></div>
 
 <h2 id="settings">Settings</h2>
+<p>These are on the <b class="ui">Search</b> tab of Spotlight Settings.</p>
 <ul>
   <li><a href="?p=settings-reference#clipboard-search"><code>clipboardSearch</code></a>: turns clipboard search on or off, prefixes included. Shown in the panel as <b class="ui">Clipboard history</b>.</li>
   <li><a href="?p=settings-reference#clipboard-search-always"><code>clipboardSearchAlways</code></a>: adds clipboard matches to every search. Shown as <b class="ui">Include clipboard in every search</b>.</li>
@@ -840,7 +919,7 @@ hl.layer_rule({
 <h2 id="troubleshooting">Troubleshooting</h2>
 <details><summary>Typing "clipboard history" does not find the command</summary><p><code class="q">clipboard</code> followed by a space and text is a clipboard search, so <code class="q">clipboard history</code> looks for "history" in what you copied. Type <code class="q">history</code> or <code class="q">cmd:clipboard</code> to find the <b class="ui">Clipboard History</b> command.</p></details>
 <details><summary>Enter closed Spotlight but nothing was copied</summary><p>The entry changed or dropped out of the history after the list was built. Open Spotlight again and search once more.</p></details>
-<details><summary>I copied something and it is not listed</summary><p>Check that <b class="ui">Clipboard history</b> is on and that the entry is text. Only the newest 200 text entries and their first 120 characters are searched. Other causes are in <a href="?p=troubleshooting">Troubleshooting</a>.</p></details>
+<details><summary>I copied something and it is not listed</summary><p>Check that <b class="ui">Clipboard history</b> on the <b class="ui">Search</b> tab of Spotlight Settings is on and that the entry is text. Only the newest 200 text entries and their first 120 characters are searched. Other causes are in <a href="?p=troubleshooting">Troubleshooting</a>.</p></details>
 
 </article>
 <article data-group="Features" data-slug="calculator" data-title="Calculator and conversions" data-desc="Math, units and currency, answered as you type.">
@@ -898,9 +977,11 @@ hl.layer_rule({
 
 <h3 id="copy-the-result">Copy the result</h3>
 <p>Results are rounded to 10 decimal places, so <code class="q">0.1+0.2</code> gives 0.3 and <code class="q">1/3</code> gives 0.3333333333. Digits are grouped with spaces. From <code>1e15</code> up, results keep 10 significant digits without grouping: <code class="q">2^64</code> gives 18446744070000000000. Press <kbd>Enter</kbd> (<b class="ui">Copy result</b>) to copy the number without the spaces and close Spotlight. <kbd>Shift</kbd><kbd>Enter</kbd> does the same.</p>
+<p>In the <a href="?p=how-search-works#preview-pane">preview pane</a>, a whole-number result also appears in hex and octal, and in binary when it is below 65,536: <code class="q">255</code> shows <code>0xFF</code>, <code>0o377</code> and <code>0b11111111</code>. 0, 1 and -1 are left out. A result of 1,000,000 or more, or closer to zero than 0.001, also appears in scientific notation.</p>
 
 <h2 id="units">Convert units</h2>
 <p>Write an amount, a unit, a target word and a target unit: <code class="q">10 km to mi</code>. The space before the unit is optional (<code class="q">72f in c</code>), and the target word can be <code>to</code>, <code>in</code>, <code>as</code>, <code>-&gt;</code>, <code>→</code> or <code>=</code>. You always need a target unit, and both units must be from the same family. The row shows the result, with the full conversion underneath (for example "10 km = 6.2137 mi"), and <b class="ui">Conversion</b> on the right. <kbd>Enter</kbd> (<b class="ui">Copy result</b>) copies the result with its unit and without spaces, such as <code>6.2137mi</code>.</p>
+<p>In the <a href="?p=how-search-works#preview-pane">preview pane</a>, the amount also appears in up to 5 other units of the same family, leaving out values below 0.01 or of a million and more (temperatures excepted): <code class="q">10 km to mi</code> adds metres, yards, feet and inches.</p>
 <table>
   <thead><tr><th>Family</th><th>Example</th><th>Gives</th></tr></thead>
   <tbody>
@@ -935,24 +1016,27 @@ hl.layer_rule({
 </ul>
 
 <h3 id="default-currency">Convert to your default currency</h3>
-<p>Set <b class="ui">Default currency</b> in <b class="ui">Spotlight Settings</b> and a query without a target converts to it: <code class="q">23 USD</code>, <code class="q">$23</code> or <code class="q">23 dollars</code>. An explicit target still wins. Without a default, these queries show no row. Lowercase codes and <code>pound</code> don't count without a target (<code class="q">23 usd</code>, <code class="q">10 pounds</code>), so a unit you are still typing is not taken for a currency.</p>
+<p>Set <b class="ui">Default currency</b> on the <b class="ui">Search</b> tab of Spotlight Settings and a query without a target converts to it: <code class="q">23 USD</code>, <code class="q">$23</code> or <code class="q">23 dollars</code>. An explicit target still wins. Without a default, these queries show no row. Lowercase codes and <code>pound</code> don't count without a target (<code class="q">23 usd</code>, <code class="q">10 pounds</code>), so a unit you are still typing is not taken for a currency.</p>
 
 <h3 id="currency-expressions">Calculate with several currencies</h3>
 <p>Try <code class="q">23 EUR + 43 JPY</code>, <code class="q">(23 EUR + 43 JPY) * 2</code> or <code class="q">23 EUR + 43 JPY to USD</code>. Use <code>+</code> and <code>-</code> between currency amounts and <code>*</code> or <code>/</code> with plain numbers. Parentheses set the order. Without a target or configured default, the first currency sets the result currency.</p>
 <p>Each distinct source currency may need its own rate lookup. Required pairs are fetched sequentially; expressions with several uncached pairs take longer to load. Pressing <kbd>Enter</kbd> while rates load copies the result once every required rate arrives.</p>
+<p>The <a href="?p=how-search-works#preview-pane">preview pane</a> shows the working behind a mixed total: each amount on its own line, converted to the result currency, with the rate used for it. For <code class="q">23 EUR + 43 JPY to USD</code> that is one line for the euros and one for the yen. Underneath are the dates of the rates.</p>
 
 <h3 id="exchange-rates">How exchange rates are fetched</h3>
-<p>Rates come from <a href="https://frankfurter.dev" rel="noopener">Frankfurter</a>, a free service that needs no account or API key. Spotlight asks for a rate only after you pause for 250 ms on a complete query. It sends the two currency codes, never the amount.</p>
+<p>Rates come from <a href="https://frankfurter.dev" rel="noopener">Frankfurter</a>, a free service that needs no account or API key. Spotlight asks for a rate only after you pause for 250 ms on a complete query. It sends the two currency codes, never the amount. While a converted currency row is selected and the preview pane is shown, Spotlight also fetches the rates for the other currencies the pane lists that are not cached yet, in one request, again with codes only.</p>
 <ul>
   <li>While the rate loads, the row reads "Loading exchange rate…" and the footer shows <b class="ui">Copy when ready</b>. Press <kbd>Enter</kbd> and the result is copied as soon as it arrives, as long as you haven't changed the query.</li>
   <li>Once converted, the row shows the amount in the target currency. Underneath is the calculation, "Frankfurter" and the date of the rate. <kbd>Enter</kbd> (<b class="ui">Copy result</b>) copies the number only, with no spaces or code.</li>
+  <li>In the <a href="?p=how-search-works#preview-pane">preview pane</a>, the amount also appears in up to 4 other currencies: your default currency first, then USD, EUR, GBP, JPY and CHF, skipping the two already shown. An old cached rate is marked "cached". Underneath is the rate itself, such as "1 USD = 0.92 EUR", with its date.</li>
   <li>Rates are cached for 24 hours in <code>~/.cache/omarchy/spotlight-currency.json</code>, for up to 128 pairs. If a refresh fails, Spotlight shows the older rate and adds "Cached · refresh unavailable", then tries again after a minute.</li>
   <li>With no rate at all, the row reads "Exchange rate unavailable" and can't be selected.</li>
   <li>Converting a currency to itself needs no network. Historical rates are not available.</li>
 </ul>
-<div class="callout tip"><p>Turn off <b class="ui">Currency rates</b> to disable network rate lookups. Currency queries then use only rates already in the cache, even old ones. A pair that was never fetched shows "Exchange rate unavailable".</p></div>
+<div class="callout tip"><p>Turn off <b class="ui">Currency rates</b> on the <b class="ui">Search</b> tab of Spotlight Settings to disable network rate lookups. Currency queries and the preview pane then use only rates already in the cache, even old ones. A pair that was never fetched shows "Exchange rate unavailable".</p></div>
 
 <h2 id="settings">Settings</h2>
+<p>Both are in the <b class="ui">Currency</b> group on the <b class="ui">Search</b> tab of Spotlight Settings.</p>
 <ul>
   <li><a href="?p=settings-reference#currency-rates"><code>currencyRates</code></a>: whether Spotlight fetches rates from Frankfurter. On by default. Shown as <b class="ui">Currency rates</b>.</li>
   <li><a href="?p=settings-reference#default-currency"><code>defaultCurrency</code></a>: the three-letter code used when a query has no target. Empty by default. The panel field accepts a valid code or nothing and turns red for an unknown code.</li>
@@ -1068,7 +1152,7 @@ hl.layer_rule({
 <h2 id="search-the-web">Search the web</h2>
 <p>Every query that is not empty and not a URL gets a web search row, for example <b class="ui">Search Google for “pipewire latency”</b>. Its footer label is <b class="ui">Search Google</b> (or the name of your engine) and it sits in the <b class="ui">Web</b> section. Press <kbd>Enter</kbd> on it to open the results page in your browser.</p>
 <p>The web search row always ranks last, below every local result. When local results already fill the result limit (20 rows by default), it is dropped; put <code class="q">web:</code> in front of the query to bring it back.</p>
-<p>To change where it goes, open <b class="ui">Spotlight Settings</b> and pick an engine under <b class="ui">Web</b>, <b class="ui">Web search engine</b>. The list holds every site from the <a href="#bangs">bang table</a>. The same engine answers <a href="#web-suggestions">search suggestions</a>.</p>
+<p>To change where it goes, open the <b class="ui">Search</b> tab of Spotlight Settings and pick an engine under <b class="ui">Web</b>, <b class="ui">Web search engine</b>. The list holds every site from the <a href="#bangs">bang table</a>. The same engine answers <a href="#web-suggestions">search suggestions</a>.</p>
 
 <h2 id="web-filter">Search only the web</h2>
 <p>Start the query with <code class="q">web:</code>, <code class="q">search:</code> or <code class="q">url:</code> (all three do the same). Spotlight then hides apps, files, commands, calculations and everything else, and shows only web rows: an <a href="#open-a-url">opened URL</a>, a <a href="#bangs">bang</a>, <a href="#web-suggestions">suggestions</a> and the web search row. With nothing after the colon you see the hint <b class="ui">Type a search after “web:”</b>.</p>
@@ -1129,7 +1213,7 @@ hl.layer_rule({
 <p>Supported targets: Arabic, Bulgarian, Chinese (<code>mandarin</code>, <code>zh</code>), Chinese traditional (<code>zh-hant</code>), Czech, Danish, Dutch, English, Estonian, Finnish, French, Georgian, German, Greek, Hebrew, Hungarian, Indonesian, Italian, Japanese, Korean, Latvian, Lithuanian, Norwegian (<code>no</code>, <code>nb</code>), Polish, Portuguese, Brazilian Portuguese (<code>brazilian</code>, <code>pt-br</code>), Romanian, Russian, Slovak, Slovenian, Spanish, Swedish, Turkish, Ukrainian and Vietnamese.</p>
 
 <h2 id="web-suggestions">Get search suggestions while you type</h2>
-<p>Search suggestions are off by default. Turn them on in <b class="ui">Spotlight Settings</b> under <b class="ui">Web</b>, <b class="ui">Search suggestions</b>. Spotlight then shows up to 4 completions for your query (change the number under <b class="ui">Results</b>, <b class="ui">Search suggestions shown</b>, from 0 to 8). Each suggestion's footer label is <b class="ui">Search Google</b> or your engine's name, and <kbd>Enter</kbd> searches for it with your engine.</p>
+<p>Search suggestions are off by default. Turn them on with <b class="ui">Search suggestions</b> under <b class="ui">Web</b> on the <b class="ui">Search</b> tab of Spotlight Settings. Spotlight then shows up to 4 completions for your query (change the number right below it with <b class="ui">Search suggestions shown</b>, from 0 to 8). Each suggestion's footer label is <b class="ui">Search Google</b> or your engine's name, and <kbd>Enter</kbd> searches for it with your engine.</p>
 <div class="callout warn"><p>With suggestions on, what you type leaves your machine as you type it. Spotlight waits about a quarter of a second after your last keystroke, then sends the query (up to 200 characters) to Kagi if Kagi is your engine, and to Google for every other engine, including DuckDuckGo.</p></div>
 <p>Spotlight asks for suggestions only in the normal search or after <code class="q">web:</code>, and only for queries of two or more characters. It never sends:</p>
 <ul>
@@ -1141,6 +1225,7 @@ hl.layer_rule({
 <p>A request that takes longer than 3 seconds is dropped. More on this in <a href="?p=privacy-security">Privacy and security</a>.</p>
 
 <h2 id="settings">Settings</h2>
+<p>These are on the <b class="ui">Search</b> tab of Spotlight Settings: the first three under <b class="ui">Web</b>, <code>maxResults</code> under <b class="ui">Results</b>.</p>
 <ul>
   <li><a href="?p=settings-reference#search-engine"><code>searchEngine</code></a>: where the web search row and suggestions go. Default <code>"g"</code> (Google). Any bang key works; an unknown key falls back to Google.</li>
   <li><a href="?p=settings-reference#web-suggestions"><code>webSuggestions</code></a>: turn search suggestions on. Default <code>false</code>.</li>
@@ -1149,9 +1234,9 @@ hl.layer_rule({
 </ul>
 
 <h2 id="troubleshooting">Troubleshooting</h2>
-<details><summary>Why is there no web search row at the bottom?</summary><p>Local results filled the result limit, or the query is a URL. Type <code class="q">web:</code> before the query, or raise <b class="ui">Results shown</b> in the settings panel.</p></details>
+<details><summary>Why is there no web search row at the bottom?</summary><p>Local results filled the result limit, or the query is a URL. Type <code class="q">web:</code> before the query, or raise <b class="ui">Results shown</b> on the <b class="ui">Search</b> tab of Spotlight Settings.</p></details>
 <details><summary>My bang opens an app instead of the site</summary><p>A local result matched first, so it holds the selection. Press <kbd>Down</kbd> to the row in the <b class="ui">Web</b> section, or use <code class="q">web:</code> in front of the bang.</p></details>
-<details><summary>I turned on suggestions but see none</summary><p>Suggestions need two or more characters, a network connection and a plain query (not a URL, bang, calculation, file search or filter). Check that <b class="ui">Search suggestions shown</b> is not set to 0.</p></details>
+<details><summary>I turned on suggestions but see none</summary><p>Suggestions need two or more characters, a network connection and a plain query (not a URL, bang, calculation, file search or filter). Check that <b class="ui">Search suggestions shown</b>, under <b class="ui">Web</b> on the <b class="ui">Search</b> tab of Spotlight Settings, is not set to 0.</p></details>
 
 </article>
 <article data-group="Features" data-slug="command-help" data-title="Command help" data-desc="Browse tldr examples for a command, then copy one or open it in a terminal.">
@@ -1343,7 +1428,23 @@ hl.layer_rule({
 <p>A list is partial when there were more entries than the view shows (200 rows, or 100 for audio, Wi-Fi and Bluetooth), when the tool's output was too large or too slow to read in full, or for the reasons given under <a href="#services">services</a> and <a href="#ssh">SSH</a>. Status rows cannot be selected.</p>
 
 <h2 id="refresh">Refresh a view</h2>
-<p>Spotlight fetches a view once, when you open it, and does not refresh it while you look. To fetch again, delete the colon and type it again, switch to another view and back, or close and reopen Spotlight.</p>
+<p>Spotlight fetches a view's list once, when you open it, and does not refresh the list while you look. To fetch again, delete the colon and type it again, switch to another view and back, or close and reopen Spotlight. The <a href="#preview-details">details in the preview pane</a> are different: some views look them up again each time you select a row.</p>
+
+<h2 id="preview-details">Details in the preview pane <span class="since">Added in 1.7.1</span></h2>
+<p>While the <a href="?p=how-search-works#preview-pane">preview pane</a> is showing, the selected row's details appear beside the list. The pane shows what the row already holds right away. For ports, SSH, Docker, services and mounts it also looks up more when you select the row, shows <b class="ui">Loading details…</b> meanwhile, and leaves out what it could not read.</p>
+<table>
+  <thead><tr><th>View</th><th>Preview shows</th><th>Looked up with</th></tr></thead>
+  <tbody>
+    <tr><td><code class="q">ports:</code></td><td>Endpoint, PID and URL; for a port with a PID also the command line, user and start time</td><td><code>/proc</code> for that PID</td></tr>
+    <tr><td><code class="q">ssh:</code></td><td>Host, and from <code>~/.ssh/config</code> the HostName, User, Port (22 when unset), IdentityFile and ProxyJump of the matching <code>Host</code> blocks</td><td><code>~/.ssh/config</code> only; <code>Include</code> and <code>Match</code> are not followed here</td></tr>
+    <tr><td><code class="q">docker:</code></td><td>Image, status, published ports, start time, short ID and the last 8 log lines</td><td><code>docker inspect</code>, <code>docker logs</code></td></tr>
+    <tr><td><code class="q">services:</code></td><td>Unit, scope, state, active since, main PID, memory and the last 8 journal lines</td><td><code>systemctl show</code>, <code>journalctl</code></td></tr>
+    <tr><td><code class="q">mounts:</code></td><td>Mount point, used and total space with percentage, and free space</td><td><code>df</code></td></tr>
+    <tr><td><code class="q">audio:</code></td><td>Device name, output or input, and whether it is the default</td><td>nothing more</td></tr>
+    <tr><td><code class="q">wifi:</code></td><td>Network, signal, security and status</td><td>nothing more</td></tr>
+    <tr><td><code class="q">bluetooth:</code></td><td>Address and status</td><td>nothing more</td></tr>
+  </tbody>
+</table>
 
 <h2 id="ports">Open a listening port</h2>
 <p><code class="q">ports:</code> lists the TCP and UDP ports that something on your machine listens on, from <code>ss</code>. UDP includes every bound UDP socket, so browsers and mDNS (port 5353) show up too.</p>
@@ -1434,8 +1535,8 @@ hl.layer_rule({
 </ul>
 
 <h2 id="settings">Settings</h2>
-<p>System views have no settings. They are not affected by <a href="?p=settings-reference#max-results"><code>maxResults</code></a>, <a href="?p=settings-reference#web-suggestions"><code>webSuggestions</code></a> or <a href="?p=settings-reference#learning-enabled"><code>learningEnabled</code></a>.</p>
-<p>Listing a view sends nothing over the network, except that the <code>docker</code> command talks to whichever daemon your Docker context names. Spotlight runs every tool directly, without a shell, and never passes a name from a list as a command-line option. See <a href="?p=privacy-security">Privacy and security</a>.</p>
+<p>System views have no settings of their own. <a href="?p=settings-reference#preview-pane"><code>previewPane</code></a> turns off the <a href="#preview-details">details pane</a>. They are not affected by <a href="?p=settings-reference#max-results"><code>maxResults</code></a>, <a href="?p=settings-reference#web-suggestions"><code>webSuggestions</code></a> or <a href="?p=settings-reference#learning-enabled"><code>learningEnabled</code></a>.</p>
+<p>Listing a view or previewing a row sends nothing over the network, except that the <code>docker</code> command talks to whichever daemon your Docker context names. Spotlight runs every tool directly, without a shell, and never passes a name from a list as a command-line option. See <a href="?p=privacy-security">Privacy and security</a>.</p>
 
 <h2 id="troubleshooting">Troubleshooting</h2>
 <details><summary>docker: says "Docker unavailable · check daemon access"</summary><p>Your user cannot reach the Docker daemon, or the daemon is not running. Check with <code>docker ps</code> in a terminal. If that needs sudo, enable Sudoless Docker from the Omarchy menu (Setup, Security) and reboot, which the setup offers to do.</p></details>
@@ -1467,13 +1568,14 @@ hl.layer_rule({
 <h2 id="enable">Enable Ask AI</h2>
 <ol>
 <li>Install the Claude or Codex CLI and run it once in a terminal to sign in. Spotlight uses that CLI's account and access; it does not ask for an API key.</li>
-<li>Open <b class="ui">Spotlight Settings</b>, enable <b class="ui">Ask AI</b> and choose <b class="ui">Claude</b> or <b class="ui">Codex</b>. These choices are also available in the setup tour.</li>
-<li>Optionally choose a model and thinking level. <b class="ui">CLI default</b> and <b class="ui">Model default</b> leave those choices to the CLI. The menus use the installed CLI's local model catalog and list only the thinking levels supported by the selected model.</li>
+<li>Open <b class="ui">Spotlight Settings</b> and go to the <b class="ui">AI</b> tab. Enable <b class="ui">Ask AI</b> and choose <b class="ui">Claude</b> or <b class="ui">Codex</b> under <b class="ui">AI provider</b>. These choices are also available in the setup tour.</li>
+<li>Optionally choose a model and thinking level under <b class="ui">AI model</b> and <b class="ui">Thinking level</b>. <b class="ui">CLI default</b> and <b class="ui">Model default</b> leave those choices to the CLI. The menus use the installed CLI's local model catalog and list only the thinking levels supported by the selected model.</li>
 </ol>
 <p>If a model catalog is missing, run the provider CLI once, then close and reopen Spotlight. Provider usage and limits follow your CLI account.</p>
+<p>While Ask AI is off, any <code class="q">ai:</code> query shows <b class="ui">Enable AI in Spotlight Settings</b>. <kbd>Enter</kbd> on it opens Spotlight Settings on the <b class="ui">General</b> tab; switch to the <b class="ui">AI</b> tab from there.</p>
 
 <h2 id="ask">Ask a question</h2>
-<p>Type <code class="q">ai: how does scp work?</code> and press <kbd>Enter</kbd>. Nothing is sent while you type. Spotlight shows provider reasoning or progress when available, with a floating ghost while it thinks, then renders the validated answer as readable Markdown in a scrollable panel. It asks the provider to answer in the language of your question unless you request another language.</p>
+<p>Type <code class="q">ai: how does scp work?</code> and press <kbd>Enter</kbd>. Nothing is sent while you type, and a bare <code class="q">ai:</code> shows only <b class="ui">Ask AI…</b>, which cannot be selected. Spotlight shows provider reasoning or progress when available, with a floating ghost while it thinks, then renders the validated answer as readable Markdown in a scrollable panel. <kbd>Up</kbd>, <kbd>Down</kbd>, <kbd>PageUp</kbd> and <kbd>PageDown</kbd> scroll it; see <a href="?p=keyboard-shortcuts#ai-panel">Keyboard shortcuts</a>. Spotlight asks the provider to answer in the language of your question unless you request another language.</p>
 <p>Click <b class="ui">Copy answer</b> to copy the text, or <b class="ui">← Results</b> to return to search. Fenced code blocks become terminal cards with their own <b class="ui">Copy</b> action. A question that benefits from a visual answer can also show an <a href="?p=ai-artifacts">artifact</a>.</p>
 
 <h2 id="commands">Command suggestions</h2>
@@ -1484,7 +1586,7 @@ hl.layer_rule({
 <p><b class="ui">Cancel</b> stops the current request. Disabling Ask AI, submitting a new question or restarting/unloading the shell also stops it. Only the latest request and answer are retained, with the reading position, in the running shell's memory. They are lost when the shell restarts.</p>
 
 <h2 id="web-search">AI web search</h2>
-<p><b class="ui">AI web search</b> is separately disabled by default. Enable it in the setup tour or Spotlight Settings to allow the selected provider to search the web during a submitted question. It is independent of normal <a href="?p=web-search">web search and suggestions</a>.</p>
+<p><b class="ui">AI web search</b> is separately disabled by default. Enable it in the setup tour or on the <b class="ui">AI</b> tab of Spotlight Settings to allow the selected provider to search the web during a submitted question. It is independent of normal <a href="?p=web-search">web search and suggestions</a>.</p>
 <p>Weather cards require this setting. Image galleries need actual image URLs found through web search or explicitly supplied by you. Source links help you verify an answer; URL validation does not prove that the provider checked a page.</p>
 
 <h2 id="settings">Settings and privacy</h2>
@@ -1500,7 +1602,7 @@ hl.layer_rule({
 
 <h2 id="weather">Weather</h2>
 <p>Try <code class="q">ai: what's the weather in Tokyo this week?</code> with <b class="ui">AI web search</b> enabled. The card shows sourced weather with up to seven days. It reports unavailable data rather than inventing a forecast.</p>
-<p>Set a default city under <b class="ui">Spotlight Settings → Artifacts</b> to ask <code class="q">ai: what's the weather?</code> without naming a location. A location in your question takes priority. The saved location is sent only for recognized weather questions. Forecasts come from the provider's web search; Spotlight does not call a weather service directly.</p>
+<p>Set a default city in <b class="ui">Weather default location</b> on the <b class="ui">AI</b> tab of Spotlight Settings to ask <code class="q">ai: what's the weather?</code> without naming a location. A location in your question takes priority. The saved location is sent only for recognized weather questions. Forecasts come from the provider's web search; Spotlight does not call a weather service directly.</p>
 
 <h2 id="palette">Color palettes</h2>
 <p>Try <code class="q">ai: create a palette for a dark ocean theme</code>. Named swatches show HEX values and an interface preview. Copy a color to use it in your own theme; the card does not change the active theme.</p>
@@ -1582,8 +1684,9 @@ hl.layer_rule({
 <p>A filter is a known word followed by a colon, then your search. Only that provider runs, so nothing else appears in the list. Filters ignore case and the space after the colon is optional: <code class="q">F:invoice</code>, <code class="q">f:invoice</code> and <code class="q">f: invoice</code> are the same query.</p>
 <ul>
 <li>Unknown words stay text. If the word before the colon is not in the table above, the whole query is an ordinary search. <code class="q">c:</code>, <code class="q">clip:</code>, <code class="q">port:</code> and <code class="q">bt:</code> are not filters.</li>
-<li>Nothing after the colon. A provider filter shows only a hint row (except bare <code class="q">w:</code> / <code class="q">window:</code>, which list all open windows), such as <b class="ui">Type a search after “f:”</b>. A view lists its entries right away.</li>
-<li>Minimum length. <code class="q">a:</code> and <code class="q">action:</code> need 2 characters after the colon; a nonempty window filter also needs 2, while an empty one lists all windows; with 1 the list is empty. <code class="q">f:</code>, <code class="q">cb:</code> and <code class="q">man:</code> start at 1 character.</li>
+<li>Nothing after the colon. A provider filter shows only a hint row, such as <b class="ui">Type a search after “f:”</b>. Bare <code class="q">w:</code> / <code class="q">window:</code> list all open windows instead, and bare <code class="q">ai:</code> shows <b class="ui">Ask AI…</b>, which cannot be selected. A view lists its entries right away.</li>
+<li>Ask AI turned off. While <a href="?p=ask-ai#enable">Ask AI</a> is off, any <code class="q">ai:</code> query shows <b class="ui">Enable AI in Spotlight Settings</b>, and <kbd>Enter</kbd> opens the settings panel.</li>
+<li>Minimum length. <code class="q">a:</code> and <code class="q">action:</code> need 2 characters after the colon; with 1 the list is empty. <code class="q">w:</code>, <code class="q">f:</code>, <code class="q">cb:</code> and <code class="q">man:</code> start at 1 character.</li>
 <li>Tool filters show one row. <code class="q">calc:</code>, <code class="q">unit:</code>, <code class="q">reminder:</code> and <code class="q">calendar:</code> show only that tool's row: no apps, files or web results.</li>
 <li>Reminder and event filters add the trigger word. <code class="q">reminder: call mom in 20m</code> reads as <code class="q">reminder call mom in 20m</code>, and <code class="q">event: dentist friday at 10</code> as <code class="q">event dentist friday at 10</code>.</li>
 <li>Files always start at home. <code class="q">f:</code> searches your whole home directory. To search inside one folder, use a <a href="#path-queries">path query</a>.</li>
@@ -1719,13 +1822,17 @@ hl.layer_rule({
 <tr><td><kbd>Alt</kbd><kbd>Space</kbd></td><td>Anywhere</td><td>Open or close Spotlight (default shortcut)</td></tr>
 <tr><td><kbd>Enter</kbd></td><td>Results</td><td>Run the selected row's main action</td></tr>
 <tr><td><kbd>Shift</kbd><kbd>Enter</kbd> or <kbd>Ctrl</kbd><kbd>Enter</kbd></td><td>Results</td><td>Run the selected row's second action</td></tr>
-<tr><td><kbd>Tab</kbd></td><td>Results</td><td>Complete a view name or an app name</td></tr>
+<tr><td><kbd>Tab</kbd></td><td>Results</td><td>Complete a view name, an app name or a folder name</td></tr>
 <tr><td><kbd>Down</kbd> or <kbd>Ctrl</kbd><kbd>N</kbd></td><td>Results</td><td>Next row</td></tr>
 <tr><td><kbd>Up</kbd> or <kbd>Ctrl</kbd><kbd>P</kbd></td><td>Results</td><td>Previous row</td></tr>
 <tr><td><kbd>PageDown</kbd> / <kbd>PageUp</kbd></td><td>Results</td><td>Move one screen of rows</td></tr>
+<tr><td><kbd>Right</kbd></td><td>Folder row, after moving the selection</td><td>Browse the folder in the preview pane</td></tr>
+<tr><td><kbd>Left</kbd></td><td>Browsing a folder</td><td>Go up one folder, or back to the results</td></tr>
 <tr><td><kbd>Ctrl</kbd><kbd>C</kbd></td><td>File or folder row</td><td>Copy its full path and close</td></tr>
 <tr><td><kbd>Esc</kbd></td><td>Search field</td><td>Clear the query; close when it is already empty</td></tr>
 <tr><td><kbd>Enter</kbd> twice</td><td>Log Out, Restart, Shut Down, Bluetooth disconnect</td><td>Confirm</td></tr>
+<tr><td><kbd>Up</kbd> / <kbd>Down</kbd>, <kbd>PageUp</kbd> / <kbd>PageDown</kbd></td><td>Ask AI answer</td><td>Scroll the answer</td></tr>
+<tr><td><kbd>Space</kbd> or <kbd>Enter</kbd></td><td>Settings panel tab</td><td>Switch to that tab</td></tr>
 <tr><td><kbd>Space</kbd></td><td>Settings panel</td><td>Flip the focused switch</td></tr>
 <tr><td><kbd>Left</kbd> / <kbd>Right</kbd></td><td>Settings panel number</td><td>Lower or raise it</td></tr>
 <tr><td><kbd>Esc</kbd></td><td>Settings panel</td><td>Close the panel</td></tr>
@@ -1736,7 +1843,7 @@ hl.layer_rule({
 </table>
 
 <h2 id="open-close">Open and close Spotlight</h2>
-<p><kbd>Alt</kbd><kbd>Space</kbd> opens Spotlight from anywhere, and pressing it again while Spotlight is open closes it. Spotlight binds it on first run if nothing else uses it. To pick another combination, open <b class="ui">Spotlight Settings</b> and press <b class="ui">Change</b> under <b class="ui">Shortcut</b>; see <a href="?p=settings">Settings</a>.</p>
+<p><kbd>Alt</kbd><kbd>Space</kbd> opens Spotlight from anywhere, and pressing it again while Spotlight is open closes it. Spotlight binds it on first run if nothing else uses it. To pick another combination, open <b class="ui">Spotlight Settings</b> and press <b class="ui">Change</b> under <b class="ui">Shortcut</b> on the <b class="ui">General</b> tab; see <a href="?p=settings">Settings</a>.</p>
 <p>Every open starts fresh, with an empty query unless the binding passes one. Spotlight closes when you:</p>
 <ul>
 <li>press <kbd>Esc</kbd> on an empty query,</li>
@@ -1744,7 +1851,7 @@ hl.layer_rule({
 <li>switch to another window or workspace,</li>
 <li>run most actions.</li>
 </ul>
-<p>It stays open after you flip a toggle whose state it knows, fill in a view name, arm a confirmation, or open <b class="ui">Spotlight Settings</b> or <b class="ui">Run Setup Tour</b>.</p>
+<p>It stays open after you flip a toggle whose state it knows, fill in a view name, arm a confirmation, copy a path while <a href="#folder-browsing">browsing a folder</a>, or open <b class="ui">Spotlight Settings</b> or <b class="ui">Run Setup Tour</b>.</p>
 
 <h3 id="prefilled-shortcut">Add a shortcut with a starting query</h3>
 <p>Your shortcut runs <code>omarchy-shell shell toggle io.github.maajix.spotlight '{}'</code>. Put a query in the braces to open Spotlight with text already typed. Add your own binds outside the block Spotlight manages:</p>
@@ -1757,18 +1864,38 @@ hl.layer_rule({
 <table>
 <thead><tr><th>Keys</th><th>Does</th></tr></thead>
 <tbody>
-<tr><td><kbd>Esc</kbd></td><td>Clears the query. On an empty query, closes Spotlight.</td></tr>
+<tr><td><kbd>Esc</kbd></td><td>Clears the query. On an empty query, closes Spotlight. While you browse a folder, returns to the results instead.</td></tr>
 <tr><td><kbd>Down</kbd> or <kbd>Ctrl</kbd><kbd>N</kbd></td><td>Selects the next row. Wraps from the bottom to the top and skips hint rows.</td></tr>
 <tr><td><kbd>Up</kbd> or <kbd>Ctrl</kbd><kbd>P</kbd></td><td>Selects the previous row.</td></tr>
 <tr><td><kbd>PageDown</kbd> / <kbd>PageUp</kbd></td><td>Moves by as many rows as fit on screen.</td></tr>
 <tr><td><kbd>Enter</kbd></td><td>Runs the main action of the selected row.</td></tr>
 <tr><td><kbd>Shift</kbd><kbd>Enter</kbd> or <kbd>Ctrl</kbd><kbd>Enter</kbd></td><td>Runs the second action. On a row without one, does the same as <kbd>Enter</kbd>.</td></tr>
-<tr><td><kbd>Tab</kbd></td><td>On a view completion row, writes <code class="q">name:</code>. On an app row, writes the app's name. Does nothing on other rows.</td></tr>
+<tr><td><kbd>Right</kbd> / <kbd>Left</kbd></td><td>On a folder row, once you have moved the selection with the arrow keys, <kbd>PageDown</kbd>/<kbd>PageUp</kbd> or <kbd>Ctrl</kbd><kbd>N</kbd>/<kbd>Ctrl</kbd><kbd>P</kbd>, <kbd>Right</kbd> browses the folder in the preview pane; see <a href="#folder-browsing">Browse a folder</a>. Otherwise both move the cursor in the field.</td></tr>
+<tr><td><kbd>Tab</kbd></td><td>On a view completion row, writes <code class="q">name:</code>. On an app row, writes the app's name. On a folder row, writes the folder's name, which starts a new search. Does nothing on other rows.</td></tr>
 <tr><td><kbd>Ctrl</kbd><kbd>C</kbd></td><td>On a file or folder row with no text selected in the field, copies the full path and closes. Otherwise copies the selected text as usual.</td></tr>
 <tr><td>Other keys</td><td>Normal editing, including <kbd>Ctrl</kbd><kbd>V</kbd>, selection and cursor movement.</td></tr>
 </tbody>
 </table>
 <p><kbd>Ctrl</kbd><kbd>N</kbd> and <kbd>Ctrl</kbd><kbd>P</kbd> work only with no other modifier held.</p>
+
+<h2 id="folder-browsing">Browse a folder <span class="since">Added in 1.7.1</span></h2>
+<p>When a folder row is selected and the <a href="?p=how-search-works#preview-pane">preview pane</a> is showing, you can open the folder inside the pane and move through it without leaving Spotlight. The footer then shows <b class="ui">→ Browse folder</b>. For a walkthrough, see <a href="?p=apps-windows-files#browse-folders">Apps, windows and files</a>.</p>
+<table>
+<thead><tr><th>Keys</th><th>Does</th></tr></thead>
+<tbody>
+<tr><td><kbd>Right</kbd></td><td>Opens the selected folder in the preview pane and moves the selection there. On a result row it works only after you have moved the selection with the arrow keys, <kbd>PageDown</kbd>/<kbd>PageUp</kbd> or <kbd>Ctrl</kbd><kbd>N</kbd>/<kbd>Ctrl</kbd><kbd>P</kbd>; until then it moves the cursor in the field. Inside a folder, opens the selected subfolder.</td></tr>
+<tr><td><kbd>Down</kbd> / <kbd>Up</kbd>, <kbd>Ctrl</kbd><kbd>N</kbd> / <kbd>Ctrl</kbd><kbd>P</kbd></td><td>Select the next or previous entry. The selection stops at the first and last entry.</td></tr>
+<tr><td><kbd>PageDown</kbd> / <kbd>PageUp</kbd></td><td>Move 8 entries.</td></tr>
+<tr><td><kbd>Left</kbd></td><td>Goes up one folder. From the first folder you opened, returns to the results.</td></tr>
+<tr><td><kbd>Enter</kbd> or <kbd>Ctrl</kbd><kbd>Enter</kbd></td><td>Opens the entry with its default app.</td></tr>
+<tr><td><kbd>Shift</kbd><kbd>Enter</kbd></td><td>Opens the folder you are browsing.</td></tr>
+<tr><td><kbd>Ctrl</kbd><kbd>C</kbd></td><td>Copies the entry's full path and keeps Spotlight open. With text selected in the field, copies that text instead.</td></tr>
+<tr><td><kbd>Tab</kbd></td><td>On a folder entry, writes its name into the field, which starts a new search. Does nothing on a file.</td></tr>
+<tr><td><kbd>Esc</kbd></td><td>Leaves the folder and returns to the results, with your query unchanged.</td></tr>
+<tr><td>Typing</td><td>Any change to the query ends browsing and searches for the new text.</td></tr>
+</tbody>
+</table>
+<p>Browsing also ends when the selection in the results changes, for example when the pointer moves onto another row. A folder lists at most 1,000 entries, folders first; a longer one ends with a row such as <b class="ui">Showing the first 1000 entries</b>.</p>
 
 <h2 id="selection">Selection</h2>
 <p>Until you move it, the selection follows the top row, and <kbd>Enter</kbd> goes to the best match as results arrive. Which row that is when a view name completes is explained in <a href="?p=search-syntax#enter-target">Search syntax</a>.</p>
@@ -1788,8 +1915,9 @@ hl.layer_rule({
 <li><b class="ui">↵ &lt;label&gt;</b> is what <kbd>Enter</kbd> does. Toggle rows read <b class="ui">Turn on</b> or <b class="ui">Turn off</b>. Hint rows show no Enter hint.</li>
 <li><b class="ui">⇧↵ &lt;label&gt;</b> appears only when the row has a second action.</li>
 <li><b class="ui">⌃C Copy path</b> appears on file and folder rows.</li>
+<li><b class="ui">→ Browse folder</b> appears on folder rows while the preview pane is showing; see <a href="#folder-browsing">Browse a folder</a>.</li>
 </ul>
-<p>The left side reads <b class="ui">Omarchy</b>, or <b class="ui">Settings not saved</b> after a settings write failed.</p>
+<p>While an Ask AI answer is open, these hints are hidden. The left side reads <b class="ui">Omarchy</b>, or <b class="ui">Settings not saved</b> after a settings write failed.</p>
 
 <h2 id="row-actions">Enter and Shift+Enter by row</h2>
 <table>
@@ -1836,16 +1964,18 @@ hl.layer_rule({
 
 <h2 id="ai-panel">Ask AI panel</h2>
 <p><kbd>Enter</kbd> on an <code class="q">ai:</code> result submits the question. <kbd>Esc</kbd> dismisses the overlay without cancelling the request. Use <b class="ui">Cancel</b> to stop it or <b class="ui">← Results</b> to return to search.</p>
-<p><kbd>Tab</kbd> moves through the answer and card controls; <kbd>Enter</kbd> or <kbd>Space</kbd> activates a focused button or checkbox. Use the panel's scroll area to read long answers. <b class="ui">Copy answer</b> and each code card's <b class="ui">Copy</b> button copy their own text.</p>
+<p>While the search field has focus, <kbd>Up</kbd> and <kbd>Down</kbd> scroll the answer by one row and <kbd>PageUp</kbd> and <kbd>PageDown</kbd> by six rows. <kbd>Enter</kbd> in the field does nothing while the panel is open; change the query to return to the results.</p>
+<p><kbd>Tab</kbd> moves focus to <b class="ui">← Results</b>, then through the answer and card controls; <kbd>Enter</kbd> or <kbd>Space</kbd> activates a focused button or checkbox. <b class="ui">Copy answer</b> and each code card's <b class="ui">Copy</b> button copy their own text.</p>
 
 <h2 id="settings-panel">Settings panel</h2>
-<p>The panel opens with nothing focused. Press <kbd>Tab</kbd> to walk through the controls.</p>
+<p>The panel has four tabs: <b class="ui">General</b>, <b class="ui">Search</b>, <b class="ui">Appearance</b> and <b class="ui">AI</b>. It always opens on <b class="ui">General</b>, with nothing focused. Press <kbd>Tab</kbd> to walk through the tab buttons and the controls of the current tab.</p>
 <table>
 <thead><tr><th>Control</th><th>Keys</th></tr></thead>
 <tbody>
+<tr><td>Tabs (<b class="ui">General</b>, <b class="ui">Search</b>, <b class="ui">Appearance</b>, <b class="ui">AI</b>)</td><td><kbd>Space</kbd>, <kbd>Enter</kbd> or click switches to the tab. The new tab starts at the top with nothing focused, like a freshly opened panel.</td></tr>
 <tr><td>Switch rows and sub-switches</td><td><kbd>Space</kbd> or click flips them. <kbd>Enter</kbd> does not.</td></tr>
-<tr><td>Numbers (<b class="ui">Results shown</b> and the others)</td><td><kbd>Left</kbd> / <kbd>Right</kbd>, or the − and + buttons</td></tr>
-<tr><td><b class="ui">Web search engine</b> menu</td><td><kbd>Enter</kbd>, <kbd>Space</kbd> or <kbd>Down</kbd> opens it. Inside, <kbd>Up</kbd>/<kbd>Down</kbd> or <kbd>K</kbd>/<kbd>J</kbd> move, <kbd>Enter</kbd> picks, <kbd>Esc</kbd> closes the menu only.</td></tr>
+<tr><td>Numbers (<b class="ui">Results shown</b>, <b class="ui">Vertical position</b> and the others)</td><td><kbd>Left</kbd> / <kbd>Right</kbd>, or the − and + buttons</td></tr>
+<tr><td><b class="ui">Web search engine</b>, <b class="ui">AI provider</b>, <b class="ui">AI model</b> and <b class="ui">Thinking level</b> menus</td><td><kbd>Enter</kbd>, <kbd>Space</kbd> or <kbd>Down</kbd> opens it. Inside, <kbd>Up</kbd>/<kbd>Down</kbd> or <kbd>K</kbd>/<kbd>J</kbd> move, <kbd>Enter</kbd> picks, <kbd>Esc</kbd> closes the menu only.</td></tr>
 <tr><td><b class="ui">Default currency</b> field</td><td><kbd>Enter</kbd> keeps a valid code and leaves the field. <kbd>Esc</kbd> undoes the edit and leaves the field.</td></tr>
 <tr><td>Buttons (<b class="ui">Change</b>, <b class="ui">Run setup tour</b>, <b class="ui">Data folder</b>, <b class="ui">Reset learning data</b>, <b class="ui">Edit file</b>, <b class="ui">Retry save</b>, <b class="ui">Done</b>)</td><td><kbd>Space</kbd> or <kbd>Enter</kbd></td></tr>
 <tr><td>The panel</td><td><kbd>Esc</kbd> or <b class="ui">Done</b> closes it and returns to an empty search box. No other key closes it.</td></tr>
@@ -1893,16 +2023,24 @@ hl.layer_rule({
   "fileSearchAlways": true,
   "clipboardSearch": true,
   "clipboardSearchAlways": true,
+  "previewPane": true,
+  "reduceMotion": false,
   "learningEnabled": true,
   "aiEnabled": false,
   "aiProvider": "claude",
   "aiModel": "",
   "aiEffort": "",
   "aiWebSearch": false,
-  "artifactSettings": { "weather": { "defaultLocation": "" } },
+  "artifactSettings": {
+    "weather": {
+      "defaultLocation": ""
+    }
+  },
   "maxResults": 20,
   "maxApps": 8,
   "maxSuggestions": 4,
+  "verticalPosition": 50,
+  "horizontalPosition": 50,
   "setupCompleted": false
 }</code></pre>
 <p>A freshly created file says <code>"setupCompleted": false</code>. Spotlight only creates it when no file exists, and finishing or skipping the setup tour sets that key to <code>true</code>.</p>
@@ -1921,14 +2059,18 @@ hl.layer_rule({
 <tr><td><a href="#currency-rates"><code>currencyRates</code></a></td><td>boolean</td><td><code>true</code></td><td>Currency rates</td></tr>
 <tr><td><a href="#default-currency"><code>defaultCurrency</code></a></td><td>string</td><td><code>""</code></td><td>Default currency</td></tr>
 <tr><td><a href="#ai-enabled"><code>aiEnabled</code></a></td><td>boolean</td><td><code>false</code></td><td>Ask AI</td></tr>
-<tr><td><a href="#ai-provider"><code>aiProvider</code></a></td><td>string</td><td><code>"claude"</code></td><td>Provider</td></tr>
-<tr><td><a href="#ai-model"><code>aiModel</code></a></td><td>string</td><td><code>""</code></td><td>Model</td></tr>
+<tr><td><a href="#ai-provider"><code>aiProvider</code></a></td><td>string</td><td><code>"claude"</code></td><td>AI provider</td></tr>
+<tr><td><a href="#ai-model"><code>aiModel</code></a></td><td>string</td><td><code>""</code></td><td>AI model</td></tr>
 <tr><td><a href="#ai-effort"><code>aiEffort</code></a></td><td>string</td><td><code>""</code></td><td>Thinking level</td></tr>
 <tr><td><a href="#ai-web-search"><code>aiWebSearch</code></a></td><td>boolean</td><td><code>false</code></td><td>AI web search</td></tr>
-<tr><td><a href="#artifact-settings"><code>artifactSettings.weather.defaultLocation</code></a></td><td>string</td><td><code>""</code></td><td>Artifacts → Weather location</td></tr>
+<tr><td><a href="#artifact-settings"><code>artifactSettings.weather.defaultLocation</code></a></td><td>string</td><td><code>""</code></td><td>Weather default location</td></tr>
 <tr><td><a href="#max-results"><code>maxResults</code></a></td><td>integer, 8 to 50</td><td><code>20</code></td><td>Results shown</td></tr>
 <tr><td><a href="#max-apps"><code>maxApps</code></a></td><td>integer, 3 to 24</td><td><code>8</code></td><td>Applications shown</td></tr>
 <tr><td><a href="#max-suggestions"><code>maxSuggestions</code></a></td><td>integer, 0 to 8</td><td><code>4</code></td><td>Search suggestions shown</td></tr>
+<tr><td><a href="#vertical-position"><code>verticalPosition</code></a></td><td>integer, 0 to 100</td><td><code>50</code></td><td>Vertical position</td></tr>
+<tr><td><a href="#horizontal-position"><code>horizontalPosition</code></a></td><td>integer, 0 to 100</td><td><code>50</code></td><td>Horizontal position</td></tr>
+<tr><td><a href="#preview-pane"><code>previewPane</code></a></td><td>boolean</td><td><code>true</code></td><td>Preview pane</td></tr>
+<tr><td><a href="#reduce-motion"><code>reduceMotion</code></a></td><td>boolean</td><td><code>false</code></td><td>Reduce motion</td></tr>
 <tr><td><a href="#setup-completed"><code>setupCompleted</code></a></td><td>boolean</td><td><code>false</code></td><td>Not in the panel</td></tr>
 </tbody>
 </table>
@@ -1938,7 +2080,7 @@ hl.layer_rule({
 <li>The file is optional. Without it, every key uses its default.</li>
 <li>Spotlight reads it each time it opens. It does not watch the file, so a hand edit applies the next time you open Spotlight.</li>
 <li>The file must be a regular file owned by you, at most 64 KiB, not a symlink, and not writable by group or others. Otherwise Spotlight ignores it, uses the defaults and does not start the tour.</li>
-<li>A value of the wrong type falls back to that key's default. Booleans must be JSON <code>true</code> or <code>false</code>, not <code>"true"</code> or <code>1</code>. A number outside its range is moved to the nearest limit.</li>
+<li>A value of the wrong type falls back to that key's default. Booleans must be JSON <code>true</code> or <code>false</code>, not <code>"true"</code> or <code>1</code>. The three limits are more lenient: <code>maxResults</code>, <code>maxApps</code> and <code>maxSuggestions</code> also take a number in a string, such as <code>"30"</code>, and cut a decimal to a whole number. <code>verticalPosition</code> and <code>horizontalPosition</code> take only whole numbers. A number outside its range is moved to the nearest limit.</li>
 <li>If the file is not valid JSON, or is not an object, Spotlight uses the defaults, skips the tour and does not claim a shortcut. Every panel save fails with "spotlight.json is not a JSON object" until you fix it.</li>
 <li>The panel writes only the keys it knows. Keys you add yourself survive. Writes replace the file atomically with mode <code>0600</code>, and the panel refuses a write that would make the file larger than 64 KiB.</li>
 <li>To create the file, run <b class="ui">Spotlight Settings</b> with <kbd>Shift</kbd><kbd>Enter</kbd> (<b class="ui">Edit spotlight.json</b>), or press <b class="ui">Edit file</b> in the panel. Both write the defaults above and never overwrite an existing file.</li>
@@ -1949,28 +2091,28 @@ hl.layer_rule({
 
 <h3 id="file-search">fileSearch</h3>
 <p>Searches files and folders in your home directory by name. When <code>false</code>, nothing searches files: not <code class="q">f:</code>, not the short forms such as <code class="q">f invoice</code>, and not path queries.</p>
-<dl class="setting"><dt>Type</dt><dd>boolean</dd><dt>Default</dt><dd><code>true</code></dd><dt>Set in panel</dt><dd><b class="ui">Search</b> → <b class="ui">Files and folders</b>. Also on the setup tour's search step.</dd></dl>
+<dl class="setting"><dt>Type</dt><dd>boolean</dd><dt>Default</dt><dd><code>true</code></dd><dt>Set in panel</dt><dd><b class="ui">Search</b> → <b class="ui">Sources</b> → <b class="ui">Files and folders</b>. Also on the setup tour's search step.</dd></dl>
 <pre class="code" data-title="~/.config/omarchy/spotlight.json"><code>{
   "fileSearch": false
 }</code></pre>
 
 <h3 id="file-search-always">fileSearchAlways</h3>
 <p>When <code>true</code>, every plain query of 2 or more characters also searches your home directory and adds up to 4 file rows. When <code>false</code>, files appear only for <code class="q">f:</code>, <code class="q">file:</code>, <code class="q">f invoice</code>, <code class="q">file invoice</code>, <code class="q">files invoice</code> and path queries such as <code class="q">~/Downloads/</code>. It has no effect while <a href="#file-search"><code>fileSearch</code></a> is <code>false</code>.</p>
-<dl class="setting"><dt>Type</dt><dd>boolean</dd><dt>Default</dt><dd><code>true</code></dd><dt>Set in panel</dt><dd><b class="ui">Search</b> → <b class="ui">Include files in every search</b>, under Files and folders (disabled while that is off). Also on the setup tour's search step.</dd></dl>
+<dl class="setting"><dt>Type</dt><dd>boolean</dd><dt>Default</dt><dd><code>true</code></dd><dt>Set in panel</dt><dd><b class="ui">Search</b> → <b class="ui">Sources</b> → <b class="ui">Include files in every search</b>, under Files and folders (disabled while that is off). Also on the setup tour's search step.</dd></dl>
 <pre class="code" data-title="~/.config/omarchy/spotlight.json"><code>{
   "fileSearchAlways": false
 }</code></pre>
 
 <h3 id="clipboard-search">clipboardSearch</h3>
 <p>Searches your clipboard history, so you can copy an earlier entry again with <kbd>Enter</kbd>. When <code>false</code>, there is no clipboard search at all, not even with <code class="q">cb:</code>.</p>
-<dl class="setting"><dt>Type</dt><dd>boolean</dd><dt>Default</dt><dd><code>true</code></dd><dt>Set in panel</dt><dd><b class="ui">Search</b> → <b class="ui">Clipboard history</b>. Also on the setup tour's search step.</dd></dl>
+<dl class="setting"><dt>Type</dt><dd>boolean</dd><dt>Default</dt><dd><code>true</code></dd><dt>Set in panel</dt><dd><b class="ui">Search</b> → <b class="ui">Sources</b> → <b class="ui">Clipboard history</b>. Also on the setup tour's search step.</dd></dl>
 <pre class="code" data-title="~/.config/omarchy/spotlight.json"><code>{
   "clipboardSearch": false
 }</code></pre>
 
 <h3 id="clipboard-search-always">clipboardSearchAlways</h3>
 <p>When <code>true</code>, every plain query of 2 or more characters also includes matching clipboard entries. When <code>false</code>, clipboard entries appear only for <code class="q">cb:</code>, <code class="q">clipboard:</code>, <code class="q">cb text</code>, <code class="q">clip text</code> and <code class="q">clipboard text</code>. The hint under this toggle names the wrong prefix; the forms here are the ones that work. It has no effect while <a href="#clipboard-search"><code>clipboardSearch</code></a> is <code>false</code>.</p>
-<dl class="setting"><dt>Type</dt><dd>boolean</dd><dt>Default</dt><dd><code>true</code></dd><dt>Set in panel</dt><dd><b class="ui">Search</b> → <b class="ui">Include clipboard in every search</b>, under Clipboard history. Not in the setup tour.</dd></dl>
+<dl class="setting"><dt>Type</dt><dd>boolean</dd><dt>Default</dt><dd><code>true</code></dd><dt>Set in panel</dt><dd><b class="ui">Search</b> → <b class="ui">Sources</b> → <b class="ui">Include clipboard in every search</b>, under Clipboard history. Not in the setup tour.</dd></dl>
 <pre class="code" data-title="~/.config/omarchy/spotlight.json"><code>{
   "clipboardSearchAlways": false
 }</code></pre>
@@ -1978,7 +2120,7 @@ hl.layer_rule({
 <h3 id="learning-enabled">learningEnabled</h3>
 <p>Moves the apps, windows, files and commands you pick often higher over time. Spotlight records only a plain <kbd>Enter</kbd> or click on those rows, never <kbd>Shift</kbd><kbd>Enter</kbd>, <kbd>Ctrl</kbd><kbd>Enter</kbd> or <kbd>Shift</kbd>-click. The data stays in <code>~/.local/state/omarchy/spotlight-usage.json</code> and never leaves your machine.</p>
 <p>When <code>false</code>, Spotlight stops recording and ignores what it learned, but keeps the file. The empty query then shows five apps and nothing else. To delete the data, use <b class="ui">Reset learning data</b> in the panel.</p>
-<dl class="setting"><dt>Type</dt><dd>boolean</dd><dt>Default</dt><dd><code>true</code></dd><dt>Set in panel</dt><dd><b class="ui">Search</b> → <b class="ui">Learn from your choices</b>. Also on the setup tour's search step.</dd></dl>
+<dl class="setting"><dt>Type</dt><dd>boolean</dd><dt>Default</dt><dd><code>true</code></dd><dt>Set in panel</dt><dd><b class="ui">Search</b> → <b class="ui">Sources</b> → <b class="ui">Learn from your choices</b>. Also on the setup tour's search step.</dd></dl>
 <pre class="code" data-title="~/.config/omarchy/spotlight.json"><code>{
   "learningEnabled": false
 }</code></pre>
@@ -1988,14 +2130,14 @@ hl.layer_rule({
 <h3 id="web-suggestions">webSuggestions</h3>
 <p>Adds search suggestions as you type. Each query is sent to Kagi when <a href="#search-engine"><code>searchEngine</code></a> is <code>"kagi"</code>, and to Google for every other engine, so this is off by default.</p>
 <p>Suggestions need 2 or more characters and appear only in a plain search or under <code class="q">web:</code>, <code class="q">search:</code> or <code class="q">url:</code>. Spotlight sends nothing for URLs, bangs, calculations, currency, reminders, events, file filters and path queries. It waits 220 ms after you stop typing, sends at most the first 200 characters, and gives up after 3 seconds. <a href="#max-suggestions"><code>maxSuggestions</code></a> sets how many rows appear.</p>
-<dl class="setting"><dt>Type</dt><dd>boolean</dd><dt>Default</dt><dd><code>false</code></dd><dt>Set in panel</dt><dd><b class="ui">Web</b> → <b class="ui">Search suggestions</b>. Also on the setup tour's search step.</dd></dl>
+<dl class="setting"><dt>Type</dt><dd>boolean</dd><dt>Default</dt><dd><code>false</code></dd><dt>Set in panel</dt><dd><b class="ui">Search</b> → <b class="ui">Web</b> → <b class="ui">Search suggestions</b>. Also on the setup tour's search step.</dd></dl>
 <pre class="code" data-title="~/.config/omarchy/spotlight.json"><code>{
   "webSuggestions": true
 }</code></pre>
 
 <h3 id="search-engine">searchEngine</h3>
 <p>The engine behind the web fallback row, <b class="ui">Search &lt;Engine&gt; for “query”</b>, which ends every plain or <code class="q">web:</code> query that is not a URL. It also picks the suggestion provider: Kagi for <code>"kagi"</code>, Google for everything else. Bangs such as <code class="q">gh spotlight</code> always use their own engine.</p>
-<dl class="setting"><dt>Type</dt><dd>string</dd><dt>Default</dt><dd><code>"g"</code> (Google)</dd><dt>Values</dt><dd>Any bang key from the table below, case-insensitive. <code>"gg"</code> and <code>"google"</code> also mean Google. Any other value means Google.</dd><dt>Set in panel</dt><dd><b class="ui">Web</b> → <b class="ui">Web search engine</b> (a menu of 20 engines). Also on the setup tour's search step.</dd></dl>
+<dl class="setting"><dt>Type</dt><dd>string</dd><dt>Default</dt><dd><code>"g"</code> (Google)</dd><dt>Values</dt><dd>Any bang key from the table below, case-insensitive. <code>"gg"</code> and <code>"google"</code> also mean Google. Any other value means Google.</dd><dt>Set in panel</dt><dd><b class="ui">Search</b> → <b class="ui">Web</b> → <b class="ui">Web search engine</b> (a menu of 20 engines). Also on the setup tour's search step.</dd></dl>
 <pre class="code" data-title="~/.config/omarchy/spotlight.json"><code>{
   "searchEngine": "ddg"
 }</code></pre>
@@ -2029,14 +2171,14 @@ hl.layer_rule({
 
 <h3 id="currency-rates">currencyRates</h3>
 <p>Fetches exchange rates from Frankfurter for complete currency queries such as <code class="q">100 USD to EUR</code>. Spotlight sends only the two currency codes and keeps each rate in <code>~/.cache/omarchy/spotlight-currency.json</code> for 24 hours. When <code>false</code>, Spotlight uses cached rates only and never contacts the network.</p>
-<dl class="setting"><dt>Type</dt><dd>boolean</dd><dt>Default</dt><dd><code>true</code></dd><dt>Set in panel</dt><dd><b class="ui">Currency</b> → <b class="ui">Currency rates</b>. Also on the setup tour's search step.</dd></dl>
+<dl class="setting"><dt>Type</dt><dd>boolean</dd><dt>Default</dt><dd><code>true</code></dd><dt>Set in panel</dt><dd><b class="ui">Search</b> → <b class="ui">Currency</b> → <b class="ui">Currency rates</b>. Also on the setup tour's search step.</dd></dl>
 <pre class="code" data-title="~/.config/omarchy/spotlight.json"><code>{
   "currencyRates": false
 }</code></pre>
 
 <h3 id="default-currency">defaultCurrency</h3>
 <p>The target currency for a query that names no target, so <code class="q">23 USD</code> converts to it. An explicit target, as in <code class="q">23 USD to JPY</code>, always wins. Empty means no default.</p>
-<dl class="setting"><dt>Type</dt><dd>string</dd><dt>Default</dt><dd><code>""</code></dd><dt>Values</dt><dd>A 3-letter code that Frankfurter supports, such as <code>"EUR"</code>. Case and surrounding spaces are ignored. Any other value means no default.</dd><dt>Set in panel</dt><dd><b class="ui">Currency</b> → <b class="ui">Default currency</b>, a text field with the placeholder "None or USD". An unsupported code turns the field red and is not saved. Also on the setup tour's search step.</dd></dl>
+<dl class="setting"><dt>Type</dt><dd>string</dd><dt>Default</dt><dd><code>""</code></dd><dt>Values</dt><dd>A 3-letter code that Frankfurter supports, such as <code>"EUR"</code>. Case and surrounding spaces are ignored. Any other value means no default.</dd><dt>Set in panel</dt><dd><b class="ui">Search</b> → <b class="ui">Currency</b> → <b class="ui">Default currency</b>, a text field with the placeholder "None or USD". An unsupported code turns the field red and is not saved. Also on the setup tour's search step.</dd></dl>
 <pre class="code" data-title="~/.config/omarchy/spotlight.json"><code>{
   "defaultCurrency": "EUR"
 }</code></pre>
@@ -2045,50 +2187,80 @@ hl.layer_rule({
 
 <h3 id="max-results">maxResults</h3>
 <p>The most rows the list holds. It applies to every search, including <code class="q">f:</code> and <code class="q">cb:</code>, but not to <a href="?p=system-views">system views</a>. The web rows come last, so a query with many local matches can push the web fallback off the list.</p>
-<dl class="setting"><dt>Type</dt><dd>integer</dd><dt>Default</dt><dd><code>20</code></dd><dt>Values</dt><dd>8 to 50</dd><dt>Set in panel</dt><dd><b class="ui">Results</b> → <b class="ui">Results shown</b></dd></dl>
+<dl class="setting"><dt>Type</dt><dd>integer</dd><dt>Default</dt><dd><code>20</code></dd><dt>Values</dt><dd>8 to 50</dd><dt>Set in panel</dt><dd><b class="ui">Search</b> → <b class="ui">Results</b> → <b class="ui">Results shown</b></dd></dl>
 <pre class="code" data-title="~/.config/omarchy/spotlight.json"><code>{
   "maxResults": 30
 }</code></pre>
 
 <h3 id="max-apps">maxApps</h3>
 <p>The most application rows a query can add. It does not limit the empty query.</p>
-<dl class="setting"><dt>Type</dt><dd>integer</dd><dt>Default</dt><dd><code>8</code></dd><dt>Values</dt><dd>3 to 24</dd><dt>Set in panel</dt><dd><b class="ui">Results</b> → <b class="ui">Applications shown</b></dd></dl>
+<dl class="setting"><dt>Type</dt><dd>integer</dd><dt>Default</dt><dd><code>8</code></dd><dt>Values</dt><dd>3 to 24</dd><dt>Set in panel</dt><dd><b class="ui">Search</b> → <b class="ui">Results</b> → <b class="ui">Applications shown</b></dd></dl>
 <pre class="code" data-title="~/.config/omarchy/spotlight.json"><code>{
   "maxApps": 12
 }</code></pre>
 
 <h3 id="max-suggestions">maxSuggestions</h3>
 <p>The most search suggestion rows shown when <a href="#web-suggestions"><code>webSuggestions</code></a> is on. <code>0</code> hides them.</p>
-<dl class="setting"><dt>Type</dt><dd>integer</dd><dt>Default</dt><dd><code>4</code></dd><dt>Values</dt><dd>0 to 8</dd><dt>Set in panel</dt><dd><b class="ui">Results</b> → <b class="ui">Search suggestions shown</b></dd></dl>
+<dl class="setting"><dt>Type</dt><dd>integer</dd><dt>Default</dt><dd><code>4</code></dd><dt>Values</dt><dd>0 to 8</dd><dt>Set in panel</dt><dd><b class="ui">Search</b> → <b class="ui">Web</b> → <b class="ui">Search suggestions shown</b></dd></dl>
 <pre class="code" data-title="~/.config/omarchy/spotlight.json"><code>{
   "maxSuggestions": 6
+}</code></pre>
+
+<h2 id="appearance">Appearance</h2>
+
+<h3 id="vertical-position">verticalPosition</h3>
+<p>Where the card sits on the screen, from <code>0</code> (top) to <code>100</code> (bottom). The top of the card stays in place while results grow and shrink below it. At <code>100</code> the card sits as low as it can while a full result list still fits, so a small screen leaves less room to move.</p>
+<dl class="setting"><dt>Type</dt><dd>integer</dd><dt>Default</dt><dd><code>50</code></dd><dt>Values</dt><dd>0 to 100. The panel moves it in steps of 5; the file takes any whole number. A decimal, a string or a boolean means <code>50</code>.</dd><dt>Set in panel</dt><dd><b class="ui">Appearance</b> → <b class="ui">Vertical position</b></dd></dl>
+<pre class="code" data-title="~/.config/omarchy/spotlight.json"><code>{
+  "verticalPosition": 20
+}</code></pre>
+
+<h3 id="horizontal-position">horizontalPosition</h3>
+<p>Where the card sits across the screen, from <code>0</code> (left) to <code>100</code> (right). <code>50</code> centers it. A narrow screen leaves less room to move.</p>
+<dl class="setting"><dt>Type</dt><dd>integer</dd><dt>Default</dt><dd><code>50</code></dd><dt>Values</dt><dd>0 to 100. The panel moves it in steps of 5; the file takes any whole number. A decimal, a string or a boolean means <code>50</code>.</dd><dt>Set in panel</dt><dd><b class="ui">Appearance</b> → <b class="ui">Horizontal position</b></dd></dl>
+<pre class="code" data-title="~/.config/omarchy/spotlight.json"><code>{
+  "horizontalPosition": 0
+}</code></pre>
+
+<h3 id="preview-pane">previewPane</h3>
+<p>Shows a pane beside the results with details for the selected row: file contents, clipboard entries, conversions, window captures and more. See <a href="?p=how-search-works#preview-pane">The preview pane</a>. When <code>false</code>, the card keeps its narrower width and <kbd>Right</kbd> does not browse folders.</p>
+<dl class="setting"><dt>Type</dt><dd>boolean</dd><dt>Default</dt><dd><code>true</code></dd><dt>Set in panel</dt><dd><b class="ui">Appearance</b> → <b class="ui">Preview pane</b></dd></dl>
+<pre class="code" data-title="~/.config/omarchy/spotlight.json"><code>{
+  "previewPane": false
+}</code></pre>
+
+<h3 id="reduce-motion">reduceMotion</h3>
+<p>When <code>true</code>, Spotlight skips its opening, closing and resizing animations. The card appears and disappears at once and changes size without animating.</p>
+<dl class="setting"><dt>Type</dt><dd>boolean</dd><dt>Default</dt><dd><code>false</code></dd><dt>Set in panel</dt><dd><b class="ui">Appearance</b> → <b class="ui">Reduce motion</b></dd></dl>
+<pre class="code" data-title="~/.config/omarchy/spotlight.json"><code>{
+  "reduceMotion": true
 }</code></pre>
 
 <h2 id="ai">Ask AI</h2>
 
 <h3 id="ai-enabled">aiEnabled</h3>
 <p>Enables <code class="q">ai:</code> requests through the selected provider. Nothing is submitted until you press <kbd>Enter</kbd>. Turning this off also stops an active request.</p>
-<dl class="setting"><dt>Type</dt><dd>boolean</dd><dt>Default</dt><dd><code>false</code></dd><dt>Set in panel</dt><dd><b class="ui">Ask AI</b></dd></dl>
+<dl class="setting"><dt>Type</dt><dd>boolean</dd><dt>Default</dt><dd><code>false</code></dd><dt>Set in panel</dt><dd><b class="ui">AI</b> → <b class="ui">Ask AI</b>. Also on the setup tour's Ask AI step.</dd></dl>
 
 <h3 id="ai-provider">aiProvider</h3>
 <p>The installed, signed-in CLI used for requests. Changing providers resets model and effort choices to defaults.</p>
-<dl class="setting"><dt>Type</dt><dd>string</dd><dt>Default</dt><dd><code>"claude"</code></dd><dt>Values</dt><dd><code>"claude"</code>, <code>"codex"</code></dd><dt>Set in panel</dt><dd><b class="ui">Provider</b></dd></dl>
+<dl class="setting"><dt>Type</dt><dd>string</dd><dt>Default</dt><dd><code>"claude"</code></dd><dt>Values</dt><dd><code>"claude"</code>, <code>"codex"</code></dd><dt>Set in panel</dt><dd><b class="ui">AI</b> → <b class="ui">AI provider</b>. Also on the setup tour's Ask AI step.</dd></dl>
 
 <h3 id="ai-model">aiModel</h3>
 <p>A model identifier from the selected CLI's local catalog. An empty value means <b class="ui">CLI default</b>. The model menu shows locally known choices rather than a fixed list.</p>
-<dl class="setting"><dt>Type</dt><dd>string</dd><dt>Default</dt><dd><code>""</code></dd><dt>Set in panel</dt><dd><b class="ui">Model</b></dd></dl>
+<dl class="setting"><dt>Type</dt><dd>string</dd><dt>Default</dt><dd><code>""</code></dd><dt>Values</dt><dd>A letter or digit followed by up to 191 letters, digits or <code>. _ : / @ -</code>. Any other value means <b class="ui">CLI default</b>.</dd><dt>Set in panel</dt><dd><b class="ui">AI</b> → <b class="ui">AI model</b>. Also on the setup tour's Ask AI step.</dd></dl>
 
 <h3 id="ai-effort">aiEffort</h3>
 <p>The thinking level supported by the chosen model. An empty value means <b class="ui">Model default</b>. Pick from the menu so the level matches the provider and model.</p>
-<dl class="setting"><dt>Type</dt><dd>string</dd><dt>Default</dt><dd><code>""</code></dd><dt>Set in panel</dt><dd><b class="ui">Thinking level</b></dd></dl>
+<dl class="setting"><dt>Type</dt><dd>string</dd><dt>Default</dt><dd><code>""</code></dd><dt>Values</dt><dd><code>"low"</code>, <code>"medium"</code>, <code>"high"</code>, <code>"xhigh"</code>, <code>"max"</code>, or <code>"ultra"</code> with Codex only. Any other value means <b class="ui">Model default</b>.</dd><dt>Set in panel</dt><dd><b class="ui">AI</b> → <b class="ui">Thinking level</b>. Also on the setup tour's Ask AI step.</dd></dl>
 
 <h3 id="ai-web-search">aiWebSearch</h3>
 <p>Allows the selected provider to search the web while answering a submitted <code class="q">ai:</code> query. Weather cards require it. This is separate from <code>webSuggestions</code> and the web search engine.</p>
-<dl class="setting"><dt>Type</dt><dd>boolean</dd><dt>Default</dt><dd><code>false</code></dd><dt>Set in panel</dt><dd><b class="ui">AI web search</b></dd></dl>
+<dl class="setting"><dt>Type</dt><dd>boolean</dd><dt>Default</dt><dd><code>false</code></dd><dt>Set in panel</dt><dd><b class="ui">AI</b> → <b class="ui">AI web search</b>. Also on the setup tour's Ask AI step.</dd></dl>
 
 <h3 id="artifact-settings">artifactSettings</h3>
 <p>Stores preferences per card type. Currently <code>weather.defaultLocation</code> is an optional location string. A place named in the question takes priority; the saved location is sent only for recognized weather questions.</p>
-<dl class="setting"><dt>Type</dt><dd>object</dd><dt>Default</dt><dd><code>{ "weather": { "defaultLocation": "" } }</code></dd><dt>Set in panel</dt><dd><b class="ui">Artifacts → Weather location</b></dd></dl>
+<dl class="setting"><dt>Type</dt><dd>object</dd><dt>Default</dt><dd><code>{ "weather": { "defaultLocation": "" } }</code></dd><dt>Values</dt><dd><code>weather.defaultLocation</code> holds up to 120 characters, with no leading or trailing spaces and no control characters. Any other value means no default location.</dd><dt>Set in panel</dt><dd><b class="ui">AI</b> → <b class="ui">Artifacts</b> → <b class="ui">Weather default location</b>. Not in the setup tour.</dd></dl>
 <pre class="code" data-title="~/.config/omarchy/spotlight.json"><code>{
   "aiEnabled": true,
   "aiProvider": "codex",
@@ -2169,6 +2341,27 @@ hl.layer_rule({
 
 <details><summary>The data folder or plugin folder does not open</summary>
 <p><b class="ui">Open Spotlight Data Folder</b>, <b class="ui">Open Spotlight Plugin Folder</b> and the panel's <b class="ui">Data folder</b> button use <code>gio open</code>, which needs a default app for folders. Set a file manager as the default handler for directories.</p>
+</details>
+
+<h2 id="preview-pane">Preview pane <span class="since">Added in 1.7.1</span></h2>
+
+<details><summary>The preview pane does not appear</summary>
+<p>Spotlight shows the pane only when all of these hold:</p>
+<ul>
+<li><b class="ui">Preview pane</b> is on, on the <b class="ui">Appearance</b> tab of Spotlight Settings. It is on by default. See <a href="?p=settings#appearance">Appearance</a>.</li>
+<li>The screen is wide enough: at least 960 logical pixels, more if your theme scales up spacing or fonts. On a narrower screen Spotlight shows the result list alone.</li>
+<li>Ask AI is closed. An <code class="q">ai:</code> question and its answer use the whole panel.</li>
+<li>At least one result in the list has details: an app, window, file or folder, clipboard entry, calculation, unit or currency conversion, or a system view row. A list of only commands, web searches, reminders or events shows no pane.</li>
+</ul>
+<p>Browsing a folder with <kbd>Right</kbd> also needs the pane, so it does nothing while the pane is hidden. See <a href="?p=how-search-works#preview-pane">Preview pane</a> for what each result shows.</p>
+</details>
+
+<details><summary>The pane or a folder says "Contents hidden for private files"</summary>
+<p>Spotlight never puts the contents of private files on screen. This covers everything under <code>~/.ssh</code>, <code>~/.gnupg</code>, <code>~/.password-store</code> and <code>~/.local/share/keyrings</code>, and files named like keys or credentials, such as <code>id_ed25519</code>, <code>*.pem</code>, <code>*.key</code>, <code>.env</code>, <code>.netrc</code> or <code>*secret*</code>. Public keys ending in <code>.pub</code> are shown. A symlink is hidden when either its own name or the file it points to is private. The pane still shows the name, size and date. Open the file with <kbd>Enter</kbd> to see it. See <a href="?p=privacy-security#preview-reads">What the preview pane reads</a>.</p>
+</details>
+
+<details><summary>A folder ends with "Showing the first N entries"</summary>
+<p>While you browse, Spotlight reads at most 1,000 entries of a folder, in the order the file system returns them, and fewer when the names and paths are very long. It then sorts them with folders first. The row means the list is incomplete, so an entry can be missing even when its name sorts early. To find it, type its path as a query, for example <code class="q">~/Downloads/report</code>, or open the folder in your file manager.</p>
 </details>
 
 <h2 id="system-views">System views</h2>
@@ -2268,13 +2461,33 @@ hl.layer_rule({
 <h3 id="read-only">What Spotlight only reads</h3>
 <p>Clipboard search reads Omarchy's own history file, <code>~/.local/state/omarchy/clipboard-history.json</code>, and uses text items only. Spotlight does not copy it anywhere. The <code>tldr</code> client keeps its pages in <code>~/.cache/tldr</code>.</p>
 
+<h3 id="preview-reads">What the preview pane reads</h3>
+<p>While the <a href="?p=how-search-works#preview-pane">preview pane</a> is shown, Spotlight reads more about the one result you select:</p>
+<table>
+<thead><tr><th>Result</th><th>What is read</th></tr></thead>
+<tbody>
+<tr><td>Text file</td><td>The first 16 KiB, at most 40 lines, plus size and date</td></tr>
+<tr><td>Image file</td><td>The image, up to 32 MiB, decoded at the pane's size</td></tr>
+<tr><td>Folder</td><td>Up to 24 entry names, or up to 1,000 while you browse it</td></tr>
+<tr><td>Clipboard entry</td><td>That entry, at most 40 lines and 4,000 characters</td></tr>
+<tr><td>Window</td><td>A live capture of the window, only while Spotlight is open</td></tr>
+<tr><td><code class="q">ports:</code> row</td><td>The command line, user and start time of the process</td></tr>
+<tr><td><code class="q">ssh:</code> row</td><td>Host name, user, port, identity file path and jump host from <code>~/.ssh/config</code></td></tr>
+<tr><td><code class="q">docker:</code> row</td><td>The container's details and its last 8 log lines</td></tr>
+<tr><td><code class="q">services:</code> row</td><td>The unit's state and its last 8 journal lines</td></tr>
+<tr><td><code class="q">mounts:</code> row</td><td>Size, used and free space</td></tr>
+</tbody>
+</table>
+<p>Nothing the pane reads is written to disk or sent anywhere. Spotlight keeps only the selected result's details in memory and drops them when you move on. With <b class="ui">Preview pane</b> off, none of these reads happen.</p>
+<p>Preview reads follow symlinks and accept any file you can read, because they show files you searched for. Contents of private files are never shown: anything under <code>~/.ssh</code>, <code>~/.gnupg</code>, <code>~/.password-store</code> or <code>~/.local/share/keyrings</code>, and files named like keys or credentials, such as <code>id_*</code>, <code>*.pem</code>, <code>*.key</code>, <code>.env</code> or <code>*secret*</code>. A symlink is checked by its own name and by the file it points to. For these the pane shows only name, size and date.</p>
+
 <h2 id="network">What reaches the network</h2>
 <p>Spotlight makes no request at startup and does not poll for updates. A submitted AI request can continue while the overlay is closed. Requests happen only in these cases:</p>
 <table>
 <thead><tr><th>Feature</th><th>When</th><th>What is sent</th></tr></thead>
 <tbody>
 <tr><td>Web suggestions (off by default)</td><td>While you type, with <b class="ui">Search suggestions</b> on</td><td>Your query, up to 200 characters, to Google, or to Kagi when Kagi is your engine</td></tr>
-<tr><td>Currency rates (on by default)</td><td>After a complete currency query and a short pause, when no rate from the last 24 hours is cached</td><td>The two currency codes to <code>api.frankfurter.dev</code>, never the amount</td></tr>
+<tr><td>Currency rates (on by default)</td><td>After a complete currency query and a short pause, when no rate from the last 24 hours is cached</td><td>The two currency codes to <code>api.frankfurter.dev</code>, never the amount. When you select a currency result with the preview pane shown, one request with the source code and up to four more codes, for those without a fresh cached rate</td></tr>
 <tr><td>Command help</td><td>The first time you look up a command that has no local tldr page</td><td>The command name, fetched by the <code>tldr</code> client</td></tr>
 <tr><td>Web, URL and calendar results</td><td>Only when you open one</td><td>The URL, opened in your browser</td></tr>
 <tr><td>System views</td><td>When you run <code class="q">ssh:</code>, connect to Wi-Fi or open a port in the browser</td><td>Whatever that action sends</td></tr>
@@ -2283,9 +2496,9 @@ hl.layer_rule({
 <ul>
 <li>Kagi suggestions are anonymous (no cookies). If Kagi fails, Spotlight shows nothing rather than asking Google.</li>
 <li>A failed suggestion request shows no suggestions and no error.</li>
-<li>With <b class="ui">Currency rates</b> off, Spotlight uses cached rates only and contacts no one. Same-currency pairs never need the network.</li>
+<li>With <b class="ui">Currency rates</b> off, Spotlight uses cached rates only and contacts no one, in the preview pane too. Same-currency pairs never need the network.</li>
 <li>Listing a view sends nothing, with one exception: <code class="q">docker:</code> talks to the daemon of your active Docker context, which may be on another machine.</li>
-<li>Ordinary search results load no remote icons or favicons. AI maps and galleries can fetch previews as described below.</li>
+<li>Ordinary search results load no remote icons or favicons, and the preview pane loads no remote images. AI maps and galleries can fetch previews as described below.</li>
 </ul>
 <p>For suggestions and currency rates, Spotlight builds the request addresses itself. Those requests do not follow redirects, identify themselves as <code>Spotlight</code>, give up after 3 seconds and cap the response size. See <a href="?p=settings-reference#web-suggestions">webSuggestions</a> and <a href="?p=settings-reference#currency-rates">currencyRates</a>.</p>
 
@@ -2307,12 +2520,13 @@ hl.layer_rule({
 <p>Artifact URLs and data are validated, but a valid source link does not prove the provider checked its contents. Review sources and image licenses before relying on an answer or reusing an image.</p>
 
 <h2 id="helper">The helper script</h2>
-<p>The Spotlight interface delegates file access, system tools and most network requests to the helper; map preview images are loaded directly from the fixed <code>mapmap.ai</code> endpoint. It asks a Python helper in the plugin folder (<code>bin/spotlight-helper</code>) to do it, one short-lived process per request, and gets one JSON reply back. That helper is the security boundary:</p>
+<p>The Spotlight interface delegates file access, system tools and most network requests to the helper; map preview images are loaded directly from the fixed <code>mapmap.ai</code> endpoint. The preview pane also loads two things directly: image files, only after the helper has checked them, and live window captures from the compositor. For everything else, the interface asks a Python helper in the plugin folder (<code>bin/spotlight-helper</code>) to do it, one short-lived process per request, and gets one JSON reply back. That helper is the security boundary:</p>
 <ul>
 <li>Every command runs as an argument list, never through a shell.</li>
 <li>Values cannot be read as command options: SSH hosts must match a strict pattern, container ids must be hex, Bluetooth addresses must be MAC addresses, mount targets must be absolute paths and services are passed as <code>--unit=NAME</code>. Wi-Fi and audio names that start with <code>-</code> are never passed on, and copying uses <code>wl-copy --</code>.</li>
 <li>Wi-Fi and Bluetooth names with control characters are rejected, and every string Spotlight displays is length-limited.</li>
 <li>Files are opened without following symlinks and must be regular files you own that are not group- or world-writable. Each has a size limit, and parent directories are checked one by one. This covers your settings, the usage and currency files, <code>bindings.lua</code> and <code>~/.ssh/config</code>.</li>
+<li>Preview reads are the exception: they follow symlinks and accept any file you can read. They open only regular files, never wait on a pipe or device, read at most 16 KiB of text and keep private files hidden as described in <a href="#preview-reads">What the preview pane reads</a>.</li>
 <li>Each system tool gets an output limit and a deadline; at the deadline its whole process group is killed.</li>
 <li>View lists are fetched fresh each time you open Spotlight, late replies are discarded, and view rows are never learned or sent as suggestions.</li>
 </ul>
@@ -2335,17 +2549,21 @@ hl.layer_rule({
 
 <p>Newest release first, starting at 1.5.0. To get the latest version, run <code>omarchy plugin update io.github.maajix.spotlight</code>.</p>
 
+<h2 id="1-7-3">1.7.3 <span class="date">2026-10-10</span></h2>
+<h3 id="1-7-3-fixed">Fixed</h3>
+<ul><li>The hint under <b class="ui">Include clipboard in every search</b> names the filters that work: <code class="q">cb</code>, <code class="q">cb:</code> and <code class="q">clip</code>. It used to suggest <code class="q">c</code> and <code class="q">c:</code>, which do not filter anything.</li></ul>
+
 <h2 id="1-7-2">1.7.2 <span class="date">2026-10-10</span></h2>
 <h3 id="1-7-2-added">Added</h3>
-<ul><li><b class="ui">Vertical position</b> and <b class="ui">Horizontal position</b> <a href="?p=settings">settings</a> move Spotlight anywhere on the screen, from 0% to 100% in 5% steps. 50% keeps the default centered placement. The search field stays fixed while results grow, and screen margins keep the launcher visible.</li></ul>
+<ul><li><b class="ui">Vertical position</b> and <b class="ui">Horizontal position</b> <a href="?p=settings#appearance">settings</a> move Spotlight anywhere on the screen, from 0% to 100% in 5% steps. 50% keeps the default centered placement. The search field stays fixed while results grow, and screen margins keep the launcher visible.</li></ul>
 <h3 id="1-7-2-changed">Changed</h3>
-<ul><li>The <a href="?p=settings">settings panel</a> is grouped into four tabs: <b class="ui">General</b>, <b class="ui">Search</b>, <b class="ui">Appearance</b> and <b class="ui">AI</b>. <b class="ui">Preview pane</b>, <b class="ui">Reduce motion</b> and the position settings are under <b class="ui">Appearance</b>.</li></ul>
+<ul><li>The <a href="?p=settings#controls">settings panel</a> is grouped into four tabs: <b class="ui">General</b>, <b class="ui">Search</b>, <b class="ui">Appearance</b> and <b class="ui">AI</b>. <b class="ui">Preview pane</b>, <b class="ui">Reduce motion</b> and the position settings are under <b class="ui">Appearance</b>.</li></ul>
 
 <h2 id="1-7-1">1.7.1 <span class="date">2026-10-10</span></h2>
 <h3 id="1-7-1-added">Added</h3>
 <ul>
-<li>A preview pane beside the results shows the selected row in detail: other currencies with the ECB rate and date, number bases and related units, the start of a text file, image thumbnails, folder contents, the full clipboard entry, a live window thumbnail and details for system views. Private files such as <code>~/.ssh</code>, keys and <code>.env</code> show metadata only. Turn it off with <b class="ui">Preview pane</b> in Spotlight Settings. Contributed by <a href="https://github.com/vleeuwenmenno" rel="noopener">@vleeuwenmenno</a>.</li>
-<li>Browse folders inside the preview pane: <kbd>&rarr;</kbd> enters the selected folder, <kbd>&uarr;</kbd> / <kbd>&darr;</kbd> select entries, <kbd>&larr;</kbd> goes back one level, <kbd>Tab</kbd> completes a folder name and <kbd>Enter</kbd> opens the entry. Listings are limited to 1,000 entries.</li>
+<li>A <a href="?p=how-search-works#preview-pane">preview pane</a> beside the results shows the selected row in detail: other currencies with the ECB rate and date, number bases and related units, the start of a text file, image thumbnails, folder contents, the full clipboard entry, a live window thumbnail and details for system views. Private files such as <code>~/.ssh</code>, keys and <code>.env</code> show metadata only. Turn it off with <b class="ui">Preview pane</b> in Spotlight Settings. Contributed by <a href="https://github.com/vleeuwenmenno" rel="noopener">@vleeuwenmenno</a>.</li>
+<li><a href="?p=apps-windows-files#browse-folders">Browse folders</a> inside the preview pane: <kbd>Right</kbd> enters the selected folder, <kbd>Up</kbd> / <kbd>Down</kbd> select entries, <kbd>Left</kbd> goes back one level, <kbd>Tab</kbd> completes a folder name and <kbd>Enter</kbd> opens the entry. Listings are limited to 1,000 entries.</li>
 <li><a href="?p=calculator#currency-expressions">Mixed currency totals</a> list each amount, its value in the target currency and the rate used. Contributed by <a href="https://github.com/vleeuwenmenno" rel="noopener">@vleeuwenmenno</a>.</li>
 <li>Opening, closing and resizing animations, with a <b class="ui">Reduce motion</b> setting that turns them off.</li>
 </ul>
@@ -2479,11 +2697,11 @@ hl.layer_rule({
 <thead><tr><th>Path</th><th>What it holds</th></tr></thead>
 <tbody>
 <tr><td><code>Spotlight.qml</code></td><td>Manifest entry point, UI state and actions</td></tr>
-<tr><td><code>ui/components/</code>, <code>ui/panels/</code>, <code>ui/artifacts/</code></td><td>Shared controls; search, AI, setup and settings panels; registered visual cards</td></tr>
-<tr><td><code>lib/</code></td><td>Plain JavaScript: query parsing, matching and ranking, learning, calculator, units, currency, dates, web engines and views</td></tr>
+<tr><td><code>ui/components/</code>, <code>ui/panels/</code>, <code>ui/artifacts/</code></td><td>Shared controls; search, preview, AI, setup and settings panels; registered visual cards</td></tr>
+<tr><td><code>lib/</code></td><td>Plain JavaScript for query parsing, matching and ranking, learning, calculator, units, currency, dates, web engines, views and preview pane content. Three Python modules that the helper imports: <code>ai_artifacts.py</code> validates AI cards, <code>gallery_images.py</code> fetches and decodes gallery images and <code>system_metrics.py</code> measures dashboards</td></tr>
 <tr><td><code>bin/spotlight-helper</code></td><td>The Python helper, the boundary for file access, subprocesses and network requests</td></tr>
 <tr><td><code>bin/</code> (the rest)</td><td>Two bash scripts: one keeps a terminal open after a command exits, one puts a command on a prompt without running it</td></tr>
-<tr><td><code>tests/</code></td><td>Node tests (<code>*.test.js</code>) and the helper's Python tests</td></tr>
+<tr><td><code>tests/</code></td><td>Node tests (<code>*.test.js</code>), the helper's Python tests (<code>*_test.py</code>) and QML smoke scripts (<code>qml_*_smoke.py</code>)</td></tr>
 <tr><td><code>resources/</code></td><td>AI result schemas and other assets</td></tr>
 <tr><td><code>docs/artifacts.md</code></td><td>Artifact contract and contributor guide</td></tr>
 <tr><td><code>manifest.json</code></td><td>Plugin id, version and entry points</td></tr>
@@ -2514,6 +2732,11 @@ for file in lib/*.js; do node --check "$file"; done
 git diff --check</code></pre>
 <p>The first line validates the manifest, the next two run the Python and JavaScript tests, and the rest catch syntax errors and stray whitespace. To run one test file, use <code>node tests/currency.test.js</code>.</p>
 <p>CI runs the manifest check, the helper tests, <code>node --test</code> and the whitespace check on Python 3.14 and Node 24 for every pull request and push to <code>main</code>.</p>
+
+<h3 id="qml-smoke-tests">QML smoke tests</h3>
+<p>Five scripts load the real QML in Quickshell, offscreen, so no window opens: the artifact cards, the preview pane, the settings tabs, the launcher position and the open and close animations. They need <code>quickshell</code>. The artifact, preview and settings scripts also use Omarchy's shell files under <code>/usr/share/omarchy/shell</code>, and the artifact script needs ImageMagick's <code>magick</code>. Each prints a summary line when it passes and Quickshell's output when it fails.</p>
+<pre class="code" data-title="Terminal"><code>for file in tests/qml_*_smoke.py; do python3 "$file" || break; done</code></pre>
+<p>CI does not run them: its Python step only matches <code>*_test.py</code>, and the runner has no Quickshell. Run the ones that cover your change before you open a pull request.</p>
 
 <h2 id="contribute">Contribute</h2>
 <ol>
@@ -2568,7 +2791,7 @@ git diff --check</code></pre>
     <div class="pmeta">
       <a id="edit" href="#" rel="noopener"><svg data-i="edit"></svg>Edit this page on GitHub</a>
       <a id="report" href="#" rel="noopener"><svg data-i="flag"></svg>Report a problem with this page</a>
-      <span class="upd">Updated for 1.7.0</span>
+      <span class="upd">Updated for 1.7.3</span>
     </div>
     <nav class="pn" id="pn" aria-label="Previous and next page"></nav>
   </main>
