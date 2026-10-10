@@ -22,8 +22,8 @@ for (const [slug, body] of articles) {
   }
 }
 const data = JSON.parse(home.match(/<script type="application\/ld\+json">(.*?)<\/script>/s)[1]);
-assert.equal(data['@graph'][0].softwareVersion, '1.7.0');
-assert(docs.includes('id="1-7-0"') && read('static/llms.txt').includes('1.7.0'));
+assert.equal(data['@graph'][0].softwareVersion, '1.7.3');
+assert(docs.includes('id="1-7-3"') && read('static/llms.txt').includes('1.7.3'));
 const context = { HERO: [], svg: () => '<svg></svg>', esc: String };
 const examples = home.slice(home.indexOf('const AI = ['), home.indexOf('const rowsHTML ='));
 vm.runInNewContext(examples + '; this.examples = AI;', context);
