@@ -366,7 +366,7 @@ FocusScope {
             chrome: panel.chrome
             enabled: panel.draft.clipboardSearch === true
             text: "Include clipboard in every search"
-            description: "When off, clipboard entries only appear after you type c or c:."
+            description: "When off, clipboard entries only appear after you type cb, cb: or clip."
             checked: panel.draft.clipboardSearchAlways === true
             onToggled: panel.toggle("clipboardSearchAlways")
           }
