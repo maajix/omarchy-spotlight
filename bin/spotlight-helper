@@ -3491,6 +3491,8 @@ def ai_result(raw, provider, allow_weather=False, weather_request=False):
         raise Denied("AI returned an invalid response")
     kind, body, commands = value["kind"], value.get("text"), value.get("commands")
     artifacts = value.get("artifacts", [])
+    if artifacts is None:
+        artifacts = []
     if (not isinstance(body, str) or not isinstance(commands, list) or len(commands) > 6
             or not isinstance(artifacts, list) or len(artifacts) > 2):
         raise Denied("AI returned an invalid response")
@@ -3791,7 +3793,7 @@ def cmd_ai(argv):
                    "--json",
                    "--skip-git-repo-check", "--sandbox", "read-only",
                    "--disable", "shell_tool", "--disable", "unified_exec",
-                   "--disable", "code_mode_host", "--disable", "apps",
+                   "--disable", "apps",
                    "--disable", "plugins", "--disable", "browser_use",
                    "--disable", "computer_use", "--disable", "image_generation",
                    "-c", 'web_search="%s"' % ("live" if web_search == "true" else "disabled"),
@@ -3830,13 +3832,89 @@ def cmd_ai(argv):
     with (tempfile.TemporaryDirectory(prefix="spotlight-ai-", dir="/tmp")
           if provider == "codex" else nullcontext()) as directory:
         if directory is not None:
+            # Codex Structured Outputs accepts a stricter JSON Schema subset
+            # than Claude's --json-schema. Keep the canonical schema for
+            # Claude and adapt Codex's temporary copy: string length limits
+            # are checked locally, and optional object properties must be
+            # required but nullable in strict mode.
+            def codex_schema_compatible(value):
+                if isinstance(value, dict):
+                    result = {key: codex_schema_compatible(child)
+                              for key, child in value.items() if key != "maxLength"}
+                    schema_type = result.get("type")
+                    if isinstance(schema_type, list):
+                        result.pop("type")
+                        result["anyOf"] = [{"type": item} for item in schema_type]
+
+                    properties = result.get("properties")
+                    if isinstance(properties, dict):
+                        required = result.get("required", [])
+                        required_set = set(required) if isinstance(required, list) else set()
+                        for name, property_schema in properties.items():
+                            if name not in required_set:
+                                properties[name] = {"anyOf": [property_schema, {"type": "null"}]}
+                        result["required"] = list(properties)
+                    return result
+                if isinstance(value, list):
+                    return [codex_schema_compatible(child) for child in value]
+                return value
+
+            codex_schema = codex_schema_compatible(json.loads(schema))
+            codex_schema_path = os.path.join(directory, schema_name)
+            with open(codex_schema_path, "w", encoding="utf-8") as schema_file:
+                json.dump(codex_schema, schema_file, separators=(",", ":"))
+            command[command.index("--output-schema") + 1] = codex_schema_path
+
+            # Codex CLI can fail a request when its online model-catalog
+            # refresh times out, even when the selected model is already in
+            # its local cache. Give this invocation a static snapshot of that
+            # cache when it contains the requested model, avoiding the online
+            # refresh while keeping the user's normal Codex config untouched.
+            try:
+                codex_home_fd = walk([".codex"])
+                try:
+                    model_cache = read_json(codex_home_fd, "models_cache.json",
+                                            8 * 1024 * 1024, {})
+                finally:
+                    os.close(codex_home_fd)
+                cached_models = model_cache.get("models", []) if isinstance(model_cache, dict) else []
+                if (isinstance(model, str) and isinstance(cached_models, list)
+                        and any(isinstance(item, dict) and item.get("slug") == model
+                                for item in cached_models)):
+                    catalog_path = os.path.join(directory, "models.json")
+                    with open(catalog_path, "w", encoding="utf-8") as catalog_file:
+                        json.dump({"models": cached_models}, catalog_file,
+                                  separators=(",", ":"))
+                    command += ["-c", "model_catalog_json=" + json.dumps(catalog_path)]
+            except (OSError, Denied, TypeError, ValueError):
+                pass
             command += ["--cd", directory]
         raw, truncated, status = run_bounded(command, AI_OUTPUT_BYTES, AI_DEADLINE,
-                                            instruction.encode("utf-8"), want_status=True, on_line=on_line)
+                                            instruction.encode("utf-8"), want_status=True,
+                                            on_line=on_line, merge_stderr=True)
     if truncated:
         raise Denied("AI response exceeded its time or size limit")
     if status != 0:
-        raise Denied(provider + " CLI failed; check its login and connection")
+        # Codex and Claude report startup, authentication and connection errors
+        # on stderr. Keep the last short diagnostic so the UI can distinguish
+        # those failures instead of always blaming login. JSONL progress/output
+        # records are ignored here; they are not useful as an error message.
+        diagnostic = []
+        for line in raw.decode("utf-8", "replace").splitlines():
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                event = json.loads(line)
+            except ValueError:
+                diagnostic.append(line)
+                continue
+            if isinstance(event, dict) and event.get("type") in ("error", "turn.failed"):
+                message = event.get("message") or event.get("error")
+                if isinstance(message, str) and message.strip():
+                    diagnostic.append(message.strip())
+        detail = clamp_text("; ".join(diagnostic[-3:]), 240)
+        raise Denied(provider + " CLI failed" + (": " + detail if detail else "; check its login and connection"))
     if final is None:
         raise Denied("AI did not return a structured answer")
     encoded = (json.dumps({"structured_output": final}) if provider == "claude"

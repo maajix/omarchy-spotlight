@@ -453,30 +453,67 @@ class HelperTests(unittest.TestCase):
             with self.assertRaises(HELPER.Denied):
                 HELPER.cmd_ports()
 
-    def test_codex_uses_an_empty_private_directory_and_cleans_it_up(self):
+    def test_ai_normalizes_null_artifacts_and_rejects_other_non_arrays(self):
+        answer = {"kind": "answer", "text": "Hello", "commands": []}
+        for provider in ("codex", "claude"):
+            for artifacts in (None, [], "", {}, False, 0):
+                with self.subTest(provider=provider, artifacts=artifacts):
+                    payload = {**answer, "artifacts": artifacts}
+                    if provider == "claude":
+                        payload = {"structured_output": payload}
+                    raw = json.dumps(payload).encode()
+                    if artifacts is None or isinstance(artifacts, list):
+                        self.assertEqual(HELPER.ai_result(raw, provider), {**answer, "artifacts": []})
+                    else:
+                        with self.assertRaises(HELPER.Denied):
+                            HELPER.ai_result(raw, provider)
+
+    def test_codex_uses_a_private_directory_with_generated_files_and_cleans_it_up(self):
         directories = []
         cwd = os.getcwd()
+        catalog = {"models": [{"slug": "test-model"}]}
         def fake_run(argv, *args, **kwargs):
             directory = Path(argv[argv.index("--cd") + 1])
             directories.append(directory)
             self.assertEqual(directory.parent, Path("/tmp"))
-            self.assertEqual(list(directory.iterdir()), [])
             self.assertEqual(stat.S_IMODE(directory.stat().st_mode), 0o700)
             self.assertEqual(os.getcwd(), cwd)
             self.assertIn("project_doc_max_bytes=0", argv)
-            self.assertTrue(Path(argv[argv.index("--output-schema") + 1]).is_absolute())
-            if len(directories) == 2:
+            schema_path = Path(argv[argv.index("--output-schema") + 1])
+            self.assertEqual(schema_path, directory / "ai-result.schema.json")
+            self.assertEqual(json.loads(schema_path.read_text())["type"], "object")
+            expected = [schema_path]
+            if model:
+                catalog_path = directory / "models.json"
+                expected.append(catalog_path)
+                self.assertIn("model_catalog_json=" + json.dumps(str(catalog_path)), argv)
+                self.assertEqual(json.loads(catalog_path.read_text()), catalog)
+            else:
+                self.assertFalse(any(arg.startswith("model_catalog_json=") for arg in argv))
+            self.assertCountEqual(directory.iterdir(), expected)
+            if fail:
                 raise HELPER.Denied("provider failed")
-            result = {"kind": "answer", "text": "Hello", "commands": []}
+            result = {"kind": "answer", "text": "Hello", "commands": [], "artifacts": None}
             kwargs["on_line"](json.dumps({"type": "item.completed", "item": {
                 "type": "agent_message", "text": json.dumps(result)}}).encode())
             return b"", False, 0
-        with mock.patch.object(HELPER.shutil, "which", return_value="/usr/bin/codex"), \
-             mock.patch.object(HELPER, "run_bounded", side_effect=fake_run):
-            run(HELPER.cmd_ai, ["codex", "", "", "false"], b"hello")
-            with self.assertRaises(HELPER.Denied):
-                run(HELPER.cmd_ai, ["codex", "", "", "false"], b"hello")
-        self.assertNotEqual(*directories)
+        with tempfile.TemporaryDirectory() as fixture_home:
+            codex = Path(fixture_home, ".codex")
+            codex.mkdir()
+            (codex / "models_cache.json").write_text(json.dumps(catalog))
+            with mock.patch.dict(os.environ, {"HOME": fixture_home}), \
+                 mock.patch.object(HELPER.shutil, "which", return_value="/usr/bin/codex"), \
+                 mock.patch.object(HELPER, "run_bounded", side_effect=fake_run):
+                for model in ("", "test-model"):
+                    for fail in (False, True):
+                        with self.subTest(model=model, fail=fail):
+                            if fail:
+                                with self.assertRaisesRegex(HELPER.Denied, "provider failed"):
+                                    run(HELPER.cmd_ai, ["codex", model, "", "false"], b"hello")
+                            else:
+                                reply = run(HELPER.cmd_ai, ["codex", model, "", "false"], b"hello")
+                                self.assertEqual(reply["result"]["artifacts"], [])
+        self.assertEqual(len(set(directories)), 4)
         self.assertTrue(all(not directory.exists() for directory in directories))
 
     def test_ai_only_returns_bounded_suggestions(self):
