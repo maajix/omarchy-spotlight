@@ -3053,8 +3053,7 @@ Item {
         ? Math.min(root.maxListHeight, availableBodyHeight)
         : listHeight
 
-      width: Math.min(root.previewShown ? Style.space(960) : Style.space(750),
-        panel.width - Style.space(48))
+      width: Math.min(Style.space(960), panel.width - Style.space(48))
       height: root.searchHeight
         + (hasResults || root.aiActive ? root.hairline + root.listPadding * 2 + bodyHeight : 0)
         + root.hairline + root.footerHeight
@@ -3075,10 +3074,6 @@ Item {
       transformOrigin: Item.Top
 
       Behavior on height {
-        enabled: !root.settings.reduceMotion
-        NumberAnimation { duration: 110; easing.type: Easing.OutCubic }
-      }
-      Behavior on width {
         enabled: !root.settings.reduceMotion
         NumberAnimation { duration: 110; easing.type: Easing.OutCubic }
       }

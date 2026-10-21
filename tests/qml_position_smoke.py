@@ -34,7 +34,6 @@ ShellRoot {
         id: card
         ''' + geometry + '''
         Behavior on height { NumberAnimation { id: heightAnim; duration: 110 } }
-        Behavior on width { NumberAnimation { id: widthAnim; duration: 110 } }
       }
     }
     Timer {
@@ -48,31 +47,28 @@ ShellRoot {
         try {
         if (top < 0) top = card.y
         if (Math.abs(card.y - top) > 0.5) throw new Error("Search card top moved")
-        if (widthAnim.running) left = -1
-        else {
-          if (left < 0) left = card.x
-          if (Math.abs(card.x - left) > 0.5) throw new Error("Search card left edge moved as results changed")
-        }
+        if (card.width !== Math.min(960, panel.width - 48))
+          throw new Error("Search card width changed with its content")
+        if (left < 0) left = card.x
+        if (Math.abs(card.x - left) > 0.5) throw new Error("Search card left edge moved as results changed")
         if (card.y < 0) throw new Error("Search card top is offscreen")
         if (!heightAnim.running && card.y + card.height > panel.height + 0.5)
           throw new Error("Search card bottom is offscreen")
         var horizontal = root.settings.horizontalPosition
-        if (!widthAnim.running) {
-          if (card.x < 23.5 || card.x + card.width > panel.width - 23.5)
-            throw new Error("Search card escaped its horizontal screen margins")
-          var center = (panel.width - card.width) / 2
-          if (horizontal === 50 && Math.abs(card.x - center) > 0.5)
-            throw new Error("Default horizontal placement changed")
-          if (horizontal === 0 && Math.abs(card.x - 24) > 0.5)
-            throw new Error("Left placement did not reach the screen margin")
-          if (horizontal === 100 && Math.abs(card.x + card.width - (panel.width - 24)) > 0.5)
-            throw new Error("Right placement did not reach the screen margin")
-          if (panel.width > card.width + 48) {
-            if (horizontal < 50 && card.x >= center)
-              throw new Error("Left placement did not move the card left")
-            if (horizontal > 50 && card.x <= center)
-              throw new Error("Right placement did not move the card right")
-          }
+        if (card.x < 23.5 || card.x + card.width > panel.width - 23.5)
+          throw new Error("Search card escaped its horizontal screen margins")
+        var center = (panel.width - card.width) / 2
+        if (horizontal === 50 && Math.abs(card.x - center) > 0.5)
+          throw new Error("Default horizontal placement changed")
+        if (horizontal === 0 && Math.abs(card.x - 24) > 0.5)
+          throw new Error("Left placement did not reach the screen margin")
+        if (horizontal === 100 && Math.abs(card.x + card.width - (panel.width - 24)) > 0.5)
+          throw new Error("Right placement did not reach the screen margin")
+        if (panel.width > card.width + 48) {
+          if (horizontal < 50 && card.x >= center)
+            throw new Error("Left placement did not move the card left")
+          if (horizontal > 50 && card.x <= center)
+            throw new Error("Right placement did not move the card right")
         }
         var position = root.settings.verticalPosition
         var defaultTop = Math.max(24, (panel.height - root.maxCardHeight) / 2)
@@ -105,12 +101,10 @@ ShellRoot {
         if (frame === 54) root.contentHeight = 36
         if (frame === 56) root.previewShown = true
         if (frame === 68) {
-          if (card.width !== 960) throw new Error("Preview did not widen the card")
           if (card.listHeight < root.minPreviewHeight) throw new Error("Preview pane is too short beside one row")
           root.previewShown = false
         }
         if (frame === 80) {
-          if (card.width !== 750) throw new Error("Card did not narrow again")
           positionIndex++
           if (positionIndex === positions.length) { console.log("POSITION_SMOKE_OK"); Qt.quit() }
           else {
