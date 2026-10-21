@@ -7,6 +7,7 @@ import tempfile
 
 source = (Path(__file__).resolve().parents[1] / "Spotlight.qml").read_text()
 geometry = source.split("      id: card\n", 1)[1].split("      radius:", 1)[0]
+preview_visibility = re.search(r"  readonly property bool previewShown:[^\n]*(?:\n    [^\n]+)*", source)[0]
 dimensions = "\n".join(re.findall(
     r"^  readonly property int (?:maxCardHeight|searchHeight|footerHeight|hairline|listPadding|maxListHeight|minPreviewHeight):[^\n]*(?:\n    [^\n]+)*",
     source, re.M))
@@ -22,10 +23,10 @@ ShellRoot {
     property bool tourActive: false
     property bool settingsActive: false
     property bool aiActive: false
-    property bool previewShown: false
+    property bool previewRich: false
     property int contentHeight: 456
     property var settings: ({ verticalPosition: 0, horizontalPosition: 0 })
-    ''' + dimensions + '''
+    ''' + dimensions + '\n' + preview_visibility + '''
     QtObject { id: displayModel; property int count: 10 }
     Item {
       id: panel
@@ -33,7 +34,6 @@ ShellRoot {
       Rectangle {
         id: card
         ''' + geometry + '''
-        Behavior on height { NumberAnimation { id: heightAnim; duration: 110 } }
       }
     }
     Timer {
@@ -49,10 +49,14 @@ ShellRoot {
         if (Math.abs(card.y - top) > 0.5) throw new Error("Search card top moved")
         if (card.width !== Math.min(960, panel.width - 48))
           throw new Error("Search card width changed with its content")
+        if (card.height !== Math.min(root.maxCardHeight, panel.height - card.y - 24))
+          throw new Error("Search card height changed with its content")
+        if (root.previewShown !== (root.settings.previewPane !== false && !root.aiActive && panel.width >= 960))
+          throw new Error("Preview space depends on the arriving results")
         if (left < 0) left = card.x
         if (Math.abs(card.x - left) > 0.5) throw new Error("Search card left edge moved as results changed")
         if (card.y < 0) throw new Error("Search card top is offscreen")
-        if (!heightAnim.running && card.y + card.height > panel.height + 0.5)
+        if (card.y + card.height > panel.height + 0.5)
           throw new Error("Search card bottom is offscreen")
         var horizontal = root.settings.horizontalPosition
         if (card.x < 23.5 || card.x + card.width > panel.width - 23.5)
@@ -99,11 +103,10 @@ ShellRoot {
         if (frame === 50) { root.width = 3440; left = -1 }
         if (frame === 52) root.aiActive = false
         if (frame === 54) root.contentHeight = 36
-        if (frame === 56) root.previewShown = true
-        if (frame === 68) {
-          if (card.listHeight < root.minPreviewHeight) throw new Error("Preview pane is too short beside one row")
-          root.previewShown = false
-        }
+        if (frame === 56) root.previewRich = true
+        if (frame === 60) root.settings = Object.assign({}, root.settings, { previewPane: false })
+        if (frame === 64) root.settings = Object.assign({}, root.settings, { previewPane: true })
+        if (frame === 68) root.previewRich = false
         if (frame === 80) {
           positionIndex++
           if (positionIndex === positions.length) { console.log("POSITION_SMOKE_OK"); Qt.quit() }

@@ -409,7 +409,6 @@ Item {
   // command, 2 files and 2 windows at rowHeight, plus their four section
   // headings at sectionHeight. A query may still scroll.
   readonly property int maxListHeight: Style.space(456)
-  readonly property int minPreviewHeight: Style.space(260)
   readonly property int hairline: Style.spacing.hairline
 
   // Between heading (16) and display (24): a hero input that is still an
@@ -1759,7 +1758,6 @@ Item {
     if (root.pinnedKey && restored < 0) root.pinnedKey = ""
     root.selectedIndex = restored >= 0 ? restored : root.firstSelectableIndex()
     root.cursorActive = next.length > 0
-    root.previewRich = next.some(Preview.rich)
     root.schedulePreview()
     pointerGate.reset()
     Qt.callLater(function() {
@@ -2252,10 +2250,8 @@ Item {
   }
 
   // ------------------------------------------------------------- preview
-  // The pane opens when any row on screen has a preview of its own, and then
-  // stays for the whole result set, so moving the cursor never resizes the
-  // card. Rows without one show their name and description.
-  property bool previewRich: false
+  // Reserve the pane while results arrive; rows without a rich preview show
+  // their name and description without changing the column layout.
   property var preview: null
   // { key, state, reply } for the selected row's helper call. Only the one
   // selected row's data is held — a clipboard entry in particular is dropped
@@ -2264,7 +2260,7 @@ Item {
   property bool previewQueued: false
   property var previewProcess: null
   readonly property bool previewShown: panel.visible && root.settings.previewPane !== false
-    && root.previewRich && !root.aiActive && panel.width >= Style.space(960)
+    && !root.aiActive && panel.width >= Style.space(960)
 
   function schedulePreview() {
     if (root.previewQueued) return
@@ -2471,8 +2467,8 @@ Item {
   }
 
   // A keystroke owns the cursor for a moment afterwards: long enough to cover
-  // the card's height animation and the hover events it generates as rows
-  // slide under a stationary pointer, short enough that reaching for the mouse
+  // async results and the hover events they generate under a stationary
+  // pointer, short enough that reaching for the mouse
   // straight after typing still works.
   Timer {
     id: typingGuard
@@ -3043,19 +3039,11 @@ Item {
 
       readonly property int availableBodyHeight: Math.max(0, panel.height - y - Style.space(24)
         - root.searchHeight - root.footerHeight - root.hairline * 2 - root.listPadding * 2)
-      // The pane needs room for an answer and its details even when the list
-      // beside it is a single row.
-      readonly property int listHeight: Math.min(root.maxListHeight,
-        root.previewShown ? Math.max(root.contentHeight, root.minPreviewHeight) : root.contentHeight,
-        availableBodyHeight)
-      readonly property bool hasResults: !root.aiActive && displayModel.count > 0
-      readonly property int bodyHeight: root.aiActive
-        ? Math.min(root.maxListHeight, availableBodyHeight)
-        : listHeight
+      readonly property int bodyHeight: Math.min(root.maxListHeight, availableBodyHeight)
 
       width: Math.min(Style.space(960), panel.width - Style.space(48))
       height: root.searchHeight
-        + (hasResults || root.aiActive ? root.hairline + root.listPadding * 2 + bodyHeight : 0)
+        + root.hairline + root.listPadding * 2 + bodyHeight
         + root.hairline + root.footerHeight
       // Keep the search field fixed while results grow and shrink below it.
       x: Style.space(24) + Math.max(0, panel.width - width - Style.space(48))
@@ -3073,10 +3061,6 @@ Item {
       scale: 0.98 + 0.02 * root.presentationProgress
       transformOrigin: Item.Top
 
-      Behavior on height {
-        enabled: !root.settings.reduceMotion
-        NumberAnimation { duration: 110; easing.type: Easing.OutCubic }
-      }
 
       // Swallow clicks so they don't reach the dismiss MouseArea behind.
       MouseArea { anchors.fill: parent; onClicked: {} }
@@ -3256,7 +3240,6 @@ Item {
         anchors.rightMargin: root.listPadding
         height: root.hairline
         color: root.dividerColor
-        visible: card.hasResults || root.aiActive
       }
 
       // ------------------------------------------------------- results
@@ -3269,8 +3252,8 @@ Item {
         anchors.topMargin: root.listPadding
         anchors.bottomMargin: root.listPadding
         width: root.previewShown ? Math.round(card.width * 0.58) : card.width
-        height: card.listHeight
-        visible: card.hasResults
+        height: card.bodyHeight
+        visible: !root.aiActive
 
         ListView {
           id: resultList
@@ -3462,7 +3445,7 @@ Item {
 
       Rectangle {
         id: previewDivider
-        visible: root.previewShown && card.hasResults
+        visible: root.previewShown
         anchors { top: searchDivider.bottom; bottom: footerDivider.top; left: resultsArea.right }
         width: root.hairline
         color: root.dividerColor
@@ -3680,17 +3663,4 @@ Item {
     }
   }
 
-  // Total height the result list wants. Driving the card
-  // height off this is what gives the panel the Raycast grow/shrink feel.
-  readonly property int contentHeight: {
-    if (displayModel.count === 0) return 0
-    var height = root.rows.length * root.rowHeight
-    var previous = ""
-    for (var i = 0; i < root.rows.length; i++) {
-      var section = root.resultSection(root.rows[i])
-      if (section && section !== previous) height += root.sectionHeight
-      previous = section
-    }
-    return height
-  }
 }
