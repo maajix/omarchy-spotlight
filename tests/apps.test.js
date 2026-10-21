@@ -1,6 +1,60 @@
 const assert = require("node:assert/strict")
 const test = require("node:test")
 const Apps = require("../lib/Apps.js")
+const fs = require("node:fs")
+const path = require("node:path")
+const source = fs.readFileSync(path.join(__dirname, "../Spotlight.qml"), "utf8")
+const appEntries = source.match(/  function appEntries\(q\) \{([\s\S]*?)\n  \}/)
+assert.ok(appEntries)
+const runAppEntries = new Function("root", "DesktopEntries", "Apps", "q", appEntries[1])
+
+test("the restricted plugin API supplies visibility while Spotlight matches the query", () => {
+  const youtube = { id: "chrome-agimnkijcaahngcdmfeangaknmldooml-Default", name: "YouTube" }
+  const firefox = { id: "firefox", name: "Firefox" }
+  const hidden = { id: "hidden", name: "Hidden" }
+  const desktop = { applications: { values: [hidden, youtube, firefox] } }
+  let visible = [youtube, firefox]
+  const root = {
+    maxAppCandidates: 10,
+    appHides: Apps.hiddenMap(["firefox"]),
+    appLibrary: { sortedEntries(query) {
+      assert.equal(query, "", "the shell must not match the user's query")
+      return visible.map(entry => ({ entry, score: 999 }))
+    } }
+  }
+  const search = q => runAppEntries(root, desktop, Apps, q)
+  assert.deepEqual(search("").map(row => row.entry), [firefox, youtube])
+  assert.deepEqual(search("hidden"), [])
+  assert.deepEqual(search("default"), [])
+  assert.deepEqual(search("yt").map(row => row.entry), [youtube])
+  visible = [firefox]
+  assert.deepEqual(search("youtube"), [], "visibility updates apply on the next search")
+  visible = []
+  assert.deepEqual(search(""), [], "an empty visible list must not expose raw desktop entries")
+})
+
+test("the shell path does not depend on direct DesktopEntries access", () => {
+  const entry = { id: "firefox", name: "Firefox" }
+  const root = { maxAppCandidates: 10, appLibrary: {
+    sortedEntries: () => [{ entry, score: 0 }]
+  } }
+  const desktop = { get applications() { throw new Error("unavailable") } }
+  assert.deepEqual(runAppEntries(root, desktop, Apps, "firefox").map(row => row.entry), [entry])
+})
+
+test("standalone app search retains packaged hides, noDisplay and result limits", () => {
+  const entries = [
+    { id: "hidden", name: "Hidden" },
+    { id: "nodisplay", name: "Invisible", noDisplay: true },
+    { id: "firefox", name: "Firefox" },
+    { id: "terminal", name: "Terminal" }
+  ]
+  const root = { maxAppCandidates: 1, appLibrary: null, appHides: Apps.hiddenMap(["hidden"]) }
+  const desktop = { applications: { values: entries } }
+  assert.deepEqual(runAppEntries(root, desktop, Apps, "").map(row => row.entry.id), ["firefox"])
+  assert.deepEqual(runAppEntries(root, desktop, Apps, "terminal").map(row => row.entry.id), ["terminal"])
+  assert.deepEqual(runAppEntries(root, {}, Apps, ""), [])
+})
 
 test("application fields and result counts are bounded", () => {
   const entries = Array.from({ length: 50 }, (_, i) => ({
@@ -65,11 +119,7 @@ test("a generated web app id does not win a match through score() either", () =>
   assert.ok(Apps.score({ id: "firefox", name: "Firefox" }, "firefox") > 0)
 })
 
-test("isHidden accepts a callback, not just a map, for the AppLibrary path", () => {
-  // Spotlight passes root.appLibrary.isHiddenEntry directly when the shell's
-  // AppLibrary is available (it combines two hiding sources Spotlight has
-  // no other way to read) - sortedEntries() must honour that callback the
-  // same way it honours a plain id->true map.
+test("isHidden accepts a callback as well as a map", () => {
   const entries = [{ id: "hidden-app", name: "Hidden" }, { id: "shown-app", name: "Shown" }]
   const callback = (entry) => entry.id === "hidden-app"
   const rows = Apps.sortedEntries(entries, "", callback, 10, 10)
