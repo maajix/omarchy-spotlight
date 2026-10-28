@@ -2935,6 +2935,80 @@ def cmd_ssh_hosts():
     emit({"hosts": hosts[:SSH_HOSTS], "partial": partial or len(hosts) > SSH_HOSTS})
 
 
+JAM_DEADLINE = 10
+JAM_MAX_REDIRECTS = 6
+JAM_HOSTS = ("spotify.link", "spotify.app.link", "open.spotify.com")
+JAM_ID_RE = re.compile(r"[A-Za-z0-9]{8,64}")
+
+
+def jam_follow(url, deadline):
+    """Follow a Spotify short-link redirect chain by hand: only the Location
+    header is ever read, never a body, and every hop must stay on a known
+    Spotify host so a crafted link cannot bounce the helper at an arbitrary
+    server. Returns the final URL."""
+    from http.client import HTTPException
+    from urllib.request import HTTPRedirectHandler, Request, build_opener
+
+    class Hop(Exception):
+        def __init__(self, location):
+            self.location = location
+
+    class Capture(HTTPRedirectHandler):
+        def redirect_request(self, req, fp, code, msg, headers, newurl):
+            raise Hop(newurl)
+
+    current = url
+    for _ in range(JAM_MAX_REDIRECTS):
+        host = (urlsplit(current).hostname or "").lower()
+        if host not in JAM_HOSTS:
+            raise Denied("redirect left Spotify hosts: %s" % host)
+        request = Request(current, headers={
+            "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
+                          "(KHTML, like Gecko) Chrome/126.0 Safari/537.36"})
+        try:
+            with build_opener(Capture).open(request, timeout=deadline):
+                return current  # 2xx: already at the final page
+        except Hop as hop:
+            current = hop.location
+        except HTTPException as exc:
+            raise OSError("incomplete HTTP response") from exc
+    raise Denied("too many redirects")
+
+
+def cmd_spotify_jam(argv):
+    """Convert a Spotify Jam link to its internal spotify:socialsession URI.
+
+    spotify.link short links resolve through the Branch deep-link service to
+    an open.spotify.com/socialsession/<id> page; the session id only ever
+    travels in the redirect chain, so no page body is fetched."""
+    if len(argv) != 1:
+        raise Denied("spotify-jam takes one URL")
+    url = argv[0].strip()
+    host = (urlsplit(url).hostname or "").lower()
+    if host not in JAM_HOSTS:
+        raise Denied("not a Spotify link")
+    if urlsplit(url).scheme != "https":
+        raise Denied("spotify-jam only follows https URLs")
+
+    if host == "open.spotify.com":
+        expanded = url
+    else:
+        previous = signal.signal(signal.SIGALRM, lambda *_: (_ for _ in ()).throw(
+            TimeoutError("jam lookup deadline exceeded")))
+        signal.setitimer(signal.ITIMER_REAL, JAM_DEADLINE)
+        try:
+            expanded = jam_follow(url, JAM_DEADLINE)
+        finally:
+            signal.setitimer(signal.ITIMER_REAL, 0)
+            signal.signal(signal.SIGALRM, previous)
+
+    match = re.search(r"socialsession[/:]([A-Za-z0-9]+)", expanded)
+    if match and JAM_ID_RE.fullmatch(match.group(1)):
+        emit({"uri": "spotify:socialsession:" + match.group(1)})
+        return
+    raise Denied("no Jam session id found in: %s" % expanded)
+
+
 def cmd_tldr(argv):
     if len(argv) != 1:
         raise Denied("tldr takes one page name")
@@ -3469,6 +3543,7 @@ COMMANDS = {
     "wifi": (cmd_wifi, False),
     "bluetooth": (cmd_bluetooth, False),
     "ssh-hosts": (cmd_ssh_hosts, False),
+    "spotify-jam": (cmd_spotify_jam, True),
     "tldr": (cmd_tldr, True),
     "write-ics": (cmd_write_ics, True),
     "write-settings": (cmd_write_settings, False),

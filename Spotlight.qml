@@ -1182,13 +1182,24 @@ Item {
 
     var url = (!filter || filter === "web") ? Web.detectUrl(q) : ""
     if (url) {
-      out.push(root.row({
-        key: "url.open", kind: "url",
-        title: url.replace(/^https?:\/\//, ""), subtitle: url,
-        accessory: "Web", icon: "󰖟",
-        primaryLabel: "Open in browser",
-        payload: { url: url }
-      }))
+      var isJam = /spotify\.link\/\S+$/i.test(url) || /open\.spotify\.com\/socialsession\//i.test(url)
+      if (isJam) {
+        out.push(root.row({
+          key: "url.jam", kind: "spotifyjam",
+          title: "Open Spotify Jam", subtitle: "Convert and join the Jam in Spotify",
+          accessory: "Spotify", icon: "󰓇",
+          primaryLabel: "Open Jam in Spotify",
+          payload: { url: url }
+        }))
+      } else {
+        out.push(root.row({
+          key: "url.open", kind: "url",
+          title: url.replace(/^https?:\/\//, ""), subtitle: url,
+          accessory: "Web", icon: "󰖟",
+          primaryLabel: "Open in browser",
+          payload: { url: url }
+        }))
+      }
     }
 
     for (var i = 0; i < out.length; i++) out[i].textMatch = Fuzzy.MATCH_EXACT
@@ -1838,6 +1849,35 @@ Item {
     Util.execArgv(["omarchy-launch-browser", String(url)])
   }
 
+  // Spotify Jam links (spotify.link short links or open.spotify.com
+  // /socialsession/ URLs) resolve to an internal spotify:socialsession URI
+  // through the helper's spotify-jam subcommand — no network in QML. The URI
+  // goes straight to the desktop client: xdg-open gets intercepted by the
+  // browser's scheme-handler prompt instead of reaching it.
+  function openSpotifyJam(url) {
+    jamProc.running = false
+    jamProc.command = root.helperArgv(["spotify-jam", String(url)])
+    jamProc.running = true
+  }
+
+  property alias jamProc: jamProcess
+
+  Process {
+    id: jamProcess
+    stdout: StdioCollector {
+      waitForEnd: true
+      onStreamFinished: {
+        var uri = ""
+        try {
+          var parsed = JSON.parse(text)
+          if (parsed.ok && typeof parsed.uri === "string") uri = parsed.uri
+        } catch (e) { uri = "" }
+        if (uri) Util.execArgv(["uwsm-app", "--", "spotify", "--uri=" + uri])
+        else console.warn("spotlight: spotify-jam could not resolve the link")
+      }
+    }
+  }
+
   // With holdIf, the terminal stays open only after that exit status.
   function openHeldTerminal(argv, holdIf) {
     var hold = holdIf === undefined ? [] : ["--hold-if", String(holdIf)]
@@ -1968,6 +2008,11 @@ Item {
     case "url":
       root.dismiss()
       root.openUrl(r.payload.url)
+      break
+
+    case "spotifyjam":
+      root.dismiss()
+      root.openSpotifyJam(r.payload.url)
       break
 
     case "summon":
