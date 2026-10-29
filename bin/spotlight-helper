@@ -2959,6 +2959,8 @@ def jam_follow(url, deadline):
 
     current = url
     for _ in range(JAM_MAX_REDIRECTS):
+        if urlsplit(current).scheme != "https":
+            raise Denied("spotify-jam only follows https URLs")
         host = (urlsplit(current).hostname or "").lower()
         if host not in JAM_HOSTS:
             raise Denied("redirect left Spotify hosts: %s" % host)

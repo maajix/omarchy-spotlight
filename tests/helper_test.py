@@ -3157,6 +3157,30 @@ class CurrencyRatesTests(unittest.TestCase):
 
 
 class SpotifyJamTests(unittest.TestCase):
+    def test_redirects_validate_scheme_and_host_before_requesting_next_hop(self):
+        for destination, allowed in [
+            ("https://open.spotify.com/socialsession/AbCdEfGh12345678", True),
+            ("http://open.spotify.com/socialsession/AbCdEfGh12345678", False),
+            ("https://example.com/socialsession/AbCdEfGh12345678", False),
+        ]:
+            with self.subTest(destination=destination):
+                requested = []
+
+                def build_opener(handler):
+                    def open_request(request, timeout):
+                        requested.append(request.full_url)
+                        if len(requested) == 1:
+                            handler().redirect_request(
+                                request, None, 302, "Found", {}, destination)
+                        return contextlib.nullcontext()
+                    return mock.Mock(open=open_request)
+
+                with mock.patch("urllib.request.build_opener", side_effect=build_opener):
+                    reply = self.run_jam("https://spotify.link/abc")
+                self.assertEqual(reply["ok"], allowed)
+                self.assertEqual(requested, ["https://spotify.link/abc"]
+                                 + ([destination] if allowed else []))
+
     def run_jam(self, url):
         out = io.StringIO()
         try:

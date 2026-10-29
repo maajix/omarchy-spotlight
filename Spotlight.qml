@@ -1182,7 +1182,7 @@ Item {
 
     var url = (!filter || filter === "web") ? Web.detectUrl(q) : ""
     if (url) {
-      var isJam = /spotify\.link\/\S+$/i.test(url) || /open\.spotify\.com\/socialsession\//i.test(url)
+      var isJam = Web.isSpotifyJamUrl(url)
       if (isJam) {
         out.push(root.row({
           key: "url.jam", kind: "spotifyjam",
