@@ -3156,5 +3156,75 @@ class CurrencyRatesTests(unittest.TestCase):
         self.assertEqual(list(records), ["USD"])
 
 
+class SpotifyJamTests(unittest.TestCase):
+    def test_redirects_validate_scheme_and_host_before_requesting_next_hop(self):
+        for destination, allowed in [
+            ("https://open.spotify.com/socialsession/AbCdEfGh12345678", True),
+            ("http://open.spotify.com/socialsession/AbCdEfGh12345678", False),
+            ("https://example.com/socialsession/AbCdEfGh12345678", False),
+        ]:
+            with self.subTest(destination=destination):
+                requested = []
+
+                def build_opener(handler):
+                    def open_request(request, timeout):
+                        requested.append(request.full_url)
+                        if len(requested) == 1:
+                            handler().redirect_request(
+                                request, None, 302, "Found", {}, destination)
+                        return contextlib.nullcontext()
+                    return mock.Mock(open=open_request)
+
+                with mock.patch("urllib.request.build_opener", side_effect=build_opener):
+                    reply = self.run_jam("https://spotify.link/abc")
+                self.assertEqual(reply["ok"], allowed)
+                self.assertEqual(requested, ["https://spotify.link/abc"]
+                                 + ([destination] if allowed else []))
+
+    def run_jam(self, url):
+        out = io.StringIO()
+        try:
+            with contextlib.redirect_stdout(out):
+                HELPER.cmd_spotify_jam([url])
+            return json.loads(out.getvalue())
+        except HELPER.Denied as exc:
+            return {"ok": False, "error": str(exc)}
+
+    def test_expanded_socialsession_url_resolves_without_network(self):
+        url = "https://open.spotify.com/socialsession/2rvkvtduicnM0lRrDmb3DQ?si=abc"
+        with mock.patch.object(HELPER, "jam_follow") as follow:
+            reply = self.run_jam(url)
+        follow.assert_not_called()
+        self.assertTrue(reply["ok"])
+        self.assertEqual(reply["uri"], "spotify:socialsession:2rvkvtduicnM0lRrDmb3DQ")
+
+    def test_short_link_uses_redirect_chain(self):
+        with mock.patch.object(HELPER, "jam_follow",
+                               return_value="https://open.spotify.com/socialsession/AbCdEfGh12345678") as follow:
+            reply = self.run_jam("https://spotify.link/AbCdEf12345")
+        follow.assert_called_once()
+        self.assertTrue(reply["ok"])
+        self.assertEqual(reply["uri"], "spotify:socialsession:AbCdEfGh12345678")
+
+    def test_rejects_foreign_hosts_and_schemes(self):
+        self.assertFalse(self.run_jam("https://evil.com/socialsession/AbCdEfGh12345678")["ok"])
+        self.assertFalse(self.run_jam("http://spotify.link/AbCdEf12345")["ok"])
+        self.assertFalse(self.run_jam("not a url")["ok"])
+
+    def test_rejects_final_url_without_session_id(self):
+        with mock.patch.object(HELPER, "jam_follow",
+                               return_value="https://open.spotify.com/playlist/xyz"):
+            reply = self.run_jam("https://spotify.link/AbCdEf12345")
+        self.assertFalse(reply["ok"])
+
+    def test_rejects_oversized_or_short_ids(self):
+        with mock.patch.object(HELPER, "jam_follow",
+                               return_value="https://open.spotify.com/socialsession/ab"):
+            self.assertFalse(self.run_jam("https://spotify.link/AbCdEf12345")["ok"])
+        with mock.patch.object(HELPER, "jam_follow",
+                               return_value="https://open.spotify.com/socialsession/" + "a" * 100):
+            self.assertFalse(self.run_jam("https://spotify.link/AbCdEf12345")["ok"])
+
+
 if __name__ == "__main__":
     unittest.main()

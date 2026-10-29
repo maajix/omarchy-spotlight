@@ -2,6 +2,22 @@ const assert = require("node:assert/strict")
 const test = require("node:test")
 const Web = require("../lib/Web.js")
 
+test("Jam routing requires an exact HTTPS Spotify host and matching path", () => {
+  for (const url of [
+    "https://spotify.link/abc123",
+    "https://open.spotify.com/socialsession/AbCdEfGh12345678?si=abc"
+  ]) assert.equal(Web.isSpotifyJamUrl(Web.detectUrl(url)), true, url)
+  for (const url of [
+    "https://example.com/spotify.link/abc",
+    "https://notspotify.link/abc",
+    "https://example.com/?next=https://open.spotify.com/socialsession/AbCdEfGh12345678",
+    "http://spotify.link/abc",
+    "https://spotify.link.evil.com/abc",
+    "https://open.spotify.com/track/AbCdEfGh12345678",
+    "https://open.spotify.com/socialsession/"
+  ]) assert.equal(Web.isSpotifyJamUrl(Web.detectUrl(url)), false, url)
+})
+
 test("a named target rewrites the DeepL language pair and drops the tail", () => {
   assert.equal(
     Web.searchUrl("what is this to german", "tr"),
