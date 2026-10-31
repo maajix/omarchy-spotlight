@@ -1,5 +1,6 @@
 import QtQuick
 import qs.Commons
+import qs.Commons as Commons
 
 // Shared chrome tokens for Spotlight's card-styled surfaces: the setup tour
 // and the settings panel. Both paint on the same glass card rather than on the
@@ -8,8 +9,8 @@ import qs.Commons
 QtObject {
   id: pal
 
-  property color foreground: Color.foreground
-  property color accent: Color.accent
+  property color foreground: Commons.Color.foreground
+  property color accent: Commons.Color.accent
   property string fontFamily: Style.font.family
   property int hairline: 1
   property int rowRadius: 8
@@ -21,5 +22,5 @@ QtObject {
   readonly property color fill: Util.alpha(pal.foreground, 0.04)
   readonly property color fillHot: Util.alpha(pal.foreground, 0.08)
   readonly property color accentFill: Util.alpha(pal.accent, 0.14)
-  readonly property color onAccent: Color.background
+  readonly property color onAccent: Commons.Color.background
 }

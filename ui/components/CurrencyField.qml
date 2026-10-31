@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Controls
 import qs.Commons
+import qs.Commons as Commons
 import "../../lib/Currency.js" as Currency
 
 // Default-currency input shared by the tour and the settings panel. An
@@ -49,7 +50,7 @@ TextField {
     radius: field.chrome.rowRadius
     color: field.activeFocus ? field.chrome.fillHot : field.chrome.fill
     border.width: field.chrome.hairline
-    border.color: !field.valid ? Color.urgent
+    border.color: !field.valid ? Commons.Color.urgent
       : field.activeFocus ? field.chrome.lineFocus : field.chrome.line
   }
 

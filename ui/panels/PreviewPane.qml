@@ -1,6 +1,7 @@
 import QtQuick
 import Quickshell.Wayland
 import qs.Commons
+import qs.Commons as Commons
 
 // Paints the blocks lib/Preview.js builds for the selected row. It holds no
 // state of its own beyond scroll position: Spotlight.qml decides what to show
@@ -55,8 +56,8 @@ Item {
       }
     }
   }
-  property color foreground: Color.foreground
-  property color accent: Color.accent
+  property color foreground: Commons.Color.foreground
+  property color accent: Commons.Color.accent
   property string fontFamily: Style.font.family
   property int gutter: Style.space(20)
   // A window capture only runs while the pane is on screen.
