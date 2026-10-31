@@ -4,6 +4,7 @@ import Quickshell.Hyprland
 import Quickshell.Io
 import Quickshell.Wayland
 import qs.Commons
+import qs.Commons as Commons
 import qs.Ui
 import "ui/components"
 import "ui/panels"
@@ -378,18 +379,18 @@ Item {
   // Shares the [menu] surface tokens, so any theme that styles the Omarchy
   // menu styles this too. The card is deliberately translucent: the frost is
   // Hyprland's, applied to this layer's namespace.
-  readonly property color foreground: Color.menu.text
-  readonly property color accent: Color.accent
+  readonly property color foreground: Commons.Color.menu.text
+  readonly property color accent: Commons.Color.accent
   // Frosted glass needs something left to frost: at 0.86 the card is opaque
   // and Hyprland's blur has no visible effect. 0.62 keeps text contrast while
   // letting the blurred wallpaper through as colour and shape.
-  readonly property color glassBackground: Util.alpha(Color.menu.background, 0.62)
-  readonly property color glassBorder: Util.alpha(Color.foreground, 0.09)
+  readonly property color glassBackground: Util.alpha(Commons.Color.menu.background, 0.62)
+  readonly property color glassBorder: Util.alpha(Commons.Color.foreground, 0.09)
   readonly property color glassSheen: Util.alpha("#ffffff", 0.07)
-  readonly property color scrim: Util.alpha(Color.menu.scrim, 0.25)
-  readonly property color selectedBackground: Util.alpha(Color.foreground, 0.12)
-  readonly property color selectedText: Color.menu.selectedText
-  readonly property color dividerColor: Util.alpha(Color.foreground, 0.06)
+  readonly property color scrim: Util.alpha(Commons.Color.menu.scrim, 0.25)
+  readonly property color selectedBackground: Util.alpha(Commons.Color.foreground, 0.12)
+  readonly property color selectedText: Commons.Color.menu.selectedText
+  readonly property color dividerColor: Util.alpha(Commons.Color.foreground, 0.06)
   readonly property string fontFamily: Style.font.menuFamily
 
   // One left rail at `gutter`. The search glyph and every row icon align to
@@ -3366,7 +3367,7 @@ Item {
               anchors.rightMargin: root.listPadding
               radius: root.rowRadius
               color: resultRow.armed
-                ? Util.alpha(Color.urgent, 0.22)
+                ? Util.alpha(Commons.Color.urgent, 0.22)
                 : (resultRow.hasCursor ? root.selectedBackground : "transparent")
             }
 
@@ -3418,7 +3419,7 @@ Item {
               visible: !rowSwitch.visible
               text: resultRow.armed ? "Press ↵ again to confirm" : resultRow.rowAccessory
               textFormat: Text.PlainText
-              color: resultRow.armed ? Color.urgent : root.foreground
+              color: resultRow.armed ? Commons.Color.urgent : root.foreground
               opacity: resultRow.armed ? 1 : 0.38
               font.family: root.fontFamily
               font.pixelSize: Style.font.body
@@ -3561,7 +3562,7 @@ Item {
         Text {
           text: root.settingsSaveFailed ? "Settings not saved" : "󰣇  Omarchy"
           textFormat: Text.PlainText
-          color: root.settingsSaveFailed ? Color.urgent : root.foreground
+          color: root.settingsSaveFailed ? Commons.Color.urgent : root.foreground
           opacity: root.settingsSaveFailed ? 1 : 0.35
           font.family: root.fontFamily
           font.pixelSize: Style.font.caption

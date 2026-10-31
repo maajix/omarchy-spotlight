@@ -2,14 +2,15 @@ import QtQuick
 import QtQuick.Layouts
 import Quickshell.Io
 import qs.Commons
+import qs.Commons as Commons
 import "../components"
 import "../artifacts"
 import "../../lib/AiMarkdown.js" as AiMarkdown
 
 Item {
   id: panel
-  property color foreground: Color.foreground
-  property color accent: Color.accent
+  property color foreground: Commons.Color.foreground
+  property color accent: Commons.Color.accent
   property string fontFamily: Style.font.family
   property bool busy: false
   property string error: ""
@@ -79,7 +80,7 @@ Item {
     fontFamily: panel.fontFamily
   }
   readonly property color bodyColor: {
-    var bg = Color.menu.background
+    var bg = Commons.Color.menu.background
     return bg.r * 0.21 + bg.g * 0.72 + bg.b * 0.07 < 0.5 ? "#f2f0ed" : "#242225"
   }
 
@@ -147,7 +148,7 @@ Item {
         Text {
           Layout.fillWidth: true
           text: panel.busy ? "THINKING" : "ERROR"
-          color: panel.busy ? panel.accent : Color.urgent
+          color: panel.busy ? panel.accent : Commons.Color.urgent
           font.family: panel.fontFamily
           font.pixelSize: Style.font.caption
           font.bold: true
@@ -167,7 +168,7 @@ Item {
         text: panel.busy ? (panel.progress || "Starting…") : panel.error
         textFormat: Text.PlainText
         visible: panel.busy || panel.error !== ""
-        color: panel.error ? Color.urgent : panel.bodyColor
+        color: panel.error ? Commons.Color.urgent : panel.bodyColor
         font.family: "sans-serif"
         font.pixelSize: Style.font.body + 1
         wrapMode: Text.WordWrap

@@ -2,6 +2,7 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 import qs.Commons
+import qs.Commons as Commons
 import "../components"
 import "../../lib/Web.js" as Web
 
@@ -10,8 +11,8 @@ FocusScope {
   id: panel
 
   // in
-  property color foreground: Color.foreground
-  property color accent: Color.accent
+  property color foreground: Commons.Color.foreground
+  property color accent: Commons.Color.accent
   property string fontFamily: Style.font.family
   property color surface: "transparent"
   property color surfaceBorder: "transparent"
@@ -200,7 +201,7 @@ FocusScope {
             : "Changes save as you make them."
           textFormat: Text.PlainText
           elide: Text.ElideRight
-          color: panel.saveFailed ? Color.urgent : panel.dim
+          color: panel.saveFailed ? Commons.Color.urgent : panel.dim
           font.family: panel.fontFamily
           font.pixelSize: Style.font.caption
         }
