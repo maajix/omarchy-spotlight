@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Controls
 import qs.Commons
+import qs.Commons as Commons
 
 // Single-select menu in Spotlight's own chrome. Enter/Space/Down open,
 // Up/Down or j/k move, Enter picks, Esc closes without leaving the surface.
@@ -89,7 +90,7 @@ Rectangle {
 
     background: Rectangle {
       radius: menu.chrome.rowRadius
-      color: Color.popups.background
+      color: Commons.Color.popups.background
       border.width: menu.chrome.hairline
       border.color: menu.chrome.lineHot
     }

@@ -1,5 +1,6 @@
 import QtQuick
 import qs.Commons
+import qs.Commons as Commons
 
 // Pill switch: accent track when on, dim track when off. Presentation only,
 // the surrounding row owns the click. Shared by the setup tour's settings rows
@@ -10,9 +11,9 @@ Item {
   id: sw
 
   property bool checked: false
-  property color accent: Color.accent
-  property color foreground: Color.foreground
-  property color knobOn: Color.background
+  property color accent: Commons.Color.accent
+  property color foreground: Commons.Color.foreground
+  property color knobOn: Commons.Color.background
 
   implicitWidth: Style.space(40)
   implicitHeight: Style.space(22)

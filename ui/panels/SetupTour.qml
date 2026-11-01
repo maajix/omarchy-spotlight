@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Layouts
 import qs.Commons
+import qs.Commons as Commons
 import "../components"
 import "../../lib/Chord.js" as Chord
 import "../../lib/Web.js" as Web
@@ -17,8 +18,8 @@ FocusScope {
   id: tour
 
   // in
-  property color foreground: Color.foreground
-  property color accent: Color.accent
+  property color foreground: Commons.Color.foreground
+  property color accent: Commons.Color.accent
   property string fontFamily: Style.font.family
   property color surface: "transparent"
   property color surfaceBorder: "transparent"
@@ -488,7 +489,7 @@ FocusScope {
             Layout.fillWidth: true
             text: tour.statusText
             color: tour.bindingState === "error" || tour.bindingState === "reloadError"
-                   ? Color.urgent : tour.dim
+                   ? Commons.Color.urgent : tour.dim
             font.family: tour.fontFamily
             font.pixelSize: Style.font.body
             wrapMode: Text.WordWrap
