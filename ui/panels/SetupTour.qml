@@ -6,6 +6,7 @@ import "../components"
 import "../../lib/Chord.js" as Chord
 import "../../lib/Web.js" as Web
 import "../../lib/Currency.js" as Currency
+import "../../lib/AiOptions.js" as AiOptions
 
 // First-run tour, and the standalone shortcut chooser (singleStep). Pure UI:
 // Spotlight.qml owns every read and write and feeds the results back through
@@ -31,7 +32,7 @@ FocusScope {
   property string previousBinding: ""
   property bool bindingManaged: false
   property var boundChords: ({})
-  property var aiModels: ({ claude: [], codex: [] })
+  property var aiModels: ({ claude: [], codex: [], opencode: [] })
   property string bindingState: ""   // "" | busy | ok | reverted | error | reloadError
 
   // owned
@@ -104,7 +105,7 @@ FocusScope {
       learningEnabled: current.learningEnabled !== false,
       aiEnabled: current.aiEnabled === true,
       aiWebSearch: current.aiWebSearch === true,
-      aiProvider: current.aiProvider === "codex" ? "codex" : "claude",
+      aiProvider: AiOptions.provider(current.aiProvider),
       aiModel: current.aiModel || "",
       aiEffort: current.aiEffort || ""
     }

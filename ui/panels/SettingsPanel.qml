@@ -21,7 +21,7 @@ FocusScope {
   property int surfaceRadius: 12
   property int rowRadius: 8
   property var settings: ({})
-  property var aiModels: ({ claude: [], codex: [] })
+  property var aiModels: ({ claude: [], codex: [], opencode: [] })
   property var pendingSettings: ({})
   property bool saveFailed: false
   property string saveError: ""

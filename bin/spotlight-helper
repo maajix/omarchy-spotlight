@@ -212,6 +212,10 @@ AI_REPLY_CHARS = 524288  # Must match Spotlight.maxHelperPayloadChars (UTF-16 un
 AI_GALLERY_DEADLINE = 10.0
 AI_MODEL_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:/@-]{0,191}$")
 AI_EFFORTS = {"low", "medium", "high", "xhigh", "max", "ultra"}
+AI_PROVIDER_LABELS = {"claude": "Claude", "codex": "Codex", "opencode": "OpenCode"}
+OPENCODE_MODELS_BYTES = 256 * 1024
+OPENCODE_MODELS_DEADLINE = 4.0
+OPENCODE_AGENT_STEPS = 8
 TLDR_PAGE_RE = re.compile(r"^[a-z0-9][a-z0-9._+-]{0,63}$")
 # `{{[-a|--all]}}` is an option alternation; the long form reads best.
 TLDR_OPTION_RE = re.compile(r"\{\{\[[^|\]]*\|([^\]]*)\]\}\}")
@@ -597,7 +601,7 @@ def write_new(dirfd, name, payload):
 
 # ------------------------------------------------------------ subprocesses
 def run_bounded(argv, cap, deadline, stdin_bytes=None, want_status=False, on_line=None,
-                merge_stderr=False):
+                merge_stderr=False, cwd=None, env=None):
     """Run `argv`, returning at most `cap` bytes of stdout within `deadline`.
 
     The child gets its own session, so the deadline tears down the whole
@@ -613,6 +617,10 @@ def run_bounded(argv, cap, deadline, stdin_bytes=None, want_status=False, on_lin
 
     `merge_stderr` reads the child's stderr into the same bounded stream,
     for commands such as `docker logs` that relay a program's stderr there.
+
+    `cwd` and `env` are passed to the child only; the helper's own working
+    directory and environment stay untouched. OpenCode needs a private
+    project directory, while Codex receives one through `--cd`.
     """
     global ACTIVE_PROC
     end = time.monotonic() + deadline
@@ -625,6 +633,8 @@ def run_bounded(argv, cap, deadline, stdin_bytes=None, want_status=False, on_lin
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT if merge_stderr else subprocess.DEVNULL,
             start_new_session=True,
+            cwd=cwd,
+            env=env,
         )
         ACTIVE_PROC = proc
     except OSError as exc:
@@ -827,11 +837,12 @@ def normalize_settings(parsed):
     if (isinstance(location, str) and len(location) <= 120 and location == location.strip()
             and not any(ord(char) < 32 or unicodedata.category(char) == "Cf" for char in location)):
         out["artifactSettings"]["weather"]["defaultLocation"] = location
-    if parsed.get("aiProvider") in ("claude", "codex"):
+    if parsed.get("aiProvider") in ("claude", "codex", "opencode"):
         out["aiProvider"] = parsed["aiProvider"]
     if isinstance(parsed.get("aiModel"), str) and AI_MODEL_RE.fullmatch(parsed["aiModel"]):
         out["aiModel"] = parsed["aiModel"]
     if (isinstance(parsed.get("aiEffort"), str) and parsed["aiEffort"] in AI_EFFORTS
+            and out["aiProvider"] != "opencode"
             and (out["aiProvider"] == "codex" or parsed["aiEffort"] != "ultra")):
         out["aiEffort"] = parsed["aiEffort"]
     out["maxResults"] = clamp_int(parsed.get("maxResults"), 8, 50, 20)
@@ -1430,7 +1441,7 @@ def _menu_commands():
 # ---------------------------------------------------------------- commands
 def ai_catalogs():
     """Project the installed CLIs' local model catalogs into bounded picker data."""
-    catalogs = {"claude": [], "codex": []}
+    catalogs = {"claude": [], "codex": [], "opencode": []}
     try:
         fd = walk([".codex"])
         try:
@@ -1464,6 +1475,24 @@ def ai_catalogs():
                                         [level.get("id") for level in levels if isinstance(level, dict)]))
     except (OSError, Denied, TypeError, AttributeError, ValueError):
         pass
+    # OpenCode is the only CLI here whose model catalog is a command rather
+    # than a cache file. It prints one provider/model per line and needs no
+    # project directory, so a bounded call is enough; a slow or signed-out
+    # install simply contributes no choices.
+    if shutil.which("opencode"):
+        try:
+            raw, _, status = run_bounded(["opencode", "models"], OPENCODE_MODELS_BYTES,
+                                         OPENCODE_MODELS_DEADLINE, want_status=True)
+            if status == 0:
+                seen = set()
+                for line in raw.decode("utf-8", "replace").splitlines():
+                    model = line.strip()
+                    if (model and model not in seen and AI_MODEL_RE.fullmatch(model)
+                            and len(catalogs["opencode"]) < 30):
+                        seen.add(model)
+                        catalogs["opencode"].append((model, model, []))
+        except (OSError, Denied):
+            pass
     for provider, entries in catalogs.items():
         catalogs[provider] = [
             {"id": model, "name": name[:80], "efforts": [e for e in efforts if e in AI_EFFORTS]}
@@ -3573,9 +3602,38 @@ COMMANDS = {
 }
 
 
+def ai_json_text(text):
+    """Return the last complete Ask AI result object found in a text answer.
+
+    OpenCode has no JSON-schema flag, so its final message is ordinary model
+    text. Accept a fenced block, prose around the object, or a bare object;
+    scanning from every `{` keeps a leading example or commentary from
+    hiding the real result.
+    """
+    text = text.strip()
+    fenced = re.fullmatch(r"```(?:json)?\s*(.*?)\s*```", text, re.S)
+    if fenced:
+        text = fenced.group(1).strip()
+    decoder = json.JSONDecoder()
+    found = None
+    for index, char in enumerate(text):
+        if char != "{":
+            continue
+        try:
+            value, end = decoder.raw_decode(text[index:])
+        except ValueError:
+            continue
+        if isinstance(value, dict) and value.get("kind") in ("answer", "command", "steps"):
+            found = text[index:index + end]
+    return found if found is not None else text
+
+
 def ai_result(raw, provider, allow_weather=False, weather_request=False):
     try:
-        value = json.loads(raw.decode("utf-8"))
+        text = raw.decode("utf-8")
+        if provider == "opencode":
+            text = ai_json_text(text)
+        value = json.loads(text)
         if provider == "claude":
             value = value.get("structured_output") or value.get("result")
             if isinstance(value, str):
@@ -3661,6 +3719,12 @@ def ai_stream_event(raw, provider):
             if isinstance(delta, dict) and delta.get("type") == "text_delta":
                 return str(delta.get("text", ""))[:1024], None
         return "", None
+    if provider == "opencode":
+        if event.get("type") == "text":
+            part = event.get("part")
+            text = part.get("text") if isinstance(part, dict) else None
+            return "", text if isinstance(text, str) else None
+        return "", None
     item = event.get("item")
     if not isinstance(item, dict):
         return "", None
@@ -3674,6 +3738,21 @@ def ai_stream_event(raw, provider):
     if event.get("type") == "item.started" and item.get("type") == "web_search":
         return "Searching the web…\n", None
     return "", None
+
+
+def ai_stream_error(raw, provider):
+    """Return a provider's JSONL error message, if the event is an error."""
+    if provider != "opencode":
+        return ""
+    try:
+        event = json.loads(raw)
+    except (ValueError, UnicodeError):
+        return ""
+    if not isinstance(event, dict) or event.get("type") != "error":
+        return ""
+    error = event.get("error")
+    message = (error.get("message") or error.get("type")) if isinstance(error, dict) else error
+    return clamp_text(message, 240) if isinstance(message, str) else ""
 
 
 def ai_partial_text(fragment):
@@ -3725,12 +3804,38 @@ def local_dashboard(card):
     return {**card, **system_snapshot(card["focus"], run, home, services)}
 
 
+def opencode_agent(web_search):
+    """Build the project-local OpenCode agent used for one Ask AI request.
+
+    The deny-all rule comes first and the optional web rules come after it,
+    because OpenCode applies the last matching permission. No shell, edit,
+    read, or subagent access is granted.
+    """
+    permissions = ['  - action: "*"\n    resource: "*"\n    effect: deny']
+    if web_search:
+        permissions += [
+            '  - action: webfetch\n    resource: "*"\n    effect: allow',
+            '  - action: websearch\n    resource: "*"\n    effect: allow',
+        ]
+    return (
+        "---\n"
+        "description: Spotlight Ask AI provider\n"
+        "mode: primary\n"
+        "hidden: true\n"
+        "steps: %d\n"
+        "permissions:\n%s\n"
+        "---\n\n"
+        "Return only the requested JSON result. Do not use tools unless allowed.\n"
+    ) % (OPENCODE_AGENT_STEPS, "\n".join(permissions))
+
+
 def cmd_ai(argv):
-    if (len(argv) not in (4, 5, 6) or argv[0] not in ("claude", "codex")
+    if (len(argv) not in (4, 5, 6) or argv[0] not in ("claude", "codex", "opencode")
             or argv[3] not in ("true", "false")
             or (len(argv) == 6 and argv[5] not in ("true", "false"))):
         raise Denied("unknown AI provider")
     provider, model, effort, web_search = argv[:4]
+    provider_name = AI_PROVIDER_LABELS[provider]
     weather_location = argv[4] if len(argv) >= 5 else ""
     weather_request = argv[5] == "true" if len(argv) == 6 else False
     if (len(weather_location) > 120 or weather_location != weather_location.strip()
@@ -3738,6 +3843,8 @@ def cmd_ai(argv):
         raise Denied("invalid weather location")
     if (model and not AI_MODEL_RE.fullmatch(model)) or (effort and effort not in AI_EFFORTS):
         raise Denied("invalid AI model or effort")
+    if provider == "opencode" and effort:
+        raise Denied("OpenCode does not support an effort setting")
     query = read_stdin(4096).decode("utf-8", "replace").strip()
     if not query or len(query) > 512:
         raise Denied("AI query must be 1–512 characters")
@@ -3867,6 +3974,9 @@ def cmd_ai(argv):
         + "\n\nCurrent UTC date and time: " + datetime.now(timezone.utc).isoformat(timespec="minutes")
         + "\n\nUser request: " + query
         + "\n\nResponse language: " + language_rule
+        + ("\n\nReturn one JSON object with the keys kind, text, commands and artifacts"
+           " (and weather for a weather request). Do not wrap it in a code fence and do"
+           " not write anything outside the JSON object." if provider == "opencode" else "")
     )
     if provider == "claude":
         tools = "WebSearch,WebFetch" if web_search == "true" else ""
@@ -3882,7 +3992,7 @@ def cmd_ai(argv):
             if effort == "ultra":
                 raise Denied("Claude does not support ultra effort")
             command += ["--effort", effort]
-    else:
+    elif provider == "codex":
         command = ["codex", "exec", "--ephemeral", "--ignore-user-config",
                    "-c", "project_doc_max_bytes=0",
                    "--json",
@@ -3897,16 +4007,37 @@ def cmd_ai(argv):
             command += ["--model", model]
         if effort:
             command += ["-c", "model_reasoning_effort=" + json.dumps(effort)]
+    else:
+        command = ["opencode", "run", "--standalone", "--format", "json",
+                   "--agent", "spotlight", "--archived", "--title", "Spotlight"]
+        if model:
+            command += ["--model", model]
     if not shutil.which(command[0]):
-        raise Denied(provider + " CLI is not installed")
+        raise Denied(provider_name + " CLI is not installed")
     final = None
     partial_json = ""
     partial_sent = ""
+    opencode_texts = []
+    opencode_chars = 0
+    opencode_error = ""
     def on_line(line):
-        nonlocal final, partial_json, partial_sent
+        nonlocal final, partial_json, partial_sent, opencode_chars, opencode_error
+        if provider == "opencode":
+            error = ai_stream_error(line, provider)
+            if error and not opencode_error:
+                opencode_error = error
         progress, value = ai_stream_event(line, provider)
         if value is not None:
             final = value
+            if provider == "opencode" and isinstance(value, str):
+                if value.startswith(partial_sent):
+                    progress = value[len(partial_sent):]
+                else:
+                    progress = value
+                partial_sent = value
+                if opencode_chars < AI_TEXT_CHARS * 2:
+                    opencode_texts.append(value)
+                    opencode_chars += len(value)
         if provider == "claude" and len(partial_json) < AI_TEXT_CHARS * 2:
             try:
                 event = json.loads(line)
@@ -3923,10 +4054,13 @@ def cmd_ai(argv):
             emit({"event": "progress", "text": progress})
             sys.stdout.flush()
 
-    # Keep Codex away from the shell's cwd and its inherited project instructions.
+    # Keep Codex and OpenCode away from the shell's cwd and inherited project
+    # instructions. Codex gets a private directory through --cd; OpenCode
+    # needs it as the child's working directory so project config discovery
+    # finds the generated agent.
     with (tempfile.TemporaryDirectory(prefix="spotlight-ai-", dir="/tmp")
-          if provider == "codex" else nullcontext()) as directory:
-        if directory is not None:
+          if provider in ("codex", "opencode") else nullcontext()) as directory:
+        if provider == "codex":
             # Codex Structured Outputs accepts a stricter JSON Schema subset
             # than Claude's --json-schema. Keep the canonical schema for
             # Claude and adapt Codex's temporary copy: string length limits
@@ -3984,16 +4118,25 @@ def cmd_ai(argv):
             except (OSError, Denied, TypeError, ValueError):
                 pass
             command += ["--cd", directory]
+        elif provider == "opencode":
+            agent_dir = os.path.join(directory, ".opencode", "agents")
+            os.makedirs(agent_dir, mode=0o700)
+            with open(os.path.join(agent_dir, "spotlight.md"), "w", encoding="utf-8") as agent_file:
+                agent_file.write(opencode_agent(web_search == "true"))
         raw, truncated, status = run_bounded(command, AI_OUTPUT_BYTES, AI_DEADLINE,
                                             instruction.encode("utf-8"), want_status=True,
-                                            on_line=on_line, merge_stderr=True)
+                                            on_line=on_line, merge_stderr=True,
+                                            cwd=directory if provider == "opencode" else None)
     if truncated:
         raise Denied("AI response exceeded its time or size limit")
+    if opencode_error:
+        raise Denied(provider_name + " CLI failed: " + opencode_error)
     if status != 0:
-        # Codex and Claude report startup, authentication and connection errors
-        # on stderr. Keep the last short diagnostic so the UI can distinguish
-        # those failures instead of always blaming login. JSONL progress/output
-        # records are ignored here; they are not useful as an error message.
+        # Codex, Claude and OpenCode report startup, authentication and
+        # connection errors on stderr. Keep the last short diagnostic so the
+        # UI can distinguish those failures instead of always blaming login.
+        # JSONL progress/output records are ignored here; they are not useful
+        # as an error message.
         diagnostic = []
         for line in raw.decode("utf-8", "replace").splitlines():
             line = line.strip()
@@ -4009,11 +4152,15 @@ def cmd_ai(argv):
                 if isinstance(message, str) and message.strip():
                     diagnostic.append(message.strip())
         detail = clamp_text("; ".join(diagnostic[-3:]), 240)
-        raise Denied(provider + " CLI failed" + (": " + detail if detail else "; check its login and connection"))
+        raise Denied(provider_name + " CLI failed" + (": " + detail if detail else "; check its login and connection"))
     if final is None:
         raise Denied("AI did not return a structured answer")
-    encoded = (json.dumps({"structured_output": final}) if provider == "claude"
-               else final if isinstance(final, str) else json.dumps(final)).encode()
+    if provider == "opencode":
+        encoded = "\n".join(opencode_texts).encode("utf-8")
+    elif provider == "claude":
+        encoded = json.dumps({"structured_output": final}).encode()
+    else:
+        encoded = (final if isinstance(final, str) else json.dumps(final)).encode()
     result = ai_result(encoded, provider, web_search == "true", weather_request)
     gallery_deadline = time.monotonic() + AI_GALLERY_DEADLINE
     for index, card in enumerate(result.get("artifacts", [])):

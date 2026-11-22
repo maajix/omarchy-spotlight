@@ -26,12 +26,13 @@ ColumnLayout {
     glyph: "󰒊"
     switchable: false
     title: "AI provider"
-    description: "Use an installed and signed-in Claude or Codex CLI. Queries are sent to that provider."
+    description: "Use an installed and signed-in Claude, Codex or OpenCode CLI. Queries are sent to that provider."
     trailing: ChoiceMenu {
       chrome: form.chrome
       bounds: form.bounds
       value: form.draft.aiProvider || "claude"
-      options: [{ value: "claude", label: "Claude" }, { value: "codex", label: "Codex" }]
+      options: [{ value: "claude", label: "Claude" }, { value: "codex", label: "Codex" },
+        { value: "opencode", label: "OpenCode" }]
       onChanged: function(v) { form.changed({ aiProvider: v, aiModel: "", aiEffort: "" }) }
     }
   }

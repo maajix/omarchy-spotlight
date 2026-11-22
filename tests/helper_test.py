@@ -455,7 +455,7 @@ class HelperTests(unittest.TestCase):
 
     def test_ai_normalizes_null_artifacts_and_rejects_other_non_arrays(self):
         answer = {"kind": "answer", "text": "Hello", "commands": []}
-        for provider in ("codex", "claude"):
+        for provider in ("codex", "claude", "opencode"):
             for artifacts in (None, [], "", {}, False, 0):
                 with self.subTest(provider=provider, artifacts=artifacts):
                     payload = {**answer, "artifacts": artifacts}
@@ -516,23 +516,78 @@ class HelperTests(unittest.TestCase):
         self.assertEqual(len(set(directories)), 4)
         self.assertTrue(all(not directory.exists() for directory in directories))
 
+    def test_opencode_uses_a_private_directory_and_a_deny_all_agent(self):
+        directories = []
+        result = {"kind": "answer", "text": "Hello", "commands": []}
+        def fake_run(argv, *args, **kwargs):
+            directory = Path(kwargs["cwd"])
+            directories.append(directory)
+            self.assertEqual(directory.parent, Path("/tmp"))
+            self.assertEqual(stat.S_IMODE(directory.stat().st_mode), 0o700)
+            self.assertIn("--standalone", argv)
+            self.assertIn("--archived", argv)
+            self.assertEqual(argv[argv.index("--agent") + 1], "spotlight")
+            self.assertEqual(argv[argv.index("--format") + 1], "json")
+            self.assertNotIn("--effort", argv)
+            content = (directory / ".opencode" / "agents" / "spotlight.md").read_text()
+            self.assertIn('action: "*"', content)
+            self.assertIn("effect: deny", content)
+            self.assertEqual("action: webfetch" in content, web_search)
+            self.assertEqual("action: websearch" in content, web_search)
+            kwargs["on_line"](json.dumps({"type": "text", "part": {
+                "type": "text", "text": json.dumps(result)}}).encode())
+            return b"", False, 0
+        for web_search in (False, True):
+            with mock.patch.object(HELPER.shutil, "which", return_value="/usr/bin/opencode"), \
+                 mock.patch.object(HELPER, "run_bounded", side_effect=fake_run):
+                reply = run(HELPER.cmd_ai, ["opencode", "opencode/model", "",
+                                            "true" if web_search else "false"], b"hello")
+            self.assertEqual(reply["result"]["artifacts"], [])
+        self.assertEqual(len(directories), 2)
+        self.assertTrue(all(not directory.exists() for directory in directories))
+
+    def test_opencode_reports_stream_errors_and_extracts_wrapped_json(self):
+        def fail(*args, **kwargs):
+            kwargs["on_line"](json.dumps({"type": "error", "error": {
+                "type": "provider.no-route", "message": "Model unavailable"}}).encode())
+            return b"", False, 0
+        with mock.patch.object(HELPER.shutil, "which", return_value="/usr/bin/opencode"), \
+             mock.patch.object(HELPER, "run_bounded", side_effect=fail):
+            with self.assertRaisesRegex(HELPER.Denied, "Model unavailable"):
+                run(HELPER.cmd_ai, ["opencode", "", "", "false"], b"hello")
+        answer = {"kind": "answer", "text": "Hi", "commands": []}
+        for raw in (json.dumps(answer), "```json\n" + json.dumps(answer) + "\n```",
+                    "Here you go:\n" + json.dumps(answer)):
+            self.assertEqual(HELPER.ai_result(raw.encode(), "opencode"),
+                             {**answer, "artifacts": []})
+
     def test_ai_only_returns_bounded_suggestions(self):
         result = {"kind": "command", "text": "Run this yourself.",
                   "commands": [{"command": "scp ~/Downloads/photo.png host:/tmp/",
                                 "explanation": "Copy the photo"}]}
-        for provider in ("claude", "codex"):
+        for provider in ("claude", "codex", "opencode"):
             events = ([{"type": "stream_event", "event": {"delta": {"type": "thinking_delta", "thinking": "Checking…"}}},
                        {"type": "result", "structured_output": result}]
                       if provider == "claude" else
                       [{"type": "item.completed", "item": {"type": "reasoning", "text": "Checking…"}},
-                       {"type": "item.completed", "item": {"type": "agent_message", "text": json.dumps(result)}}])
+                       {"type": "item.completed", "item": {"type": "agent_message", "text": json.dumps(result)}}]
+                      if provider == "codex" else
+                      [{"type": "step_start"}, {"type": "text", "part": {"type": "text", "text": json.dumps(result)}}])
+            agent_text = None
             def fake_run(*args, **kwargs):
+                nonlocal agent_text
+                cwd = kwargs.get("cwd")
+                if cwd:
+                    agent = Path(cwd, ".opencode", "agents", "spotlight.md")
+                    if agent.exists():
+                        agent_text = agent.read_text()
                 for event in events:
                     kwargs["on_line"](json.dumps(event).encode())
                 return b"", False, 0
+            effort = "" if provider == "opencode" else "high"
             with mock.patch.object(HELPER.shutil, "which", return_value="/usr/bin/agent"), \
                  mock.patch.object(HELPER, "run_bounded", side_effect=fake_run) as bounded:
-                reply = run(HELPER.cmd_ai, [provider, "test-model", "high", "true"], b"show me an scp command")
+                reply = run(HELPER.cmd_ai, [provider, "test-model", effort, "true"], b"show me an scp command")
             self.assertEqual(reply["result"], {**result, "artifacts": []})
             argv, cap, deadline, prompt = bounded.call_args.args
             self.assertEqual(argv[0], provider)
@@ -549,14 +604,25 @@ class HelperTests(unittest.TestCase):
                               argv[argv.index("--append-system-prompt") + 1])
                 self.assertIn("--allowedTools", argv)
                 self.assertEqual(argv[argv.index("--effort") + 1], "high")
-            else:
+            elif provider == "codex":
                 self.assertIn("read-only", argv)
                 self.assertIn("shell_tool", argv)
                 self.assertIn('model_reasoning_effort="high"', argv)
                 self.assertIn('web_search="live"', argv)
+            else:
+                self.assertIn("--standalone", argv)
+                self.assertIn("--archived", argv)
+                self.assertEqual(argv[argv.index("--agent") + 1], "spotlight")
+                self.assertEqual(argv[argv.index("--format") + 1], "json")
+                self.assertNotIn("--effort", argv)
+                self.assertIn(b"Return one JSON object", prompt)
+                self.assertIsNotNone(agent_text)
+                self.assertIn("action: webfetch", agent_text)
+                self.assertIn('action: "*"', agent_text)
             self.assertEqual(argv[argv.index("--model") + 1], "test-model")
         for args in (["claude", "-evil", "high", "false"], ["claude", "opus", "ultra", "false"],
-                     ["codex", "gpt-6-sol", "bogus", "false"], ["claude", "", "", "yes"]):
+                     ["codex", "gpt-6-sol", "bogus", "false"], ["claude", "", "", "yes"],
+                     ["opencode", "opencode/model", "high", "false"]):
             with self.assertRaises(HELPER.Denied):
                 run(HELPER.cmd_ai, args, b"test")
         for command in ("echo ok\nrm -rf ~", "echo \x1b[5n", "echo \u202eevil", "", "x" * 2049):
@@ -649,12 +715,15 @@ class HelperTests(unittest.TestCase):
                 self.assertTrue(command[command.index("--output-schema") + 1]
                                 .endswith("ai-weather-result.schema.json"))
                 event = {"type": "item.completed", "item": {"type": "agent_message", "text": json.dumps(answer)}}
-            else:
+            elif command[0] == "claude":
                 self.assertIn('"weather"', command[command.index("--json-schema") + 1])
                 event = {"type": "result", "structured_output": answer}
+            else:
+                self.assertIn("--agent", command)
+                event = {"type": "text", "part": {"type": "text", "text": json.dumps(answer)}}
             kwargs["on_line"](json.dumps(event).encode())
             return b"", False, 0
-        for provider in ("codex", "claude"):
+        for provider in ("codex", "claude", "opencode"):
             with mock.patch.object(HELPER.shutil, "which", return_value="/usr/bin/agent"), \
                  mock.patch.object(HELPER, "run_bounded", side_effect=fake_run):
                 reply = run(HELPER.cmd_ai, [provider, "", "", "true", "Tokyo", "true"], b"weather today")
@@ -674,12 +743,18 @@ class HelperTests(unittest.TestCase):
                 {"id": "claude-opus-5-5", "name": "Opus 5.5",
                  "thinking": {"effort_options": [{"id": "medium"}, {"id": "max"}]}},
                 {"id": "-bad", "name": "Bad"}]}}}))
-            with mock.patch.dict(os.environ, {"HOME": home}):
+            with mock.patch.dict(os.environ, {"HOME": home}), \
+                 mock.patch.object(HELPER.shutil, "which", return_value="/usr/bin/opencode"), \
+                 mock.patch.object(HELPER, "run_bounded",
+                                   return_value=(b"opencode/model\nopencode/other\n-bad\n", False, 0)):
                 catalogs = HELPER.ai_catalogs()
         self.assertEqual(catalogs["codex"], [
             {"id": "gpt-6-sol", "name": "GPT-6 Sol", "efforts": ["low", "ultra"]}])
         self.assertEqual(catalogs["claude"], [
             {"id": "claude-opus-5-5", "name": "Opus 5.5", "efforts": ["medium", "max"]}])
+        self.assertEqual(catalogs["opencode"], [
+            {"id": "opencode/model", "name": "opencode/model", "efforts": []},
+            {"id": "opencode/other", "name": "opencode/other", "efforts": []}])
 
     def test_bounded_deadline_includes_stalled_stdin(self):
         started = time.monotonic()
@@ -720,6 +795,11 @@ class HelperTests(unittest.TestCase):
         self.assertEqual(HELPER.ai_stream_event(seen[1], "claude")[1]["text"], "Done")
         codex = b'{"type":"item.completed","item":{"type":"reasoning","text":"Inspecting"}}'
         self.assertEqual(HELPER.ai_stream_event(codex, "codex"), ("Inspecting", None))
+        opencode = b'{"type":"text","part":{"type":"text","text":"Done"}}'
+        self.assertEqual(HELPER.ai_stream_event(opencode, "opencode"), ("", "Done"))
+        error = b'{"type":"error","error":{"type":"provider.no-route","message":"Model unavailable"}}'
+        self.assertEqual(HELPER.ai_stream_error(error, "opencode"), "Model unavailable")
+        self.assertEqual(HELPER.ai_stream_error(error, "codex"), "")
 
     def test_settings_are_private_by_default_and_bounded(self):
         defaults = HELPER.normalize_settings({})

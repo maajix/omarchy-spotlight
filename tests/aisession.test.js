@@ -20,6 +20,7 @@ for (const name of ['resetFolders', 'leaveSettingsPanel', 'stopCurrencyProcess',
     'rebuild', 'refreshSettings', 'refreshReminders', 'refreshToggleStates', 'resumeTour']) root[name] = noop;
 const context = vm.createContext({root, Query: require('../lib/Query.js'), Currency: require('../lib/Currency.js'),
   WeatherIntent: require('../lib/WeatherIntent.js'), Web: require('../lib/Web.js'),
+  AiOptions: require('../lib/AiOptions.js'),
   Qt: {callLater: fn => fn()}, Util: {execArgv: argv => notifications.push(Array.from(argv))},
   tour: {started: false}, pointerGate: {reset: noop}, resultList: {positionViewAtBeginning: noop},
   aiPanel: {restoringScroll: false, restoreScroll(position) { this.restored = position; }},
@@ -48,8 +49,9 @@ const event = (type, value, generation = root.aiGeneration) =>
   root.handleAiLine(JSON.stringify({ok: true, event: type, ...value}), generation);
 
 root.opened = false;
-root.loadSettings(JSON.stringify({ok: true, settings: {reduceMotion: true, aiEnabled: true}}));
+root.loadSettings(JSON.stringify({ok: true, settings: {reduceMotion: true, aiEnabled: true, aiProvider: "opencode"}}));
 assert.equal(root.settings.reduceMotion, true, 'The motion preference survives loading settings');
+assert.equal(root.settings.aiProvider, "opencode", 'The OpenCode provider survives loading settings');
 root.opened = true;
 
 context.input.text = 'ai: explain DNS resolution';
