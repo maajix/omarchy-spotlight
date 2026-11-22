@@ -1893,6 +1893,34 @@ class MenuCommandsTests(unittest.TestCase):
         "external": {"label": "External", "action": "systemctl reboot"},
     }
 
+    def test_appearance_picker_routes_match_the_packaged_menu(self):
+        for picker in ("theme", "background", "font"):
+            legacy = "style." + picker
+            current = "appearance." + picker
+            for routes, expected in (([legacy], legacy), ([current], current),
+                                     ([legacy, current], current)):
+                menu = json.dumps({route: {"label": picker} for route in routes}).encode()
+                with self.subTest(picker=picker, routes=routes), \
+                        mock.patch.object(HELPER, "_menu_read_default", return_value=menu), \
+                        mock.patch.object(HELPER, "run_bounded", return_value=(b"ok\n", False, 0)) as call:
+                    reply = run(HELPER.main, ["open-appearance-menu", picker])
+                    self.assertEqual(reply, {"ok": True, "opened": True})
+                    self.assertEqual(call.call_args.args[0], ["omarchy", "menu", "summon", expected])
+
+    def test_appearance_picker_refuses_invalid_requests_and_missing_routes(self):
+        for args, menu, error in (
+            (["setup"], b"{}", "invalid appearance picker"),
+            (["font", "theme"], b"{}", "invalid appearance picker"),
+            (["font"], b'{"appearance.theme":{"label":"Theme"}}', "appearance picker route unavailable"),
+            (["font"], b"invalid JSON", "appearance picker route unavailable"),
+        ):
+            with self.subTest(args=args, menu=menu), \
+                    mock.patch.object(HELPER, "_menu_read_default", return_value=menu), \
+                    mock.patch.object(HELPER, "run_bounded") as call:
+                reply = run(HELPER.main, ["open-appearance-menu", *args])
+                self.assertEqual(reply, {"ok": False, "error": error})
+                call.assert_not_called()
+
     def _fixture_menu_commands(self, user_raw=b"{}", default_raw=None):
         original_default = HELPER._menu_read_default
         original_user = HELPER._menu_read_user

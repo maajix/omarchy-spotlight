@@ -1557,6 +1557,23 @@ def cmd_read_menu_commands():
     emit({"commands": _menu_commands()})
 
 
+def cmd_open_appearance_menu(argv):
+    if len(argv) != 1 or argv[0] not in ("theme", "background", "font"):
+        raise Denied("invalid appearance picker")
+    items = _menu_parse_items(_menu_read_default())
+    # Unknown routes also return "ok" and open the root menu.
+    for prefix in ("appearance", "style"):
+        route = prefix + "." + argv[0]
+        if route in items:
+            raw, _ = view_output(["omarchy", "menu", "summon", route], 4096,
+                                 PLUGINS_DEADLINE, "appearance picker unavailable")
+            if raw.strip() != b"ok":
+                raise Denied("appearance picker could not be opened")
+            emit({"opened": True})
+            return
+    raise Denied("appearance picker route unavailable")
+
+
 def cmd_read_plugins():
     raw, _ = view_output(["omarchy-shell", "shell", "listPlugins"],
                          PLUGINS_BYTES, PLUGINS_DEADLINE, "plugin list unavailable")
@@ -3522,6 +3539,7 @@ COMMANDS = {
     "read-usage": (cmd_read_usage, False),
     "read-hides": (cmd_read_hides, False),
     "read-menu-commands": (cmd_read_menu_commands, False),
+    "open-appearance-menu": (cmd_open_appearance_menu, True),
     "read-plugins": (cmd_read_plugins, False),
     "summon-plugin": (cmd_summon_plugin, True),
     "write-usage": (cmd_write_usage, False),

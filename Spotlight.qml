@@ -2011,6 +2011,11 @@ Item {
       root.openUrl(r.payload.url)
       break
 
+    case "appearance-menu":
+      root.dismiss()
+      Util.execArgv(root.helperArgv(["open-appearance-menu", r.payload.id]))
+      break
+
     case "spotifyjam":
       root.dismiss()
       root.openSpotifyJam(r.payload.url)
