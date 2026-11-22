@@ -215,6 +215,11 @@ AI_EFFORTS = {"low", "medium", "high", "xhigh", "max", "ultra"}
 AI_PROVIDER_LABELS = {"claude": "Claude", "codex": "Codex", "opencode": "OpenCode"}
 OPENCODE_MODELS_BYTES = 256 * 1024
 OPENCODE_MODELS_DEADLINE = 4.0
+OPENCODE_PREFLIGHT_BYTES = 1024 * 1024
+OPENCODE_PREFLIGHT_DEADLINE = 20.0
+# `--archived` and the `debug agents` policy output used to verify the
+# generated agent both arrived in 2.3.0; older releases reject the run.
+OPENCODE_MIN_VERSION = (2, 3, 0)
 OPENCODE_AGENT_STEPS = 8
 TLDR_PAGE_RE = re.compile(r"^[a-z0-9][a-z0-9._+-]{0,63}$")
 # `{{[-a|--all]}}` is an option alternation; the long form reads best.
@@ -1475,31 +1480,46 @@ def ai_catalogs():
                                         [level.get("id") for level in levels if isinstance(level, dict)]))
     except (OSError, Denied, TypeError, AttributeError, ValueError):
         pass
-    # OpenCode is the only CLI here whose model catalog is a command rather
-    # than a cache file. It prints one provider/model per line and needs no
-    # project directory, so a bounded call is enough; a slow or signed-out
-    # install simply contributes no choices.
-    if shutil.which("opencode"):
-        try:
-            raw, _, status = run_bounded(["opencode", "models"], OPENCODE_MODELS_BYTES,
-                                         OPENCODE_MODELS_DEADLINE, want_status=True)
-            if status == 0:
-                seen = set()
-                for line in raw.decode("utf-8", "replace").splitlines():
-                    model = line.strip()
-                    if (model and model not in seen and AI_MODEL_RE.fullmatch(model)
-                            and len(catalogs["opencode"]) < 30):
-                        seen.add(model)
-                        catalogs["opencode"].append((model, model, []))
-        except (OSError, Denied):
-            pass
     for provider, entries in catalogs.items():
-        catalogs[provider] = [
-            {"id": model, "name": name[:80], "efforts": [e for e in efforts if e in AI_EFFORTS]}
-            for model, name, efforts in entries[:30]
-            if isinstance(model, str) and AI_MODEL_RE.fullmatch(model) and isinstance(name, str)
-        ]
+        catalogs[provider] = catalog_entries(entries)
     return catalogs
+
+
+def catalog_entries(entries):
+    return [
+        {"id": model, "name": name[:80], "efforts": [e for e in efforts if e in AI_EFFORTS]}
+        for model, name, efforts in entries[:30]
+        if isinstance(model, str) and AI_MODEL_RE.fullmatch(model) and isinstance(name, str)
+    ]
+
+
+def opencode_models():
+    """Read OpenCode's model catalog, only when the picker asks for it."""
+    entries = []
+    if not shutil.which("opencode"):
+        return entries
+    try:
+        raw, _, status = run_bounded(["opencode", "models"], OPENCODE_MODELS_BYTES,
+                                     OPENCODE_MODELS_DEADLINE, want_status=True)
+        if status == 0:
+            seen = set()
+            for line in raw.decode("utf-8", "replace").splitlines():
+                model = line.strip()
+                if (model and model not in seen and AI_MODEL_RE.fullmatch(model)
+                        and len(entries) < 30):
+                    seen.add(model)
+                    entries.append((model, model, []))
+    except (OSError, Denied):
+        pass
+    return catalog_entries(entries)
+
+
+def cmd_ai_models(argv):
+    if len(argv) != 1 or argv[0] not in AI_PROVIDER_LABELS:
+        raise Denied("unknown AI provider")
+    provider = argv[0]
+    models = opencode_models() if provider == "opencode" else ai_catalogs()[provider]
+    emit({"provider": provider, "models": models})
 
 
 def cmd_read_settings():
@@ -3562,6 +3582,7 @@ def cmd_revert_binding():
 # name -> (handler, whether it reads positional arguments)
 COMMANDS = {
     "read-settings": (cmd_read_settings, False),
+    "read-ai-models": (cmd_ai_models, True),
     "ensure-settings": (cmd_ensure_settings, False),
     "ensure-data": (cmd_ensure_data, False),
     "reset-usage": (cmd_reset_usage, False),
@@ -3740,6 +3761,28 @@ def ai_stream_event(raw, provider):
     return "", None
 
 
+def ai_opencode_part(raw):
+    """Return (part id, text suffix) for one streamed OpenCode text fragment.
+
+    OpenCode emits only the new suffix of a text part, not the whole text so
+    far, and a single part can arrive over many events. Reassembly therefore
+    has to key on the part id before the result is parsed.
+    """
+    try:
+        event = json.loads(raw)
+    except (ValueError, UnicodeError):
+        return None
+    if not isinstance(event, dict) or event.get("type") != "text":
+        return None
+    part = event.get("part")
+    if not isinstance(part, dict):
+        return None
+    part_id, text = part.get("id"), part.get("text")
+    if not isinstance(part_id, str) or not isinstance(text, str):
+        return None
+    return part_id, text
+
+
 def ai_stream_error(raw, provider):
     """Return a provider's JSONL error message, if the event is an error."""
     if provider != "opencode":
@@ -3827,6 +3870,91 @@ def opencode_agent(web_search):
         "---\n\n"
         "Return only the requested JSON result. Do not use tools unless allowed.\n"
     ) % (OPENCODE_AGENT_STEPS, "\n".join(permissions))
+
+
+def opencode_environment(directory):
+    """Build the child environment that pins OpenCode to the private project.
+
+    OpenCode resolves its project from PWD before its working directory, and
+    the standalone server also reads the global config directory. Setting both
+    keeps the generated agent and the effective permission policy tied to the
+    directory this helper creates and verifies.
+    """
+    env = dict(os.environ)
+    env["PWD"] = directory
+    config = os.path.join(directory, "config")
+    os.makedirs(config, mode=0o700, exist_ok=True)
+    # A config file or inline config from the parent shell would bypass the
+    # isolated directory; drop those before pointing at the private one.
+    for name in ("OPENCODE_CONFIG", "OPENCODE_CONFIG_CONTENT"):
+        env.pop(name, None)
+    env["OPENCODE_CONFIG_DIR"] = config
+    return env
+
+
+def opencode_version(env):
+    try:
+        raw, _, status = run_bounded(["opencode", "--version"], 256, 8.0,
+                                     want_status=True, env=env)
+    except (OSError, Denied):
+        return None
+    if status != 0:
+        return None
+    match = re.search(r"v?(\d+)\.(\d+)\.(\d+)", raw.decode("utf-8", "replace"))
+    return tuple(int(part) for part in match.groups()) if match else None
+
+
+def opencode_permissions(web_search):
+    permissions = [{"action": "*", "resource": "*", "effect": "deny"}]
+    if web_search:
+        permissions += [
+            {"action": "webfetch", "resource": "*", "effect": "allow"},
+            {"action": "websearch", "resource": "*", "effect": "allow"},
+        ]
+    return permissions
+
+
+def verify_opencode_policy(env, web_search, directory):
+    """Abort unless OpenCode loaded Spotlight's agent and its restrictions.
+
+    The generated agent file is not proof of the policy that takes effect:
+    OpenCode merges built-in, global and project agents, and permission
+    evaluation is last-match-wins. Read the merged policy back from OpenCode
+    itself and require the generated rules to survive with only deny rules
+    after them.
+    """
+    expected = opencode_permissions(web_search)
+    try:
+        raw, truncated, status = run_bounded(
+            ["opencode", "debug", "agents", "--standalone"],
+            OPENCODE_PREFLIGHT_BYTES, OPENCODE_PREFLIGHT_DEADLINE,
+            want_status=True, cwd=directory, env=env)
+    except (OSError, Denied) as exc:
+        raise Denied("cannot verify OpenCode permissions: " + str(exc))
+    if truncated or status != 0:
+        raise Denied("cannot verify OpenCode permissions; check its installation")
+    try:
+        agents = json.loads(raw.decode("utf-8"))
+    except (ValueError, UnicodeError):
+        raise Denied("cannot verify OpenCode permissions; unexpected output")
+    agent = None
+    if isinstance(agents, list):
+        agent = next((item for item in agents
+                      if isinstance(item, dict) and item.get("id") == "spotlight"), None)
+    if agent is None:
+        raise Denied("OpenCode did not load Spotlight's restricted agent; "
+                     "update OpenCode to 2.3.0 or newer")
+    rules = agent.get("permissions")
+    if not isinstance(rules, list):
+        rules = []
+    rules = [{key: rule.get(key) for key in ("action", "resource", "effect")}
+             for rule in rules if isinstance(rule, dict)]
+    for index in range(len(rules) - len(expected) + 1):
+        if rules[index:index + len(expected)] == expected:
+            if all(rule.get("effect") == "deny" for rule in rules[index + len(expected):]):
+                return
+            break
+    raise Denied("OpenCode changed Spotlight's permissions; update OpenCode to 2.3.0 or newer")
 
 
 def cmd_ai(argv):
@@ -4017,7 +4145,7 @@ def cmd_ai(argv):
     final = None
     partial_json = ""
     partial_sent = ""
-    opencode_texts = []
+    opencode_parts = {}
     opencode_chars = 0
     opencode_error = ""
     def on_line(line):
@@ -4026,18 +4154,22 @@ def cmd_ai(argv):
             error = ai_stream_error(line, provider)
             if error and not opencode_error:
                 opencode_error = error
+            part = ai_opencode_part(line)
+            if part is None:
+                return
+            part_id, suffix = part
+            if opencode_chars < AI_TEXT_CHARS * 2:
+                suffix = suffix[:AI_TEXT_CHARS * 2 - opencode_chars]
+                opencode_parts[part_id] = opencode_parts.get(part_id, "") + suffix
+                opencode_chars += len(suffix)
+            final = "".join(opencode_parts.values())
+            if suffix:
+                emit({"event": "progress", "text": suffix})
+                sys.stdout.flush()
+            return
         progress, value = ai_stream_event(line, provider)
         if value is not None:
             final = value
-            if provider == "opencode" and isinstance(value, str):
-                if value.startswith(partial_sent):
-                    progress = value[len(partial_sent):]
-                else:
-                    progress = value
-                partial_sent = value
-                if opencode_chars < AI_TEXT_CHARS * 2:
-                    opencode_texts.append(value)
-                    opencode_chars += len(value)
         if provider == "claude" and len(partial_json) < AI_TEXT_CHARS * 2:
             try:
                 event = json.loads(line)
@@ -4123,10 +4255,19 @@ def cmd_ai(argv):
             os.makedirs(agent_dir, mode=0o700)
             with open(os.path.join(agent_dir, "spotlight.md"), "w", encoding="utf-8") as agent_file:
                 agent_file.write(opencode_agent(web_search == "true"))
+            env = opencode_environment(directory)
+            version = opencode_version(env)
+            if version is None:
+                raise Denied("cannot read the OpenCode version; check its installation")
+            if version < OPENCODE_MIN_VERSION:
+                raise Denied("OpenCode %d.%d.%d or newer is required (found %s); run `opencode upgrade`"
+                             % (OPENCODE_MIN_VERSION + (".".join(map(str, version)),)))
+            verify_opencode_policy(env, web_search == "true", directory)
         raw, truncated, status = run_bounded(command, AI_OUTPUT_BYTES, AI_DEADLINE,
                                             instruction.encode("utf-8"), want_status=True,
                                             on_line=on_line, merge_stderr=True,
-                                            cwd=directory if provider == "opencode" else None)
+                                            cwd=directory if provider == "opencode" else None,
+                                            env=env if provider == "opencode" else None)
     if truncated:
         raise Denied("AI response exceeded its time or size limit")
     if opencode_error:
@@ -4156,7 +4297,7 @@ def cmd_ai(argv):
     if final is None:
         raise Denied("AI did not return a structured answer")
     if provider == "opencode":
-        encoded = "\n".join(opencode_texts).encode("utf-8")
+        encoded = "".join(opencode_parts.values()).encode("utf-8")
     elif provider == "claude":
         encoded = json.dumps({"structured_output": final}).encode()
     else:

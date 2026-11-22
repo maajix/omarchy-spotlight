@@ -48,6 +48,7 @@ FocusScope {
   signal bindingRequested(string chord)
   signal revertRequested()
   signal finished(var patch)        // {} = persist nothing
+  signal aiModelsRequested(string provider)
 
   readonly property var presets: ["ALT + SPACE", "SUPER + SPACE", "CTRL + ALT + SPACE"]
   readonly property var examples: [["firefox", "open an app"], ["f invoice", "find a file"], ["12*1.19", "calculate"],
@@ -156,7 +157,10 @@ FocusScope {
     })
   }
 
-  onStepChanged: focusStep()
+  onStepChanged: {
+    focusStep()
+    if (tour.step === 3) aiSettings.requestModels()
+  }
   onFinished: started = false
   onBindingStateChanged: if (bindingState === "ok" || bindingState === "reverted") selected = ""
 
@@ -612,12 +616,14 @@ FocusScope {
 
       // ------------------------------------------------------- 4 AI
       AiSettings {
+        id: aiSettings
         spacing: Style.space(14)
         chrome: tour.chrome
         bounds: tour
         draft: tour.draft
         aiModels: tour.aiModels
         onChanged: function(patch) { tour.draft = Object.assign({}, tour.draft, patch) }
+        onModelsRequested: function(provider) { tour.aiModelsRequested(provider) }
       }
 
       // ------------------------------------------------------- 5 done

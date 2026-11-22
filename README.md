@@ -49,7 +49,7 @@ After moving to a folder result with **↑ / ↓**, press **→** to move the se
 
 ## Ask AI
 
-Enable **Ask AI** in Spotlight Settings and choose an installed, signed-in **Claude, Codex or OpenCode CLI**. Submit questions with `ai:` and Enter. Answers can include copyable code and commands, maps, weather, charts, palettes, timelines and other visual cards. Requests stay available when you close and reopen Spotlight. Clearing the search discards the saved AI session and cancels any pending answer.
+Enable **Ask AI** in Spotlight Settings and choose an installed, signed-in **Claude, Codex or OpenCode CLI**. OpenCode requires version 2.3.0 or newer. Submit questions with `ai:` and Enter. Answers can include copyable code and commands, maps, weather, charts, palettes, timelines and other visual cards. Requests stay available when you close and reopen Spotlight. Clearing the search discards the saved AI session and cancels any pending answer.
 
 AI and AI web search are opt-in. Generated commands are shown for you to review and copy. [AI setup and usage](https://maajix.github.io/omarchy-spotlight/docs/?p=ask-ai) · [All twelve artifact types](https://maajix.github.io/omarchy-spotlight/docs/?p=ai-artifacts)
 

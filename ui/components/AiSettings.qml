@@ -11,6 +11,14 @@ ColumnLayout {
   required property var draft
   required property var aiModels
   signal changed(var patch)
+  signal modelsRequested(string provider)
+
+  // The OpenCode catalog comes from a CLI call, so it is only worth reading
+  // when someone is actually looking at this page with OpenCode selected.
+  function requestModels() {
+    if ((form.draft.aiProvider || "claude") === "opencode")
+      form.modelsRequested("opencode")
+  }
 
   SettingRow {
     chrome: form.chrome
@@ -33,7 +41,10 @@ ColumnLayout {
       value: form.draft.aiProvider || "claude"
       options: [{ value: "claude", label: "Claude" }, { value: "codex", label: "Codex" },
         { value: "opencode", label: "OpenCode" }]
-      onChanged: function(v) { form.changed({ aiProvider: v, aiModel: "", aiEffort: "" }) }
+      onChanged: function(v) {
+        form.changed({ aiProvider: v, aiModel: "", aiEffort: "" })
+        if (v === "opencode") form.modelsRequested("opencode")
+      }
     }
   }
 
