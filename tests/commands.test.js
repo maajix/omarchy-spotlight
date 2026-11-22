@@ -27,16 +27,6 @@ test("every shell entry carries a runnable argv vector", () => {
   }
 })
 
-test("appearance commands use current Omarchy menu routes", () => {
-  const byKey = new Map(Commands.commands().map(c => [c.key, c]))
-  assert.deepEqual(byKey.get("theme.pick").argv,
-    ["omarchy", "menu", "summon", "appearance.theme"])
-  assert.deepEqual(byKey.get("theme.bg").argv,
-    ["omarchy", "menu", "summon", "appearance.background"])
-  assert.deepEqual(byKey.get("theme.font").argv,
-    ["omarchy", "menu", "summon", "appearance.font"])
-})
-
 test("every state id is one the helper knows how to probe", () => {
   const stateful = entries.filter(c => c.state)
   assert.ok(stateful.length > 0)
@@ -69,11 +59,12 @@ test("fromPlugins keeps curated entries, skips itself and deduplicates plugin ID
     { id: "test.panel", name: "Duplicate" },
     { id: "omarchy.emojis", name: "Curated" },
     { id: "io.github.maajix.spotlight", name: "Spotlight" },
-    { id: "constructor", name: "Prototype Name" }
+    { id: "constructor", name: "Prototype Name" },
+    { id: "theme", name: "Theme Panel" }
   ]
   const entries = Commands.fromPlugins(plugins, "io.github.maajix.spotlight")
-  assert.deepEqual(entries.map(c => c.id), ["test.menu", "constructor", "test.panel"])
-  const panel = entries[2]
+  assert.deepEqual(entries.map(c => c.id), ["test.menu", "constructor", "theme", "test.panel"])
+  const panel = entries[3]
   assert.equal(panel.kind, "summon")
   assert.equal(panel.icon, "🧩")
   assert.equal(panel.image, undefined)
@@ -82,9 +73,9 @@ test("fromPlugins keeps curated entries, skips itself and deduplicates plugin ID
   assert.deepEqual(Commands.fromPlugins({}), [])
 })
 
-test("QML discovers and launches plugins without a host registry or cross-plugin API", () => {
+test("QML discovers plugins and dispatches plugin and appearance actions through the helper", () => {
   const pluginsProc = { running: false }, pluginSummonProc = { running: false }
-  let rebuilds = 0, dismissed = false
+  let rebuilds = 0, dismissed = false, executed = null
   const root = {
     // This is the installed third-party facade: no pluginRegistry property,
     // and cross-plugin calls are forbidden.
@@ -99,7 +90,7 @@ test("QML discovers and launches plugins without a host registry or cross-plugin
   }
   const context = vm.createContext({ root, pluginsProc, pluginSummonProc, Commands,
     Fuzzy: require("../lib/Fuzzy.js"), Frecency: require("../lib/Frecency.js"),
-    Query: require("../lib/Query.js") })
+    Query: require("../lib/Query.js"), Util: { execArgv: argv => { executed = Array.from(argv) } } })
   for (const name of ["helperReply", "refreshPluginCommands", "loadPluginCommands", "commandRows", "activate"]) {
     const source = qml.match(new RegExp("  function " + name + "\\([^]*?\n  \\}"))[0]
     vm.runInContext(source, context)
@@ -126,4 +117,14 @@ test("QML discovers and launches plugins without a host registry or cross-plugin
   assert.equal(root.pluginCommands.length, 0)
   root.loadPluginCommands("not JSON")
   assert.equal(root.pluginCommands.length, 0)
+
+  for (const [title, picker] of [["Change Theme", "theme"],
+    ["Change Background", "background"], ["Change Font", "font"]]) {
+    dismissed = false
+    root.rows = root.commandRows(title.toLowerCase(), false, false)
+    assert.equal(root.rows[0].title, title)
+    root.activate(0, false)
+    assert.equal(dismissed, true)
+    assert.deepEqual(executed, ["python3", "/helper", "open-appearance-menu", picker])
+  }
 })
