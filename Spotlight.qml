@@ -25,6 +25,7 @@ import "lib/Ranking.js" as Ranking
 import "lib/Chord.js" as Chord
 import "lib/SettingsQueue.js" as SettingsQueue
 import "lib/WeatherIntent.js" as WeatherIntent
+import "lib/AiOptions.js" as AiOptions
 
 // Spotlight — a Raycast-shaped command palette for Omarchy.
 //
@@ -366,7 +367,8 @@ Item {
   // ------------------------------------------------------- settings panel
   // The panel paints settings; this file writes them.
   property bool settingsActive: false
-  property var aiModels: ({ claude: [], codex: [] })
+  property var aiModels: ({ claude: [], codex: [], opencode: [] })
+  property bool aiModelsLoading: false
   property var settingsWrites: SettingsQueue.create()
   // Set by a saved write: a read started before it must not undo it.
   property bool settingsReadStale: false
@@ -540,6 +542,16 @@ Item {
     settingsProc.running = false
     settingsProc.command = root.helperArgv(["read-settings"])
     settingsProc.running = true
+  }
+
+  // The OpenCode catalog comes from a CLI call, so an ordinary settings read
+  // must not trigger it. The picker asks for it when OpenCode is selected.
+  function refreshAiModels(provider) {
+    if (provider !== "opencode" || root.aiModelsLoading) return
+    root.aiModelsLoading = true
+    aiModelsProc.running = false
+    aiModelsProc.command = root.helperArgv(["read-ai-models", provider])
+    aiModelsProc.running = true
   }
 
   function refreshUsage() {
@@ -914,7 +926,7 @@ Item {
     var oldCurrency = root.settings.defaultCurrency
     var oldRates = root.settings.currencyRates
     var oldAi = root.settings.aiEnabled === true
-    var oldAiProvider = root.settings.aiProvider === "codex" ? "codex" : "claude"
+    var oldAiProvider = AiOptions.provider(root.settings.aiProvider)
     root.settings = {
       webSuggestions: parsed.webSuggestions === true,
       currencyRates: parsed.currencyRates !== false,
@@ -928,7 +940,7 @@ Item {
       reduceMotion: parsed.reduceMotion === true,
       learningEnabled: parsed.learningEnabled !== false,
       aiEnabled: parsed.aiEnabled === true,
-      aiProvider: parsed.aiProvider === "codex" ? "codex" : "claude",
+      aiProvider: AiOptions.provider(parsed.aiProvider),
       aiModel: typeof parsed.aiModel === "string" ? parsed.aiModel : "",
       aiEffort: typeof parsed.aiEffort === "string" ? parsed.aiEffort : "",
       aiWebSearch: parsed.aiWebSearch === true,
@@ -1694,7 +1706,7 @@ Item {
       next.push(root.row({
         key: "ai.ask", kind: !root.settings.aiEnabled ? "spotlight-settings" : parsed.empty ? "noop" : "ai",
         title: root.settings.aiEnabled
-          ? (parsed.empty ? "Ask AI…" : "Ask " + (root.settings.aiProvider === "codex" ? "Codex" : "Claude"))
+          ? (parsed.empty ? "Ask AI…" : "Ask " + AiOptions.label(root.settings.aiProvider))
           : "Enable AI in Spotlight Settings",
         subtitle: root.settings.aiEnabled ? parsed.text : "",
         accessory: "AI", icon: "󰚩", primaryLabel: root.settings.aiEnabled ? "Ask AI" : "Open settings"
@@ -2799,8 +2811,32 @@ Item {
       waitForEnd: true
       onStreamFinished: {
         var reply = root.helperReply(text)
-        if (reply && reply.aiModels) root.aiModels = reply.aiModels
+        // OpenCode's catalog is fetched only when its picker is shown, so a
+        // local settings read must not clear choices already loaded.
+        if (reply && reply.aiModels) {
+          var models = Object.assign({}, root.aiModels)
+          models.claude = reply.aiModels.claude || []
+          models.codex = reply.aiModels.codex || []
+          root.aiModels = models
+        }
         if (!root.settingsReadStale) root.loadSettings(text)
+      }
+    }
+  }
+
+  Process {
+    id: aiModelsProc
+    // A helper that never started sends no reply, so nothing else settles it.
+    onRunningChanged: if (!running) root.aiModelsLoading = false
+    stdout: StdioCollector {
+      waitForEnd: true
+      onStreamFinished: {
+        var reply = root.helperReply(text)
+        root.aiModelsLoading = false
+        if (!reply || reply.provider !== "opencode" || !reply.models) return
+        var models = Object.assign({}, root.aiModels)
+        models.opencode = reply.models
+        root.aiModels = models
       }
     }
   }
@@ -2974,6 +3010,7 @@ Item {
     bindingReloadProc.running = false
     settingsWriteDebounce.stop()
     settingsWriteProc.running = false
+    aiModelsProc.running = false
   }
 
   Connections {
@@ -3653,6 +3690,7 @@ Item {
       bindingState: root.bindingState
       aiModels: root.aiModels
       onBindingRequested: function(chord) { root.writeBinding(chord) }
+      onAiModelsRequested: function(provider) { root.refreshAiModels(provider) }
       onRevertRequested: root.revertBinding()
       onFinished: function(patch) { root.finishTour(patch) }
     }
@@ -3682,6 +3720,7 @@ Item {
       availableHeight: Math.min(panel.height - Style.space(96),
                                 Math.max(Style.space(420), panel.height * 0.5))
       onChanged: function(patch) { root.queueSettings(patch) }
+      onAiModelsRequested: function(provider) { root.refreshAiModels(provider) }
       onClosed: root.closeSettingsPanel()
       onAction: function(name) {
         switch (name) {

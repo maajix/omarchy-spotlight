@@ -43,6 +43,7 @@ test("the tour initializes the saved AI web-search setting", () => {
   const qml = fs.readFileSync(require.resolve("../ui/panels/SetupTour.qml"), "utf8")
   const context = vm.createContext({
     Web: { hasEngine: () => true }, Currency: { defaultCode: () => "EUR" },
+    AiOptions: require("../lib/AiOptions.js"),
     currencyCodeField: { revert() {} }, focusStep() {}
   })
   vm.runInContext(qml.slice(qml.indexOf("  function start("), qml.indexOf("  function set(")), context)

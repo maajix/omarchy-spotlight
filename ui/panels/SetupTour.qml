@@ -6,6 +6,7 @@ import "../components"
 import "../../lib/Chord.js" as Chord
 import "../../lib/Web.js" as Web
 import "../../lib/Currency.js" as Currency
+import "../../lib/AiOptions.js" as AiOptions
 
 // First-run tour, and the standalone shortcut chooser (singleStep). Pure UI:
 // Spotlight.qml owns every read and write and feeds the results back through
@@ -31,7 +32,7 @@ FocusScope {
   property string previousBinding: ""
   property bool bindingManaged: false
   property var boundChords: ({})
-  property var aiModels: ({ claude: [], codex: [] })
+  property var aiModels: ({ claude: [], codex: [], opencode: [] })
   property string bindingState: ""   // "" | busy | ok | reverted | error | reloadError
 
   // owned
@@ -47,6 +48,7 @@ FocusScope {
   signal bindingRequested(string chord)
   signal revertRequested()
   signal finished(var patch)        // {} = persist nothing
+  signal aiModelsRequested(string provider)
 
   readonly property var presets: ["ALT + SPACE", "SUPER + SPACE", "CTRL + ALT + SPACE"]
   readonly property var examples: [["firefox", "open an app"], ["f invoice", "find a file"], ["12*1.19", "calculate"],
@@ -104,7 +106,7 @@ FocusScope {
       learningEnabled: current.learningEnabled !== false,
       aiEnabled: current.aiEnabled === true,
       aiWebSearch: current.aiWebSearch === true,
-      aiProvider: current.aiProvider === "codex" ? "codex" : "claude",
+      aiProvider: AiOptions.provider(current.aiProvider),
       aiModel: current.aiModel || "",
       aiEffort: current.aiEffort || ""
     }
@@ -155,7 +157,10 @@ FocusScope {
     })
   }
 
-  onStepChanged: focusStep()
+  onStepChanged: {
+    focusStep()
+    if (tour.step === 3) aiSettings.requestModels()
+  }
   onFinished: started = false
   onBindingStateChanged: if (bindingState === "ok" || bindingState === "reverted") selected = ""
 
@@ -611,12 +616,14 @@ FocusScope {
 
       // ------------------------------------------------------- 4 AI
       AiSettings {
+        id: aiSettings
         spacing: Style.space(14)
         chrome: tour.chrome
         bounds: tour
         draft: tour.draft
         aiModels: tour.aiModels
         onChanged: function(patch) { tour.draft = Object.assign({}, tour.draft, patch) }
+        onModelsRequested: function(provider) { tour.aiModelsRequested(provider) }
       }
 
       // ------------------------------------------------------- 5 done

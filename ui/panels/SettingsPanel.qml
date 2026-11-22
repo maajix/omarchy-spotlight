@@ -21,7 +21,7 @@ FocusScope {
   property int surfaceRadius: 12
   property int rowRadius: 8
   property var settings: ({})
-  property var aiModels: ({ claude: [], codex: [] })
+  property var aiModels: ({ claude: [], codex: [], opencode: [] })
   property var pendingSettings: ({})
   property bool saveFailed: false
   property string saveError: ""
@@ -42,6 +42,7 @@ FocusScope {
   signal changed(var patch)
   signal action(string name)
   signal closed()
+  signal aiModelsRequested(string provider)
 
   readonly property SpotlightPalette chrome: SpotlightPalette {
     foreground: panel.foreground
@@ -75,6 +76,7 @@ FocusScope {
   function showTab(tab) {
     if (panel.activeTab === "ai") artifactSettingsPage.commit()
     panel.activeTab = tab
+    if (tab === "ai") aiSettings.requestModels()
     Qt.callLater(function() { flick.contentY = 0 })
     focusPanel()
   }
@@ -434,6 +436,7 @@ FocusScope {
         GroupLabel { text: "AI"; visible: panel.activeTab === "ai" }
 
         AiSettings {
+          id: aiSettings
           visible: panel.activeTab === "ai"
           Layout.fillWidth: true
           chrome: panel.chrome
@@ -441,6 +444,7 @@ FocusScope {
           draft: panel.draft
           aiModels: panel.aiModels
           onChanged: function(patch) { panel.changed(patch) }
+          onModelsRequested: function(provider) { panel.aiModelsRequested(provider) }
         }
 
         GroupLabel { text: "ARTIFACTS"; visible: panel.activeTab === "ai" }

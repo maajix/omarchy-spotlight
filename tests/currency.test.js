@@ -283,6 +283,7 @@ function overlay() {
       execArgv: argv => root.copyCalls.push(argv) },
     Date: { now: () => NOW }, Calc: { evaluate: () => null },
     NaturalTime: { parseReminder: () => null, parseEvent: () => null },
+    AiOptions: require("../lib/AiOptions.js"),
     Web: { detectUrl: () => "", canonicalEngine: key => key }, Fuzzy: { MATCH_EXACT: 100 } })
   for (const name of ["currencyQuery", "intentRows", "updateCurrency", "loadCurrency",
     "loadSettings", "setupPending", "loadSuggestions", "activate"]) {
