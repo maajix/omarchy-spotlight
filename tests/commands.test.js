@@ -27,6 +27,16 @@ test("every shell entry carries a runnable argv vector", () => {
   }
 })
 
+test("appearance commands use current Omarchy menu routes", () => {
+  const byKey = new Map(Commands.commands().map(c => [c.key, c]))
+  assert.deepEqual(byKey.get("theme.pick").argv,
+    ["omarchy", "menu", "summon", "appearance.theme"])
+  assert.deepEqual(byKey.get("theme.bg").argv,
+    ["omarchy", "menu", "summon", "appearance.background"])
+  assert.deepEqual(byKey.get("theme.font").argv,
+    ["omarchy", "menu", "summon", "appearance.font"])
+})
+
 test("every state id is one the helper knows how to probe", () => {
   const stateful = entries.filter(c => c.state)
   assert.ok(stateful.length > 0)
