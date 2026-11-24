@@ -2,6 +2,7 @@ const assert = require("node:assert/strict")
 const fs = require("node:fs")
 const path = require("node:path")
 const test = require("node:test")
+const Commands = require("../lib/Commands.js")
 const Frecency = require("../lib/Frecency.js")
 const Fuzzy = require("../lib/Fuzzy.js")
 const Query = require("../lib/Query.js")
@@ -64,6 +65,40 @@ test("mixed results order apps, actions, files, then web", () => {
   assert.deepEqual(Ranking.rank(rows, 4).map(row => row.key), [
     "app", "action", "file", "web"
   ])
+})
+
+test("an explicit bang survives the result cap and takes Enter over loose local matches", () => {
+  const query = "g test"
+  const [diskTest] = Commands.fromPlugins([{ id: "omarchy.disk-speedtest", name: "Disk Speed Test" }])
+  const action = { ...diskTest, resultType: "action", textMatch: Fuzzy.score(diskTest, query) }
+  assert.ok(action.textMatch > 0)
+  const bang = { key: "bang.g", kind: "url", resultType: "bang", title: "test" }
+  const web = { key: "web.fallback", kind: "url", resultType: "web", title: "Search the web" }
+  const rows = Ranking.rank([action, web, bang], 2, query)
+
+  assert.deepEqual(rows.map(row => row.key), [bang.key, action.key])
+  assert.equal(rows[Query.firstSelectableIndex(rows, query)], bang)
+  assert.deepEqual(Ranking.rank([action, web], 2, query), [action, web])
+})
+
+test("only an app title starting with the whole bang query can take Enter from the bang", () => {
+  const app = { key: "docker-desktop", kind: "app", resultType: "app", title: "Docker Desktop" }
+  const bang = { key: "bang.docker", kind: "url", resultType: "bang", title: "desk" }
+  const lookalikes = [
+    { key: "window", kind: "window", resultType: "window", title: "Docker Desktop" },
+    { key: "substring", kind: "app", resultType: "app", title: "Open Docker Desktop" },
+    { key: "metadata", kind: "app", resultType: "app", title: "Containers", keywords: "Docker Desktop" }
+  ]
+
+  for (const query of ["DOCKER DESK", "docker desktop"]) {
+    const rows = [bang, ...lookalikes, app].map(row => ({
+      ...row, textMatch: Fuzzy.score(row, query), contextBonus: row === app ? 0 : 110
+    }))
+    const ranked = Ranking.rank(rows, 2, query)
+    assert.deepEqual(ranked.map(row => row.key), [app.key, bang.key])
+    assert.equal(ranked[Query.firstSelectableIndex(ranked, query)].key, app.key)
+    assert.equal(Ranking.rank(rows.filter(row => row.key !== app.key), 1, query)[0].key, bang.key)
+  }
 })
 
 test("repeated Firefox selection for fi moves it ahead of Figma", () => {
