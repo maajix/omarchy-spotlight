@@ -1899,13 +1899,11 @@ Item {
       console.warn("spotlight: refusing to open an empty path")
       return
     }
-    // Detached on purpose. A Process with no stdout/stderr parser has its read
-    // ends closed by Quickshell before it starts, and `gio open` passes those
-    // same descriptors to the app it launches. The first line that app writes
-    // to stdout or stderr then kills it with SIGPIPE, so apps that log at
-    // startup never appear while gio still exits 0. execArgv starts gio
-    // detached with stdio on /dev/null, like every other launch in Spotlight.
-    Util.execArgv(["gio", "open", target])
+    openProcessComponent.createObject(root, {
+      target: target,
+      // The desktop handler inherits these descriptors and can write after gio exits.
+      command: ["/bin/sh", "-c", 'exec gio open -- "$1" </dev/null >/dev/null 2>&1', "sh", target]
+    })
   }
 
   // Enter comes through here rather than going straight at selectedIndex.
@@ -2857,6 +2855,20 @@ Item {
       onStreamFinished: {
         var reply = root.helperReply(text)
         if (reply && reply.path) root.openPath(reply.path)
+      }
+    }
+  }
+
+  Component {
+    id: openProcessComponent
+    Process {
+      id: openRun
+      required property string target
+      running: true
+      onExited: function(exitCode) {
+        if (exitCode !== 0)
+          console.warn("spotlight: gio open failed for", target, "with exit code", exitCode)
+        openRun.destroy()
       }
     }
   }
