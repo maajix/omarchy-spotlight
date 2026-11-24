@@ -22,8 +22,12 @@ for (const [slug, body] of articles) {
   }
 }
 const data = JSON.parse(home.match(/<script type="application\/ld\+json">(.*?)<\/script>/s)[1]);
-assert.equal(data['@graph'][0].softwareVersion, '1.7.3');
-assert(docs.includes('id="1-7-3"') && read('static/llms.txt').includes('1.7.3'));
+const [, releaseId, version] = articles.get('changelog').match(/<h2 id="([\d-]+)">([\d.]+) /);
+assert.equal(releaseId, version.replaceAll('.', '-'));
+assert.equal(data['@graph'][0].softwareVersion, version);
+assert(docs.includes(`<span class="n">v${version}</span>`));
+assert(docs.includes(`Updated for ${version}`));
+assert(read('static/llms.txt').includes(`the current version is ${version}.`));
 const context = { HERO: [], svg: () => '<svg></svg>', esc: String };
 const examples = home.slice(home.indexOf('const AI = ['), home.indexOf('const rowsHTML ='));
 vm.runInNewContext(examples + '; this.examples = AI;', context);

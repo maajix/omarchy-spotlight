@@ -288,7 +288,7 @@ main{min-width:0;width:100%;max-width:740px;justify-self:center;padding:52px 0 0
   <a class="brand" href="../"><span class="mk"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><circle cx="10.5" cy="10.5" r="6"/><path d="m15 15 5 5"/></svg></span>Spotlight<span class="sub">Docs</span></a>
   <button class="find" id="find" type="button" aria-label="Search docs"><svg data-i="search"></svg><span>Search docs</span><kbd>Ctrl</kbd><kbd>K</kbd></button>
   <nav class="tlinks" aria-label="Site"><a href="../">Home</a><a href="?p=changelog">Changelog</a></nav>
-  <a class="gh" href="https://github.com/maajix/omarchy-spotlight" rel="noopener"><svg data-i="github"></svg><span class="l">GitHub</span><span class="n">v1.7.3</span></a>
+  <a class="gh" href="https://github.com/maajix/omarchy-spotlight" rel="noopener"><svg data-i="github"></svg><span class="l">GitHub</span><span class="n">v1.7.11</span></a>
 </header>
 
 <div class="docs">
@@ -313,9 +313,10 @@ main{min-width:0;width:100%;max-width:740px;justify-self:center;padding:52px 0 0
 
 <h2 id="whats-new">What's new in 1.7</h2>
 <ul>
+  <li>In 1.7.7, you can paste a <a href="?p=web-search#spotify-jam">Spotify Jam invite link</a> to join in the desktop app.</li>
   <li>1.7.2: <b class="ui">Vertical position</b> and <b class="ui">Horizontal position</b> move the card on the screen, and Spotlight Settings is split into four tabs: General, Search, Appearance and AI. See <a href="?p=settings#appearance">Appearance</a>.</li>
   <li>1.7.1: A <a href="?p=how-search-works#preview-pane">preview pane</a> beside the results shows details for the selected row: file contents, clipboard entries, conversions, live window captures, view details and the breakdown behind a mixed-currency total. Press <kbd>Right</kbd> on a folder to <a href="?p=apps-windows-files#browse-folders">browse it</a> in the pane.</li>
-  <li>1.7.1: Spotlight animates as it opens, closes and resizes. <b class="ui">Reduce motion</b> turns the animations off.</li>
+  <li>1.7.1 added animations and a <b class="ui">Reduce motion</b> setting.</li>
   <li>1.7.0: <a href="?p=ask-ai">Ask AI</a> through your signed-in Claude or Codex CLI, with progress, Markdown answers and copyable commands.</li>
   <li>1.7.0: <a href="?p=ai-artifacts">Twelve visual artifact types</a>, from maps and weather to charts, timelines, checklists and wallpaper galleries.</li>
   <li>1.7.0: Model and thinking-level menus, optional AI web search and a default weather location in Spotlight Settings.</li>
@@ -499,7 +500,7 @@ rm -rf ~/.cache/omarchy-spotlight</code></pre>
 <p>Files and clipboard history join plain searches only while <b class="ui">Include files in every search</b> and <b class="ui">Include clipboard in every search</b> are on (see <a href="?p=settings">Settings</a>). To search one source only, start with a filter such as <code class="q">f:</code>, <code class="q">cb:</code> or <code class="q">w:</code>. <a href="?p=search-syntax">Search syntax</a> lists them all.</p>
 
 <h2 id="sections">Sections and their order</h2>
-<p>Results are grouped into sections, always in this order:</p>
+<p>An ordinary search lists these result sections in order.</p>
 <table>
   <thead><tr><th>Section</th><th>What it holds</th></tr></thead>
   <tbody>
@@ -513,7 +514,7 @@ rm -rf ~/.cache/omarchy-spotlight</code></pre>
     <tr><td>Web</td><td>Bangs, search suggestions, quick links such as the Arch Wiki, and the web search row</td></tr>
   </tbody>
 </table>
-<p>Ranking happens inside each section. A row never moves to another section, however often you pick it, so web rows always come last and a local match always gets <kbd>Enter</kbd> first. Inside a <a href="?p=system-views">system view</a> such as <code class="q">docker:</code>, entries keep the view's own order.</p>
+<p>Ranking happens inside each section. A <a href="?p=web-search#bangs">web bang</a> such as <code class="q">g test</code> can take the top spot. Inside a <a href="?p=system-views">system view</a> such as <code class="q">docker:</code>, entries keep the view's own order.</p>
 
 <h2 id="text-matching">How text matches</h2>
 <p>Every word you type must appear somewhere in a row: its title, its subtitle, its keywords, or the initials of its title. Matching is not typo-tolerant: <code class="q">frfx</code> does not find Firefox. Case never matters. Rows that pass are ranked by how well the whole query fits the title:</p>
@@ -548,7 +549,7 @@ rm -rf ~/.cache/omarchy-spotlight</code></pre>
 <h2 id="late-results">Late results and the selection</h2>
 <p>Files, clipboard history, web suggestions, currency rates and command help come from background lookups and can arrive a moment after you type. An answer for text you have since changed is dropped.</p>
 <ul>
-  <li>Until you move the cursor, the selection is whatever row is on top. Web rows always sort last, so a late suggestion never takes <kbd>Enter</kbd> away from a local result. A late file result can still land above a window match and become the top row.</li>
+  <li>Until you move the cursor, the selection is whatever row is on top. A late web suggestion stays below local results. A late file result can land above a window match and become the top row.</li>
   <li>Once you move with the arrow keys, <kbd>PageUp</kbd>, <kbd>PageDown</kbd> or the mouse, the selection stays on that row while others arrive. If the row disappears, the selection returns to the top.</li>
   <li>Editing the query releases the selection again. The mouse is ignored for a moment after each key press, so a pointer resting over the list does not grab the selection while you type.</li>
 </ul>
@@ -563,10 +564,10 @@ rm -rf ~/.cache/omarchy-spotlight</code></pre>
 <p>The preview pane sits to the right of the results and shows details for the selected row. It appears when all of these are true:</p>
 <ul>
   <li><b class="ui">Preview pane</b> is on. It is on by default.</li>
-  <li>At least one row in the list has a preview of its own (see the table below). The card then widens, and the pane stays for the whole result set, so moving the cursor never resizes the card. A row without a preview, such as a command or the web search row, shows its name and description.</li>
   <li>The screen is wide enough for the wider card: 960 pixels at the shell's default font and spacing scale. On a narrower screen the pane stays hidden.</li>
   <li>Ask AI is not open.</li>
 </ul>
+<p>Spotlight reserves space for the pane while results arrive. A row without a detailed preview, such as a command or a web search, shows its name and description.</p>
 <table>
   <thead><tr><th>Selected row</th><th>What the pane shows</th></tr></thead>
   <tbody>
@@ -661,10 +662,10 @@ rm -rf ~/.cache/omarchy-spotlight</code></pre>
 <table>
   <thead><tr><th>Control</th><th>What it does</th><th>Key</th></tr></thead>
   <tbody>
-    <tr><td><b class="ui">Vertical position</b></td><td>Where the card sits, from 0% (top) to 100% (bottom), in 5% steps. Default 50%. The search field stays in place while results grow below it, and a small screen leaves less room to move.</td><td><a href="?p=settings-reference#vertical-position"><code>verticalPosition</code></a></td></tr>
+    <tr><td><b class="ui">Vertical position</b></td><td>Where the card sits, from 0% (top) to 100% (bottom), in 5% steps. Default 50%. The search field stays in place as results arrive, and a small screen leaves less room to move.</td><td><a href="?p=settings-reference#vertical-position"><code>verticalPosition</code></a></td></tr>
     <tr><td><b class="ui">Horizontal position</b></td><td>From 0% (left) to 100% (right), in 5% steps. Default 50%, the center. A narrow screen leaves less room to move.</td><td><a href="?p=settings-reference#horizontal-position"><code>horizontalPosition</code></a></td></tr>
     <tr><td><b class="ui">Preview pane</b></td><td>Shows details for the selected result beside the list. On by default. See <a href="?p=how-search-works#preview-pane">The preview pane</a>.</td><td><a href="?p=settings-reference#preview-pane"><code>previewPane</code></a></td></tr>
-    <tr><td><b class="ui">Reduce motion</b></td><td>Skips the animations when Spotlight opens, closes and resizes. Off by default.</td><td><a href="?p=settings-reference#reduce-motion"><code>reduceMotion</code></a></td></tr>
+    <tr><td><b class="ui">Reduce motion</b></td><td>Skips the animations when Spotlight opens and closes. Off by default.</td><td><a href="?p=settings-reference#reduce-motion"><code>reduceMotion</code></a></td></tr>
   </tbody>
 </table>
 
@@ -1134,7 +1135,7 @@ hl.layer_rule({
 </article>
 <article data-group="Features" data-slug="web-search" data-title="Web search and bangs" data-desc="Search the web, jump straight to a site with a bang and open URLs.">
 
-<p>Anything Spotlight cannot answer on your machine can go to the web in one keystroke. Every web result opens in your browser through Omarchy's browser launcher, and nothing is sent anywhere until you press <kbd>Enter</kbd> on it, unless you turn on search suggestions.</p>
+<p>Web searches and ordinary links open in your browser through Omarchy's browser launcher. Activate a result to open it, or turn on search suggestions to get suggestions as you type.</p>
 <p class="prefixes"><code class="q">web:</code> <code class="q">search:</code> <code class="q">url:</code> <code class="q">g …</code> <code class="q">yt …</code> <code class="q">aw …</code> <code class="q">tr …</code></p>
 
 <h2 id="try-it">Try it</h2>
@@ -1173,9 +1174,12 @@ hl.layer_rule({
 </table>
 <p>A bare host name counts as a URL only when it ends in a known top-level domain: com, org, net, io, dev, de, co, uk, eu, app, sh, gg, ai, me, info, xyz, to, tv, so, rs, it, fr, es, nl, ch, at, se, no, pl, cz, jp, cn, us, ca, au, in, br, edu, gov, mil, int, local or test. A port and a path are allowed after it. That is why <code class="q">node.js</code> stays a normal search. Addresses are recognized in the normal search and after <code class="q">web:</code>, not inside other filters.</p>
 
+<h3 id="spotify-jam">Join a Spotify Jam</h3>
+<p>Paste a Spotify Jam invite, either a <code>spotify.link</code> short link or an <code>open.spotify.com/socialsession/…</code> link. Choose <b class="ui">Open Spotify Jam</b> to join in the Spotify desktop app. Spotlight resolves short links when you activate the result.</p>
+
 <h2 id="bangs">Jump to a site with a bang</h2>
 <p>Type a bang, a space and your search, for example <code class="q">gh omarchy</code>. Spotlight adds a row whose title is your search text and whose subtitle and footer label name the site, here <b class="ui">Search GitHub</b>. Press <kbd>Enter</kbd> to open that site's search results. Bangs are not case-sensitive, and they need text after the space: <code class="q">gh</code> on its own is a normal search.</p>
-<p>The bang row sits in the <b class="ui">Web</b> section, below local results. If something on your machine also matches (an app, a command, a system view), it comes first: press <kbd>Down</kbd> to reach the bang row, or type <code class="q">web:</code> in front so only web rows are left. For example <code class="q">docker nginx</code> is a Docker Hub search, while <code class="q">docker:</code> with a colon opens the <a href="?p=system-views#docker">Docker containers view</a>.</p>
+<p>The bang ranks ahead of local results unless an app's name starts with your full query. For example, <code class="q">docker nginx</code> searches Docker Hub, <code class="q">docker desktop</code> can open the app, and <code class="q">docker:</code> opens the <a href="?p=system-views#docker">Docker containers view</a>.</p>
 <table>
   <thead><tr><th>Bang</th><th>Site</th><th>Searches</th></tr></thead>
   <tbody>
@@ -1235,7 +1239,7 @@ hl.layer_rule({
 
 <h2 id="troubleshooting">Troubleshooting</h2>
 <details><summary>Why is there no web search row at the bottom?</summary><p>Local results filled the result limit, or the query is a URL. Type <code class="q">web:</code> before the query, or raise <b class="ui">Results shown</b> on the <b class="ui">Search</b> tab of Spotlight Settings.</p></details>
-<details><summary>My bang opens an app instead of the site</summary><p>A local result matched first, so it holds the selection. Press <kbd>Down</kbd> to the row in the <b class="ui">Web</b> section, or use <code class="q">web:</code> in front of the bang.</p></details>
+<details><summary>My bang opens an app instead of the site</summary><p>The app's name starts with your full query. Press <kbd>Down</kbd> to reach the bang row, or use <code class="q">web:</code> in front of the bang.</p></details>
 <details><summary>I turned on suggestions but see none</summary><p>Suggestions need two or more characters, a network connection and a plain query (not a URL, bang, calculation, file search or filter). Check that <b class="ui">Search suggestions shown</b>, under <b class="ui">Web</b> on the <b class="ui">Search</b> tab of Spotlight Settings, is not set to 0.</p></details>
 
 </article>
@@ -1583,7 +1587,7 @@ hl.layer_rule({
 
 <h2 id="return">Close and return</h2>
 <p>A submitted request keeps running when you close Spotlight. Reopen it to return to the same request, progress or completed answer. A completion notification appears while you are away; clicking it opens Spotlight. The notification contains fixed text rather than your question or answer.</p>
-<p><b class="ui">Cancel</b> stops the current request. Disabling Ask AI, submitting a new question or restarting/unloading the shell also stops it. Only the latest request and answer are retained, with the reading position, in the running shell's memory. They are lost when the shell restarts.</p>
+<p><b class="ui">Cancel</b> stops the current request. Clearing the search field also stops it and discards the saved session. Disabling Ask AI, submitting a new question or restarting the shell stops the request. Spotlight keeps only the latest request, answer and reading position in the running shell's memory.</p>
 
 <h2 id="web-search">AI web search</h2>
 <p><b class="ui">AI web search</b> is separately disabled by default. Enable it in the setup tour or on the <b class="ui">AI</b> tab of Spotlight Settings to allow the selected provider to search the web during a submitted question. It is independent of normal <a href="?p=web-search">web search and suggestions</a>.</p>
@@ -1741,12 +1745,12 @@ hl.layer_rule({
 <ul>
 <li>Keys: <code>g</code>, <code>gg</code>, <code>google</code>, <code>ddg</code>, <code>kagi</code>, <code>yt</code>, <code>gh</code>, <code>w</code>, <code>wde</code>, <code>aw</code>, <code>aur</code>, <code>pkg</code>, <code>so</code>, <code>mdn</code>, <code>npm</code>, <code>crates</code>, <code>docker</code>, <code>maps</code>, <code>tr</code>, <code>img</code>, <code>hn</code>, <code>omarchy</code>. They ignore case.</li>
 <li>The search text is required. <code class="q">gh</code> alone is an ordinary search.</li>
-<li>Bang rows sort below every local result, so <code class="q">w firefox</code> usually selects the Firefox app. Press <kbd>Down</kbd> to reach the bang.</li>
+<li>Bangs rank first unless an app's name starts with the full query. For example, <code class="q">w firefox</code> normally selects Wikipedia, and <code class="q">docker desktop</code> can select Docker Desktop.</li>
 <li><code class="q">tr</code> translates with DeepL. End the text with <code class="q">to</code>, <code class="q">in</code> or <code class="q">into</code> and a language, as in <code class="q">tr guten morgen to english</code>; the row then reads <b class="ui">Translate to &lt;Language&gt;</b>. The last match wins, and an unknown language stays part of the text.</li>
 </ul>
 
 <h2 id="urls">URLs</h2>
-<p>A query without spaces that looks like an address shows <b class="ui">Open in browser</b> in the <b class="ui">Direct links</b> section. This works in a plain search and under <code class="q">web:</code>.</p>
+<p>A query without spaces that looks like an address shows <b class="ui">Open in browser</b> in the <b class="ui">Direct links</b> section. A <a href="?p=web-search#spotify-jam">Spotify Jam invite</a> opens in Spotify. Both work in a plain search and under <code class="q">web:</code>.</p>
 <table>
 <thead><tr><th>Type</th><th>Opens</th></tr></thead>
 <tbody>
@@ -1799,7 +1803,7 @@ hl.layer_rule({
 <thead><tr><th>Type</th><th>Meaning</th></tr></thead>
 <tbody>
 <tr><td><code class="q">w:firefox</code> / <code class="q">w firefox</code></td><td>Window filter / Wikipedia bang</td></tr>
-<tr><td><code class="q">docker</code> / <code class="q">docker:</code> / <code class="q">docker nginx</code></td><td>View completion / Docker view / Docker Hub bang. The bang sorts below apps, so <code class="q">docker desktop</code> still launches an app of that name.</td></tr>
+<tr><td><code class="q">docker</code> / <code class="q">docker:</code> / <code class="q">docker nginx</code></td><td>View completion / Docker view / Docker Hub bang. If Docker Desktop is installed, <code class="q">docker desktop</code> selects that app first.</td></tr>
 <tr><td><code class="q">bluetooth</code>, <code class="q">blue</code>, <code class="q">wifi</code></td><td>The view, not the toggle command. Press <kbd>Down</kbd>, or type <code class="q">toggle blu</code>.</td></tr>
 <tr><td><code class="q">10 pounds to kg</code></td><td>A mass conversion. A unit match wins over currency.</td></tr>
 <tr><td><code class="q">remind me friday at 9 to call</code></td><td>A reminder. Text with a reminder trigger is never an event.</td></tr>
@@ -2209,7 +2213,7 @@ hl.layer_rule({
 <h2 id="appearance">Appearance</h2>
 
 <h3 id="vertical-position">verticalPosition</h3>
-<p>Where the card sits on the screen, from <code>0</code> (top) to <code>100</code> (bottom). The top of the card stays in place while results grow and shrink below it. At <code>100</code> the card sits as low as it can while a full result list still fits, so a small screen leaves less room to move.</p>
+<p>Where the card sits on the screen, from <code>0</code> (top) to <code>100</code> (bottom). The top of the card stays in place as results arrive. At <code>100</code> the card sits as low as it can while a full result list still fits, so a small screen leaves less room to move.</p>
 <dl class="setting"><dt>Type</dt><dd>integer</dd><dt>Default</dt><dd><code>50</code></dd><dt>Values</dt><dd>0 to 100. The panel moves it in steps of 5; the file takes any whole number. A decimal, a string or a boolean means <code>50</code>.</dd><dt>Set in panel</dt><dd><b class="ui">Appearance</b> → <b class="ui">Vertical position</b></dd></dl>
 <pre class="code" data-title="~/.config/omarchy/spotlight.json"><code>{
   "verticalPosition": 20
@@ -2223,14 +2227,14 @@ hl.layer_rule({
 }</code></pre>
 
 <h3 id="preview-pane">previewPane</h3>
-<p>Shows a pane beside the results with details for the selected row: file contents, clipboard entries, conversions, window captures and more. See <a href="?p=how-search-works#preview-pane">The preview pane</a>. When <code>false</code>, the card keeps its narrower width and <kbd>Right</kbd> does not browse folders.</p>
+<p>Shows a pane beside the results with details for the selected row: file contents, clipboard entries, conversions, window captures and more. See <a href="?p=how-search-works#preview-pane">The preview pane</a>. Turning it off gives the full card to the results and disables folder browsing with <kbd>Right</kbd>.</p>
 <dl class="setting"><dt>Type</dt><dd>boolean</dd><dt>Default</dt><dd><code>true</code></dd><dt>Set in panel</dt><dd><b class="ui">Appearance</b> → <b class="ui">Preview pane</b></dd></dl>
 <pre class="code" data-title="~/.config/omarchy/spotlight.json"><code>{
   "previewPane": false
 }</code></pre>
 
 <h3 id="reduce-motion">reduceMotion</h3>
-<p>When <code>true</code>, Spotlight skips its opening, closing and resizing animations. The card appears and disappears at once and changes size without animating.</p>
+<p>When <code>true</code>, the card appears and disappears without animating.</p>
 <dl class="setting"><dt>Type</dt><dd>boolean</dd><dt>Default</dt><dd><code>false</code></dd><dt>Set in panel</dt><dd><b class="ui">Appearance</b> → <b class="ui">Reduce motion</b></dd></dl>
 <pre class="code" data-title="~/.config/omarchy/spotlight.json"><code>{
   "reduceMotion": true
@@ -2351,7 +2355,6 @@ hl.layer_rule({
 <li><b class="ui">Preview pane</b> is on, on the <b class="ui">Appearance</b> tab of Spotlight Settings. It is on by default. See <a href="?p=settings#appearance">Appearance</a>.</li>
 <li>The screen is wide enough: at least 960 logical pixels, more if your theme scales up spacing or fonts. On a narrower screen Spotlight shows the result list alone.</li>
 <li>Ask AI is closed. An <code class="q">ai:</code> question and its answer use the whole panel.</li>
-<li>At least one result in the list has details: an app, window, file or folder, clipboard entry, calculation, unit or currency conversion, or a system view row. A list of only commands, web searches, reminders or events shows no pane.</li>
 </ul>
 <p>Browsing a folder with <kbd>Right</kbd> also needs the pane, so it does nothing while the pane is hidden. See <a href="?p=how-search-works#preview-pane">Preview pane</a> for what each result shows.</p>
 </details>
@@ -2514,7 +2517,7 @@ hl.layer_rule({
 <tr><td>Source and map links</td><td>After you click one</td><td>The destination URL opened in your browser</td></tr>
 </tbody>
 </table>
-<p>The latest request, progress, answer and reading position stay in shell memory until restart. Completion notifications contain fixed text without the prompt or answer. Closing Spotlight does not cancel a request; Cancel, disabling Ask AI, a replacement question or restarting/unloading the shell stops it.</p>
+<p>The latest request, progress, answer and reading position stay in shell memory. Clearing the search discards them and cancels any pending answer. Completion notifications contain fixed text without the prompt or answer. See <a href="?p=ask-ai#return">Close and return</a> for when requests stop.</p>
 <p>Generated commands are displayed for copying and never executed. Diff paths are display labels: Spotlight never reads or writes those configs. Dashboard measurements are collected locally and never given to the provider. Checklist progress stays in shell memory, is not sent to the provider and is not written to disk.</p>
 <p>Gallery previews reject credentials, private IP addresses, non-443 ports and redirects. Downloads are capped at 8 MiB and sanitized into metadata-stripped local JPEG previews; the private cache holds at most 16 images. <b class="ui">Save</b> writes a fixed file under <code>~/Pictures/Spotlight</code>; <b class="ui">Apply</b> saves it and invokes the fixed Omarchy wallpaper action. Both require explicit clicks. See <a href="?p=ai-artifacts#gallery">Image galleries</a> for requirements and actions.</p>
 <p>Artifact URLs and data are validated, but a valid source link does not prove the provider checked its contents. Review sources and image licenses before relying on an answer or reusing an image.</p>
@@ -2548,6 +2551,56 @@ hl.layer_rule({
 <article data-group="Resources" data-slug="changelog" data-title="Changelog" data-desc="What changed in each release.">
 
 <p>Newest release first, starting at 1.5.0. To get the latest version, run <code>omarchy plugin update io.github.maajix.spotlight</code>.</p>
+
+<h2 id="1-7-11">1.7.11 <time class="date" datetime="2026-11-24">2026-11-24</time></h2>
+<h3 id="1-7-11-fixed">Fixed</h3>
+<ul>
+<li>Files and folders open even when the default app writes to stdout or stderr at startup. If <code>gio open</code> fails, Spotlight logs the target path and exit code. Contributed by <a href="https://github.com/cwilliams5" rel="noopener">@cwilliams5</a>.</li>
+</ul>
+
+<h2 id="1-7-10">1.7.10 <time class="date" datetime="2026-11-24">2026-11-24</time></h2>
+<h3 id="1-7-10-fixed">Fixed</h3>
+<ul>
+<li><a href="?p=web-search#bangs">Web bangs</a> such as <code class="q">g test</code> rank ahead of loose local matches and stay visible when the result list fills. An app whose name starts with the full query still ranks first, so <code class="q">docker desktop</code> can launch Docker Desktop.</li>
+</ul>
+
+<h2 id="1-7-9">1.7.9 <time class="date" datetime="2026-11-22">2026-11-22</time></h2>
+<h3 id="1-7-9-fixed">Fixed</h3>
+<ul>
+<li><b class="ui">Change Theme</b>, <b class="ui">Change Background</b> and <b class="ui">Change Font</b> find their pickers in the installed Omarchy menu. Contributed by <a href="https://github.com/code-sharad" rel="noopener">@code-sharad</a>.</li>
+</ul>
+
+<h2 id="1-7-8">1.7.8 <time class="date" datetime="2026-11-01">2026-11-01</time></h2>
+<h3 id="1-7-8-fixed">Fixed</h3>
+<ul>
+<li>Spotlight displays its normal colors on Qt 6.12 by using the Omarchy palette in the launcher, previews, settings and setup tour.</li>
+</ul>
+
+<h2 id="1-7-7">1.7.7 <time class="date" datetime="2026-10-29">2026-10-29</time></h2>
+<h3 id="1-7-7-added">Added</h3>
+<ul>
+<li>Paste a <a href="?p=web-search#spotify-jam">Spotify Jam invite link</a> and choose <b class="ui">Open Spotify Jam</b> to join in the desktop app. Spotlight resolves short links when you activate the result. Contributed by <a href="https://github.com/rex3511" rel="noopener">@rex3511</a>.</li>
+</ul>
+
+<h2 id="1-7-6">1.7.6 <time class="date" datetime="2026-10-21">2026-10-21</time></h2>
+<h3 id="1-7-6-fixed">Fixed</h3>
+<ul>
+<li>Restored app results on newer versions of omarchy-shell by reading visible applications through its public app library API.</li>
+<li>The launcher keeps its width and height as results arrive. When enabled and there's room, the <a href="?p=how-search-works#preview-pane">preview pane</a> keeps its space, and file previews show the path once.</li>
+</ul>
+
+<h2 id="1-7-5">1.7.5 <time class="date" datetime="2026-10-17">2026-10-17</time></h2>
+<h3 id="1-7-5-fixed">Fixed</h3>
+<ul>
+<li><a href="?p=ask-ai">Ask AI</a> works with Codex Structured Outputs and accepts answers with no artifact. Contributed by <a href="https://github.com/TraiNguyenVan" rel="noopener">@TraiNguyenVan</a>.</li>
+<li>Codex uses a local model catalog when it contains the selected model, which avoids online lookup timeouts. Claude and Codex CLI failures show a diagnostic when one is available.</li>
+</ul>
+
+<h2 id="1-7-4">1.7.4 <time class="date" datetime="2026-10-15">2026-10-15</time></h2>
+<h3 id="1-7-4-fixed">Fixed</h3>
+<ul>
+<li>Clearing the search field discards the saved <a href="?p=ask-ai#return">Ask AI</a> question and answer and cancels a pending response.</li>
+</ul>
 
 <h2 id="1-7-3">1.7.3 <span class="date">2026-10-10</span></h2>
 <h3 id="1-7-3-fixed">Fixed</h3>
@@ -2791,7 +2844,7 @@ git diff --check</code></pre>
     <div class="pmeta">
       <a id="edit" href="#" rel="noopener"><svg data-i="edit"></svg>Edit this page on GitHub</a>
       <a id="report" href="#" rel="noopener"><svg data-i="flag"></svg>Report a problem with this page</a>
-      <span class="upd">Updated for 1.7.3</span>
+      <span class="upd">Updated for 1.7.11</span>
     </div>
     <nav class="pn" id="pn" aria-label="Previous and next page"></nav>
   </main>
