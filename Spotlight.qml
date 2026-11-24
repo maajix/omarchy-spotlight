@@ -1207,11 +1207,7 @@ Item {
     return out
   }
 
-  // A bare bang is a prefix, not a sigil — "gh quickshell" is a GitHub search.
-  // That makes it a trap for any application whose name starts with an engine
-  // key and carries a space, "docker desktop" being the obvious one, so the
-  // bang row is built here and pushed below the applications rather than
-  // taking the cursor off them.
+  // A space-separated engine prefix makes "gh quickshell" a GitHub search.
   function bangRows(q) {
     var bang = Web.bang(q)
     if (!bang) return []
@@ -1226,7 +1222,7 @@ Item {
       accessory: "Web", icon: bang.engine.icon,
       primaryLabel: label,
       matchText: text,
-      resultType: "web",
+      resultType: "bang",
       payload: { url: Web.searchUrl(bang.query, bang.key) }
     })]
   }
@@ -1660,7 +1656,7 @@ Item {
       row.contextBonus = bonus.context
     }
     var limit = Util.clamp(root.settings.maxResults, 8, root.maxGlobalResults)
-    return Ranking.rank(list, limit)
+    return Ranking.rank(list, limit, q)
   }
 
   function resultSection(row) {
@@ -1671,7 +1667,7 @@ Item {
     if (row.resultType === "action") return "Commands"
     if (row.resultType === "file") return "Files"
     if (row.resultType === "clipboard") return "Clipboard"
-    if (row.resultType === "web") return "Web"
+    if (row.resultType === "bang" || row.resultType === "web") return "Web"
     if (row.kind === "event") return "Calendar"
     if (row.key.indexOf("reminder.") === 0) return "Reminders"
     if (row.key === "calc") return "Calculator"
