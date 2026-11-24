@@ -16,11 +16,11 @@ Requires **Omarchy 4 (Quattro)**. Core features use tools already included with 
 omarchy plugin add https://github.com/maajix/omarchy-spotlight.git --enable
 ```
 
-Press **Alt+Space** to open Spotlight. The first-run tour sets up the shortcut; if it is already taken, choose another. Search for `spotlight settings` to change sources, behavior or the shortcut later.
+On first run, Spotlight sets up **Alt+Space** when Hyprland reports that it is free and Spotlight has no shortcut yet. The setup tour appears on first open and lets you pick a different shortcut. Search for `spotlight settings` to change sources, behavior or the shortcut later.
 
 Settings are grouped into **General** (shortcut and data), **Search** (sources, results, web and currency), **Appearance**, and **AI** (provider and artifact settings, including weather location).
 
-Under **Appearance**, **Vertical position** moves the launcher from 0% (top) to 100% (bottom); 50% keeps the default placement. **Horizontal position** moves it from 0% (left) to 100% (right); 50% keeps it centered. The vertical position reserves space for expanded results, so the search field stays fixed while you type. Screen margins keep the launcher visible, and small screens limit movement.
+Under **Appearance**, **Vertical position** moves the launcher from 0% (top) to 100% (bottom). **Horizontal position** moves it from 0% (left) to 100% (right). Both default to 50%. The search field stays in place as results arrive, and screen margins keep the launcher visible.
 
 If the shortcut does not open Spotlight:
 
@@ -39,11 +39,13 @@ omarchy-shell shell toggle io.github.maajix.spotlight '{}'
 | `remind me in 20m to check the oven` | Create a reminder |
 | `ports:` or `ssh:` | Browse a system view |
 | `gh quickshell` | Search GitHub |
-| `ai: explain how DNS works` | Ask AI and see a visual answer |
+| `action: change theme` | Find Omarchy's theme picker. Search for **Change Background** or **Change Font** to open those pickers. |
+| A Spotify Jam invite link | Choose **Open Spotify Jam** to join in the desktop app. [Supported links](https://maajix.github.io/omarchy-spotlight/docs/?p=web-search#spotify-jam) |
+| `ai: explain how DNS works` | Ask AI for an answer, with a visual card when available |
 
 Use **↑ / ↓** to select a result, **Enter** for its main action and **Shift+Enter** for its secondary action. **Esc** clears the query, then closes Spotlight.
 
-A preview pane beside the list shows more about the selected result, such as other currencies, the start of a file or a live window thumbnail. Turn it off with **Preview pane** under **Appearance** in Spotlight Settings.
+A preview pane beside the list shows more about the selected result, such as other currencies, the start of a file or a live window thumbnail. It appears when there is enough room and Ask AI is closed. Use **Preview pane** under **Appearance** in Spotlight Settings to control it. [Preview pane and requirements](https://maajix.github.io/omarchy-spotlight/docs/?p=how-search-works#preview-pane)
 
 After moving to a folder result with **↑ / ↓**, press **→** to move the selection into its right-hand preview. The search results on the left stay in place. Use **↑ / ↓** to select entries and **←** to return one folder level, or back to the left-hand results. **Enter** opens the selected entry externally; **Tab** completes a folder name. Typing starts a new search, and **Esc** returns from browsing to the original search. The current folder path appears above the right-hand entries; listings are limited to 1,000 entries.
 
@@ -60,7 +62,7 @@ The website holds the full reference:
 - [Quickstart](https://maajix.github.io/omarchy-spotlight/docs/?p=quickstart), [search syntax](https://maajix.github.io/omarchy-spotlight/docs/?p=search-syntax) and [keyboard shortcuts](https://maajix.github.io/omarchy-spotlight/docs/?p=keyboard-shortcuts)
 - [Settings](https://maajix.github.io/omarchy-spotlight/docs/?p=settings) and [settings reference](https://maajix.github.io/omarchy-spotlight/docs/?p=settings-reference)
 - [Update and remove](https://maajix.github.io/omarchy-spotlight/docs/?p=installation#update), [troubleshooting](https://maajix.github.io/omarchy-spotlight/docs/?p=troubleshooting) and [changelog](https://maajix.github.io/omarchy-spotlight/docs/?p=changelog)
-- [Development and artifact contributions](https://maajix.github.io/omarchy-spotlight/docs/?p=development)
+- [Development guide](https://maajix.github.io/omarchy-spotlight/docs/?p=development), [test commands](tests/README.md) and [artifact contributions](docs/artifacts.md)
 
 Spotlight runs inside `omarchy-shell` with no separate launcher process. Ordinary search and ranking stay local; the plugin has no telemetry or analytics. [Privacy and security](https://maajix.github.io/omarchy-spotlight/docs/?p=privacy-security) explains network access and local storage. Report vulnerabilities privately as described in [SECURITY.md](SECURITY.md).
 
