@@ -1899,13 +1899,11 @@ Item {
       console.warn("spotlight: refusing to open an empty path")
       return
     }
-    if (openProc.running) {
-      console.warn("spotlight: file opener is already running; skipped:", target)
-      return
-    }
-    openProc.target = target
-    openProc.command = ["gio", "open", target]
-    openProc.running = true
+    openProcessComponent.createObject(root, {
+      target: target,
+      // The desktop handler inherits these descriptors and can write after gio exits.
+      command: ["/bin/sh", "-c", 'exec gio open -- "$1" </dev/null >/dev/null 2>&1', "sh", target]
+    })
   }
 
   // Enter comes through here rather than going straight at selectedIndex.
@@ -2861,12 +2859,17 @@ Item {
     }
   }
 
-  Process {
-    id: openProc
-    property string target: ""
-    onExited: function(exitCode) {
-      if (exitCode !== 0)
-        console.warn("spotlight: gio open failed for", target, "with exit code", exitCode)
+  Component {
+    id: openProcessComponent
+    Process {
+      id: openRun
+      required property string target
+      running: true
+      onExited: function(exitCode) {
+        if (exitCode !== 0)
+          console.warn("spotlight: gio open failed for", target, "with exit code", exitCode)
+        openRun.destroy()
+      }
     }
   }
 
