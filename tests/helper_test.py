@@ -1921,7 +1921,7 @@ class MenuCommandsTests(unittest.TestCase):
                 self.assertEqual(reply, {"ok": False, "error": error})
                 call.assert_not_called()
 
-    def _fixture_menu_commands(self, user_raw=b"{}", default_raw=None):
+    def _fixture_menu_commands(self, user_raw=b"{}", default_raw=None, menu_args=()):
         original_default = HELPER._menu_read_default
         original_user = HELPER._menu_read_user
         if default_raw is None:
@@ -1929,7 +1929,7 @@ class MenuCommandsTests(unittest.TestCase):
         HELPER._menu_read_default = lambda: default_raw
         HELPER._menu_read_user = lambda: user_raw
         try:
-            return HELPER._menu_commands()
+            return run(HELPER.main, ["read-menu-commands", *menu_args])["commands"]
         finally:
             HELPER._menu_read_default = original_default
             HELPER._menu_read_user = original_user
@@ -2319,6 +2319,28 @@ class MenuCommandsTests(unittest.TestCase):
             self.assertFalse(item_id.startswith(("install.", "remove.", "system.")), item_id)
             self.assertNotIn(item_id, ("install", "remove", "system"))
 
+    def test_docker_db_is_the_only_install_entry_and_requires_confirmation(self):
+        item_id = "install.development.docker-dbs"
+        fixture = {**self.MENU_FIXTURE, item_id: {
+            "label": "Docker DB",
+            "action": "omarchy-launch-floating-terminal-with-presentation omarchy-install-docker-dbs",
+        }}
+        default_raw = json.dumps({"items": fixture}).encode()
+        legacy_rows = self._fixture_menu_commands(default_raw=default_raw)
+        self.assertFalse(any(row["key"].startswith("menu:install.") for row in legacy_rows))
+        rows = self._fixture_menu_commands(default_raw=default_raw, menu_args=["confirm-install"])
+        installs = [row for row in rows if row["key"].startswith("menu:install.")]
+        self.assertEqual(len(installs), 1)
+        self.assertEqual(installs[0]["key"], "menu:" + item_id)
+        self.assertEqual(installs[0]["title"], "Docker DB")
+        self.assertIs(installs[0]["confirm"], True)
+
+        for override in ({"action": "omarchy-install-example"}, {"when": "! omarchy-cmd-present bash"}):
+            with self.subTest(override=override):
+                user_raw = json.dumps({"items": {item_id: override}}).encode()
+                rows = self._fixture_menu_commands(user_raw, default_raw=default_raw, menu_args=["confirm-install"])
+                self.assertFalse(any(row["key"] == "menu:" + item_id for row in rows))
+
     def test_menu_commands_exclude_ids_that_collide_with_commands_js(self):
         # Keybindings and Screensaver already exist by hand in Commands.js
         # with different (Screensaver: opposite) behaviour - a second,
@@ -2409,12 +2431,16 @@ class MenuCommandsTests(unittest.TestCase):
             *HELPER.MENU_PARTS,
             HELPER.MENU_NAME,
         )
-        rows = self._fixture_menu_commands(default_raw=menu_path.read_bytes())
+        rows = self._fixture_menu_commands(default_raw=menu_path.read_bytes(), menu_args=["confirm-install"])
         self.assertGreater(len(rows), 0)
         for row in rows:
             self.assertTrue(row["argv"][0].startswith("omarchy-"), row)
             item_id = row["key"].split(":", 1)[1]
-            self.assertFalse(item_id.startswith(HELPER.MENU_SKIP_PREFIXES), item_id)
+            if item_id == HELPER.DOCKER_DB_MENU_ID:
+                self.assertEqual(row["argv"], HELPER.DOCKER_DB_INSTALL_ARGV)
+                self.assertIs(row["confirm"], True)
+            else:
+                self.assertFalse(item_id.startswith(HELPER.MENU_SKIP_PREFIXES), item_id)
 
 
 @unittest.skipUnless(shutil.which("bash"), "bash not available")

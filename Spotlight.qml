@@ -570,7 +570,7 @@ Item {
   function refreshMenuCommands() {
     if (!root.shell) return
     menuCommandsProc.running = false
-    menuCommandsProc.command = root.helperArgv(["read-menu-commands"])
+    menuCommandsProc.command = root.helperArgv(["read-menu-commands", "confirm-install"])
     menuCommandsProc.running = true
   }
 
@@ -601,10 +601,12 @@ Item {
         icon: String(c.icon || "󰣇"),
         kind: "shell",
         argv: argv,
+        confirm: c.confirm === true,
         keywords: String(c.keywords || "")
       })
     }
     root.menuCommands = out
+    if (root.opened) root.rebuild()
   }
 
   function refreshPluginCommands() {
@@ -1084,7 +1086,7 @@ Item {
     }
   }
 
-  // Calculator, unit conversion, reminders, calendar, URLs and bangs. These
+  // Calculator, unit conversion, reminders, calendar and URLs. These
   // are the rows that answer the query directly, so they sort above search.
   function intentRows(q, filter) {
     var out = []

@@ -289,6 +289,10 @@ MENU_USER_PARTS = (".config", "omarchy", "extensions")
 MENU_JSONC_BYTES = 256 * 1024
 MENU_MAX_ITEMS = 400
 MENU_SKIP_PREFIXES = ("install.", "remove.", "system.")
+DOCKER_DB_MENU_ID = "install.development.docker-dbs"
+DOCKER_DB_INSTALL_ARGV = [
+    "omarchy-launch-floating-terminal-with-presentation", "omarchy-install-docker-dbs"
+]
 # Known collisions with lib/Commands.js's own curated entries, found by
 # review, not by construction (no general dedup pass exists - a title match
 # alone cannot tell "same command, different label" from "different command,
@@ -1363,14 +1367,15 @@ def _menu_when_allows(when):
     return True
 
 
-def _menu_commands():
+def _menu_commands(confirmed_installs=False):
     """The real Omarchy root-menu tree, projected into the same row shape
     Commands.js already emits - Spotlight.qml's dispatch does not need to
     know these came from a different source. install.*/remove.* (package
     management, not what a launcher's fuzzy search is for, and the single
     largest source of `when` conditions) and system.* (already curated by
     hand in Commands.js, confirmation prompts included) are excluded by
-    subtree; MENU_SKIP_IDS excludes specific known collisions with that same
+    subtree, with a confirmed exception for Docker DB. MENU_SKIP_IDS excludes
+    specific known collisions with that same
     curated catalogue; a `provider` entry pulls its rows from a runtime
     function/command rather than static data and is excluded rather than
     guessed at; an `action` this cannot turn into a plain argv vector is
@@ -1385,7 +1390,9 @@ def _menu_commands():
     for item_id in order:
         if len(rows) >= MENU_MAX_ITEMS:
             break
-        if item_id.startswith(MENU_SKIP_PREFIXES) or item_id in ("install", "remove", "system"):
+        docker_db = confirmed_installs and item_id == DOCKER_DB_MENU_ID
+        if not docker_db and (item_id.startswith(MENU_SKIP_PREFIXES)
+                              or item_id in ("install", "remove", "system")):
             continue
         if item_id in MENU_SKIP_IDS:
             continue
@@ -1398,7 +1405,7 @@ def _menu_commands():
         if entry.get("provider"):
             continue
         argv = _menu_resolve_argv(entry.get("action"))
-        if not argv:
+        if not argv or (docker_db and argv != DOCKER_DB_INSTALL_ARGV):
             continue
         if not _menu_when_allows(entry.get("when")):
             continue
@@ -1415,6 +1422,8 @@ def _menu_commands():
             "argv": argv,
             "keywords": clamp_text(keywords, MENU_LABEL_CHARS),
         }
+        if docker_db:
+            row["confirm"] = True
         # Real serialized size, not a row count, is what actually has to
         # stay under Spotlight.qml's maxHelperPayloadChars - see
         # MENU_JSON_BUDGET_CHARS. A single very long ancestor label was
@@ -1553,8 +1562,9 @@ def cmd_read_hides():
     emit({"hides": hides})
 
 
-def cmd_read_menu_commands():
-    emit({"commands": _menu_commands()})
+def cmd_read_menu_commands(argv):
+    # Older QML can still call this helper while an installed update reloads.
+    emit({"commands": _menu_commands(confirmed_installs=argv == ["confirm-install"])})
 
 
 def cmd_open_appearance_menu(argv):
@@ -3538,7 +3548,7 @@ COMMANDS = {
     "reset-usage": (cmd_reset_usage, False),
     "read-usage": (cmd_read_usage, False),
     "read-hides": (cmd_read_hides, False),
-    "read-menu-commands": (cmd_read_menu_commands, False),
+    "read-menu-commands": (cmd_read_menu_commands, True),
     "open-appearance-menu": (cmd_open_appearance_menu, True),
     "read-plugins": (cmd_read_plugins, False),
     "summon-plugin": (cmd_summon_plugin, True),
