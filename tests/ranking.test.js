@@ -2,11 +2,16 @@ const assert = require("node:assert/strict")
 const fs = require("node:fs")
 const path = require("node:path")
 const test = require("node:test")
+const vm = require("node:vm")
+const Apps = require("../lib/Apps.js")
 const Commands = require("../lib/Commands.js")
 const Frecency = require("../lib/Frecency.js")
 const Fuzzy = require("../lib/Fuzzy.js")
 const Query = require("../lib/Query.js")
 const Ranking = require("../lib/Ranking.js")
+const Web = require("../lib/Web.js")
+
+const qml = fs.readFileSync(path.join(__dirname, "..", "Spotlight.qml"), "utf8")
 
 test("text matches use the six shared tiers", () => {
   assert.equal(Fuzzy.match({ title: "Firefox" }, "firefox").tier, "exact")
@@ -81,7 +86,7 @@ test("an explicit bang survives the result cap and takes Enter over loose local 
   assert.deepEqual(Ranking.rank([action, web], 2, query), [action, web])
 })
 
-test("only an app title starting with the whole bang query can take Enter from the bang", () => {
+test("a matching app title beats the bang and loose app or window matches", () => {
   const app = { key: "docker-desktop", kind: "app", resultType: "app", title: "Docker Desktop" }
   const bang = { key: "bang.docker", kind: "url", resultType: "bang", title: "desk" }
   const lookalikes = [
@@ -99,6 +104,70 @@ test("only an app title starting with the whole bang query can take Enter from t
     assert.equal(ranked[Query.firstSelectableIndex(ranked, query)].key, app.key)
     assert.equal(Ranking.rank(rows.filter(row => row.key !== app.key), 1, query)[0].key, bang.key)
   }
+})
+
+function searchWithBang(query, appTitle) {
+  const entries = appTitle ? [{ id: "docker-desktop", name: appTitle }] : []
+  const root = {
+    opened: true, query, settings: { maxApps: 3, maxResults: 8 }, usage: Frecency.emptyStore(),
+    maxAppCandidates: 512, maxAppRows: 12, maxGlobalResults: 50, maxTitleChars: 512, maxSubtitleChars: 512,
+    maxHelperPayloadChars: 524288,
+    pluginCommands: Commands.fromPlugins([{ id: "omarchy.disk-speedtest", name: "Disk Speed Test" }]),
+    suggestionRows: query === "g test" ? [query] : [], schedulePreview() {},
+    appEntries: q => Apps.sortedEntries(entries, q), appName: Apps.entryName,
+    appSubtext: Apps.entrySubtext, appIcon: () => "",
+    activate(index) { this.entered = this.rows[index] }
+  }
+  for (const name of ["intentRows", "reminderListRows", "windowRows", "fileResultRows", "clipboardResultRows"])
+    root[name] = () => []
+  const context = vm.createContext({
+    root, Apps, Commands, Frecency, Fuzzy, Query, Ranking, Web,
+    Util: { clamp: (value, min, max) => Math.max(min, Math.min(max, value)) },
+    displayModel: { clear() {}, append() {} }, pointerGate: { reset() {} }, Qt: { callLater() {} }
+  })
+  for (const name of ["row", "helperReply", "loadMenuCommands", "appRows", "commandRows", "bangRows", "webFallbackRows",
+    "viewCompletionRows", "suggestionResultRows", "globallyRank", "resultSection", "firstSelectableIndex",
+    "rebuild", "targetIndex", "activateSelection"]) {
+    vm.runInContext(qml.match(new RegExp("  function " + name + "\\([^]*?\n  \\}"))[0], context)
+    root[name] = context[name]
+  }
+  root.loadMenuCommands(JSON.stringify({ ok: true, commands: [
+    { key: "menu:install.development.docker-dbs", title: "Docker DB",
+      argv: ["omarchy-launch-floating-terminal-with-presentation", "omarchy-install-docker-dbs"] }
+  ] }))
+  root.rebuild()
+  root.activateSelection(false)
+  return root
+}
+
+for (const [query, key, appTitle] of [
+  ["omarchy menu", "cmd:sum.menu"],
+  ["omarchy me", "cmd:sum.menu"],
+  ["docker db", "cmd:menu:install.development.docker-dbs"],
+  ["google calendar", "cmd:ql.cal"],
+  ["docker  desktop", "app:docker-desktop", "Docker Desktop"],
+  ["DOCKER DESK", "app:docker-desktop", "Docker\t Desktop"]
+]) {
+  test(`${JSON.stringify(query)} gives Enter to the matching title ahead of the bang`, () => {
+    const root = searchWithBang(query, appTitle)
+    assert.equal(root.entered.key, key)
+    const bang = root.rows.find(row => row.resultType === "bang")
+    assert.ok(bang)
+    assert.equal(root.resultSection(bang), "Web")
+  })
+}
+
+test("a bang takes Enter over loose matches and search suggestions", () => {
+  const root = searchWithBang("g test")
+  assert.equal(root.entered.key, "bang.g")
+  assert.ok(root.rows.some(row => row.title === "Disk Speed Test"))
+  assert.ok(root.rows.some(row => row.key === "sugg:g test"))
+})
+
+test("the web filter gives Enter to the bang even when a command title matches", () => {
+  const root = searchWithBang("web: omarchy menu")
+  assert.equal(root.entered.key, "bang.omarchy")
+  assert.ok(root.rows.every(row => row.key !== "cmd:sum.menu"))
 })
 
 test("repeated Firefox selection for fi moves it ahead of Figma", () => {
@@ -195,6 +264,5 @@ test("V1 app and command counts migrate to stable V2 ids", () => {
 })
 
 test("only primary activations reach the learning call", () => {
-  const qml = fs.readFileSync(path.join(__dirname, "..", "Spotlight.qml"), "utf8")
   assert.match(qml, /if \(!secondary\) root\.bumpUsage\(r\)/)
 })

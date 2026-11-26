@@ -1084,7 +1084,7 @@ Item {
     }
   }
 
-  // Calculator, unit conversion, reminders, calendar, URLs and bangs. These
+  // Calculator, unit conversion, reminders, calendar and URLs. These
   // are the rows that answer the query directly, so they sort above search.
   function intentRows(q, filter) {
     var out = []
