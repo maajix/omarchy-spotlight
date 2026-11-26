@@ -1179,7 +1179,8 @@ hl.layer_rule({
 
 <h2 id="bangs">Jump to a site with a bang</h2>
 <p>Type a bang, a space and your search, for example <code class="q">gh omarchy</code>. Spotlight adds a row whose title is your search text and whose subtitle and footer label name the site, here <b class="ui">Search GitHub</b>. Press <kbd>Enter</kbd> to open that site's search results. Bangs are not case-sensitive, and they need text after the space: <code class="q">gh</code> on its own is a normal search.</p>
-<p>The bang ranks ahead of local results unless an app's name starts with your full query. For example, <code class="q">docker nginx</code> searches Docker Hub, <code class="q">docker desktop</code> can open the app, and <code class="q">docker:</code> opens the <a href="?p=system-views#docker">Docker containers view</a>.</p>
+<p>The bang usually takes <kbd>Enter</kbd>. An app, command or quick link comes first when its title starts with the full query, including the bang key. Spotlight ignores case and treats repeated whitespace as a single space when comparing titles.</p>
+<p>For example, <code class="q">g test</code> searches Google, <code class="q">omarchy menu</code> opens Omarchy Menu, and <code class="q">google calendar</code> opens the Calendar quick link. <code class="q">docker db</code> selects the Docker DB command when available. <code class="q">docker desktop</code> selects Docker Desktop if installed, even with extra spaces. <code class="q">docker nginx</code> searches Docker Hub, and <code class="q">docker:</code> opens the <a href="?p=system-views#docker">Docker containers view</a>.</p>
 <table>
   <thead><tr><th>Bang</th><th>Site</th><th>Searches</th></tr></thead>
   <tbody>
@@ -1239,7 +1240,7 @@ hl.layer_rule({
 
 <h2 id="troubleshooting">Troubleshooting</h2>
 <details><summary>Why is there no web search row at the bottom?</summary><p>Local results filled the result limit, or the query is a URL. Type <code class="q">web:</code> before the query, or raise <b class="ui">Results shown</b> on the <b class="ui">Search</b> tab of Spotlight Settings.</p></details>
-<details><summary>My bang opens an app instead of the site</summary><p>The app's name starts with your full query. Press <kbd>Down</kbd> to reach the bang row, or use <code class="q">web:</code> in front of the bang.</p></details>
+<details><summary>Why did Enter select a different result?</summary><p>An app, command or quick link can take priority when its title starts with the full query. Move down to the bang row, or use <code class="q">web:</code> in front of the bang. For example, <code class="q">web: omarchy menu</code> searches the Omarchy manual.</p></details>
 <details><summary>I turned on suggestions but see none</summary><p>Suggestions need two or more characters, a network connection and a plain query (not a URL, bang, calculation, file search or filter). Check that <b class="ui">Search suggestions shown</b>, under <b class="ui">Web</b> on the <b class="ui">Search</b> tab of Spotlight Settings, is not set to 0.</p></details>
 
 </article>
@@ -1745,7 +1746,7 @@ hl.layer_rule({
 <ul>
 <li>Keys: <code>g</code>, <code>gg</code>, <code>google</code>, <code>ddg</code>, <code>kagi</code>, <code>yt</code>, <code>gh</code>, <code>w</code>, <code>wde</code>, <code>aw</code>, <code>aur</code>, <code>pkg</code>, <code>so</code>, <code>mdn</code>, <code>npm</code>, <code>crates</code>, <code>docker</code>, <code>maps</code>, <code>tr</code>, <code>img</code>, <code>hn</code>, <code>omarchy</code>. They ignore case.</li>
 <li>The search text is required. <code class="q">gh</code> alone is an ordinary search.</li>
-<li>Bangs rank first unless an app's name starts with the full query. For example, <code class="q">w firefox</code> normally selects Wikipedia, and <code class="q">docker desktop</code> can select Docker Desktop.</li>
+<li>Bangs rank first unless an app, command or quick link has a title that starts with the full query. See <a href="?p=web-search#bangs">how Spotlight ranks bangs</a> for examples.</li>
 <li><code class="q">tr</code> translates with DeepL. End the text with <code class="q">to</code>, <code class="q">in</code> or <code class="q">into</code> and a language, as in <code class="q">tr guten morgen to english</code>; the row then reads <b class="ui">Translate to &lt;Language&gt;</b>. The last match wins, and an unknown language stays part of the text.</li>
 </ul>
 
