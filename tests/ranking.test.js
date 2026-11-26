@@ -132,12 +132,11 @@ function searchWithBang(query, appTitle) {
     root[name] = context[name]
   }
   root.loadMenuCommands(JSON.stringify({ ok: true, commands: [
-    { key: "menu:install.development.docker-dbs", title: "Docker DB",
+    { key: "menu:install.development.docker-dbs", title: "Docker DB", confirm: true,
       argv: ["omarchy-launch-floating-terminal-with-presentation", "omarchy-install-docker-dbs"] }
   ] }))
-  root.rebuild()
   root.activateSelection(false)
-  return root
+  return { root, context }
 }
 
 for (const [query, key, appTitle] of [
@@ -149,23 +148,42 @@ for (const [query, key, appTitle] of [
   ["DOCKER DESK", "app:docker-desktop", "Docker\t Desktop"]
 ]) {
   test(`${JSON.stringify(query)} gives Enter to the matching title ahead of the bang`, () => {
-    const root = searchWithBang(query, appTitle)
+    const { root } = searchWithBang(query, appTitle)
     assert.equal(root.entered.key, key)
+    assert.equal(root.entered.confirm, query === "docker db")
     const bang = root.rows.find(row => row.resultType === "bang")
     assert.ok(bang)
     assert.equal(root.resultSection(bang), "Web")
   })
 }
 
+test("Docker DB dispatches only after a second Enter", () => {
+  const { root, context } = searchWithBang("docker db")
+  const commands = []
+  root.bumpUsage = () => {}
+  root.dismiss = () => {}
+  context.Util.execArgv = argv => commands.push(Array.from(argv))
+  vm.runInContext(qml.match(/  function activate\([^]*?\n  \}/)[0], context)
+  root.activate = context.activate
+
+  root.activateSelection(false)
+  assert.equal(root.armedKey, root.entered.key)
+  assert.deepEqual(commands, [])
+  root.activateSelection(false)
+  assert.deepEqual(commands, [[
+    "omarchy-launch-floating-terminal-with-presentation", "omarchy-install-docker-dbs"
+  ]])
+})
+
 test("a bang takes Enter over loose matches and search suggestions", () => {
-  const root = searchWithBang("g test")
+  const { root } = searchWithBang("g test")
   assert.equal(root.entered.key, "bang.g")
   assert.ok(root.rows.some(row => row.title === "Disk Speed Test"))
   assert.ok(root.rows.some(row => row.key === "sugg:g test"))
 })
 
 test("the web filter gives Enter to the bang even when a command title matches", () => {
-  const root = searchWithBang("web: omarchy menu")
+  const { root } = searchWithBang("web: omarchy menu")
   assert.equal(root.entered.key, "bang.omarchy")
   assert.ok(root.rows.every(row => row.key !== "cmd:sum.menu"))
 })
