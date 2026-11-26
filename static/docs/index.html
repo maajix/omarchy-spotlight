@@ -288,7 +288,7 @@ main{min-width:0;width:100%;max-width:740px;justify-self:center;padding:52px 0 0
   <a class="brand" href="../"><span class="mk"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><circle cx="10.5" cy="10.5" r="6"/><path d="m15 15 5 5"/></svg></span>Spotlight<span class="sub">Docs</span></a>
   <button class="find" id="find" type="button" aria-label="Search docs"><svg data-i="search"></svg><span>Search docs</span><kbd>Ctrl</kbd><kbd>K</kbd></button>
   <nav class="tlinks" aria-label="Site"><a href="../">Home</a><a href="?p=changelog">Changelog</a></nav>
-  <a class="gh" href="https://github.com/maajix/omarchy-spotlight" rel="noopener"><svg data-i="github"></svg><span class="l">GitHub</span><span class="n">v1.7.11</span></a>
+  <a class="gh" href="https://github.com/maajix/omarchy-spotlight" rel="noopener"><svg data-i="github"></svg><span class="l">GitHub</span><span class="n">v1.7.12</span></a>
 </header>
 
 <div class="docs">
@@ -1180,7 +1180,7 @@ hl.layer_rule({
 <h2 id="bangs">Jump to a site with a bang</h2>
 <p>Type a bang, a space and your search, for example <code class="q">gh omarchy</code>. Spotlight adds a row whose title is your search text and whose subtitle and footer label name the site, here <b class="ui">Search GitHub</b>. Press <kbd>Enter</kbd> to open that site's search results. Bangs are not case-sensitive, and they need text after the space: <code class="q">gh</code> on its own is a normal search.</p>
 <p>The bang usually takes <kbd>Enter</kbd>. An app, command or quick link comes first when its title starts with the full query, including the bang key. Spotlight ignores case and treats repeated whitespace as a single space when comparing titles.</p>
-<p>For example, <code class="q">g test</code> searches Google, <code class="q">omarchy menu</code> opens Omarchy Menu, and <code class="q">google calendar</code> opens the Calendar quick link. <code class="q">docker db</code> selects the Docker DB command when available. <code class="q">docker desktop</code> selects Docker Desktop if installed, even with extra spaces. <code class="q">docker nginx</code> searches Docker Hub, and <code class="q">docker:</code> opens the <a href="?p=system-views#docker">Docker containers view</a>.</p>
+<p>For example, <code class="q">g test</code> searches Google, <code class="q">omarchy menu</code> opens Omarchy Menu, and <code class="q">google calendar</code> opens the Calendar quick link. <code class="q">docker db</code> selects the Docker DB command when available. Press Enter a second time to open Omarchy’s database picker. <code class="q">docker desktop</code> selects Docker Desktop if installed, even with extra spaces. <code class="q">docker nginx</code> searches Docker Hub, and <code class="q">docker:</code> opens the <a href="?p=system-views#docker">Docker containers view</a>.</p>
 <table>
   <thead><tr><th>Bang</th><th>Site</th><th>Searches</th></tr></thead>
   <tbody>
@@ -2553,6 +2553,13 @@ hl.layer_rule({
 
 <p>Newest release first, starting at 1.5.0. To get the latest version, run <code>omarchy plugin update io.github.maajix.spotlight</code>.</p>
 
+<h2 id="1-7-12">1.7.12 <time class="date" datetime="2026-11-26">2026-11-26</time></h2>
+<h3 id="1-7-12-fixed">Fixed</h3>
+<ul>
+<li>Matching app, command and quick-link titles take priority over web bangs, including queries with repeated spaces.</li>
+<li><code class="q">docker db</code> selects the Docker DB menu action on supported installs and asks for confirmation before opening the picker.</li>
+</ul>
+
 <h2 id="1-7-11">1.7.11 <time class="date" datetime="2026-11-24">2026-11-24</time></h2>
 <h3 id="1-7-11-fixed">Fixed</h3>
 <ul>
@@ -2845,7 +2852,7 @@ git diff --check</code></pre>
     <div class="pmeta">
       <a id="edit" href="#" rel="noopener"><svg data-i="edit"></svg>Edit this page on GitHub</a>
       <a id="report" href="#" rel="noopener"><svg data-i="flag"></svg>Report a problem with this page</a>
-      <span class="upd">Updated for 1.7.11</span>
+      <span class="upd">Updated for 1.7.12</span>
     </div>
     <nav class="pn" id="pn" aria-label="Previous and next page"></nav>
   </main>
